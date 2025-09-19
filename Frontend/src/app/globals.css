@@ -6,7 +6,13 @@
 body {
    @apply bg-[#0C0817];
   font-family: Arial, Helvetica, sans-serif;
-}/* Global custom utilities */
+   color:#dee1e6;
+}
+
+:root {
+  --foreground: #dee1e6;
+}
+
 @layer utilities {
   /* Navbar neon link hover */
   .neon-hover {
@@ -82,6 +88,38 @@ body {
       0 0 30px #313166,
       0 0 50px #313166; 
   }
+  .neon-btn-gold:hover {
+  color:#2b2142b3;
+  background: #FBE285; 
+  box-shadow:
+    0 0 5px #FBE285,
+    0 0 15px #FBE285,
+    0 0 30px #FBE285,
+    0 0 50px #FBE285;
+}
+.neon-btn-blue:hover {
+  color: #fff; 
+  background: #4682B4; 
+  box-shadow:
+    0 0 5px #2D68C4,
+    0 0 15px #2D68C4,
+    0 0 30px #2D68C4,
+    0 0 50px #2D68C4;
+}
+
+.neon-btn-red:hover {
+  color: #fff; 
+  background:bg-red-500; 
+  box-shadow:
+    0 0 5px 
+#A1222F,
+    0 0 15px 
+#A1222F,
+    0 0 30px
+#A1222F,
+    0 0 50px 
+#A1222F;
+}
 
 }
 
