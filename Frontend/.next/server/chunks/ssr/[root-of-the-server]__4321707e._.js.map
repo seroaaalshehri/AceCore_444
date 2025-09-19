@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 11, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/roaa3/acecore/Frontend/src/app/page.tsx"],"sourcesContent":["import Image from \"next/image\";\r\nimport {NavbarDefault,signUpIn} from \"./Components/Navbar\";\r\n\r\n\r\n\r\nexport default function Home() {\r\n  return (\r\n    <div className=\"min-h-screen mt-10 bg-[acecoreBackground]\">\r\n \r\n      <NavbarDefault /> \r\n   \r\n\r\n      <main className=\"flex flex-1 items-center justify-center\">\r\n\r\n      </main>\r\n    </div>\r\n  ); }\r\n"],"names":[],"mappings":";;;;;;;;;;;;AAKe,SAAS;IACtB,qBACE,qQAAC;QAAI,WAAU;;0BAEb,qQAAC;;;;;0BAGD,qQAAC;gBAAK,WAAU;;;;;;;;;;;;AAIjB","debugId":null}}]
+}
