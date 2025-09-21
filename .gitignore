@@ -38,9 +38,8 @@ yarn-error.log*
 
 
 #Firebase private keys
-# Ignore Firebase service account
-*.json
 
+Backend/FirebaseKeys.json
 
 # vercel
 .vercel

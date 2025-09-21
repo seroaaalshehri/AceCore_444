@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
-    {"offset": {"line": 11, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/roaa3/acecore/Frontend/src/app/admin/page.jsx"],"sourcesContent":["import {AdminDashboard,AppHeader} from \"./components/AdminDashboard\";\r\n\r\n\r\nexport default function Home() {\r\n  return (\r\n    <>\r\n      <header>\r\n        <AppHeader />\r\n      </header>\r\n      <AdminDashboard />\r\n    </>\r\n  );\r\n}\r\n\r\n"],"names":[],"mappings":";;;;;;;;;;;;AAGe,SAAS;IACtB,qBACE;;0BACE,qQAAC;0BACC,cAAA,qQAAC;;;;;;;;;;0BAEH,qQAAC;;;;;;;AAGP","debugId":null}}]
-}

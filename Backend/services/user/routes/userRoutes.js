@@ -3,7 +3,8 @@ const router = express.Router();
 const userController = require("../controllers/userController");
 const authenticate = require("../../../middlewares/auth");
 
-// add  authenticatein fields after testinf routes end
+// note:add  authenticatein fields after testinf routes end
+
 router.post("/", userController.createUser);
 router.get("/", userController.getAllUsers);
 router.get("/:id", userController.getUser);

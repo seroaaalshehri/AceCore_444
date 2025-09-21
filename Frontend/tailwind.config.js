@@ -9,9 +9,12 @@ module.exports = withMT({
   ],
   theme: {
     extend: {
-      Colors:{
-      acecoreBackground:"#0C0817",
-    }
+      colors: {
+        acecoreBackground: "#0C0817",
+      },
+    fontFamily: {
+    barlow: ["var(--font-barlow-condensed)", "sans-serif"],
+  },
     },
   },
   plugins: [],

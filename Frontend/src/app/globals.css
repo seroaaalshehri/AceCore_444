@@ -13,6 +13,7 @@ body {
   --foreground: #dee1e6;
 }
 
+
 @layer utilities {
   /* Navbar neon link hover */
   .neon-hover {
@@ -48,7 +49,11 @@ body {
   .neon-white {
     @apply neon-hover text-white;
   }
- 
+ .neon-gold{
+   @apply neon-hover text-[#FCCC22];
+ }
+
+
   }
 
 
@@ -97,6 +102,15 @@ body {
     0 0 30px #FBE285,
     0 0 50px #FBE285;
 }
+.neon-btn-goldGetstarted:hover{
+  color:#2b2142b3;
+  background: #FCCC22; 
+  box-shadow:
+    0 0 5px #FBE285,
+    0 0 15px #FBE285,
+    0 0 30px #FBE285,
+    0 0 50px #FBE285;
+}
 .neon-btn-blue:hover {
   color: #fff; 
   background: #4682B4; 
@@ -119,6 +133,15 @@ body {
 #A1222F,
     0 0 50px 
 #A1222F;
+}
+
+.neon-btn-gray:hover {
+  background:bg-gray-500; 
+  box-shadow:
+    0 0 5px #4B5563,
+    0 0 15px #4B5563,
+    0 0 30px #4B5563,
+    0 0 50px #4B5563;
 }
 
 }

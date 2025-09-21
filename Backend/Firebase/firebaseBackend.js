@@ -18,16 +18,3 @@ const db = admin.firestore();
 const auth = admin.auth();
 
 module.exports = { db, auth };
-
-// 🔥 Debug test (only when running this file directly)
-if (require.main === module) {
-  (async () => {
-    try {
-      const snapshot = await db.collection("users").limit(1).get();
-      console.log("🔥 Firestore connected. Docs count:", snapshot.size);
-    } catch (err) {
-      console.error("❌ Firestore connection failed:", err);
-    }
-  })();
-}
-console.log("Connected to Firebase project:", process.env.FIREBASE_PROJECT_ID);
