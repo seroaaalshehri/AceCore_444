@@ -226,7 +226,7 @@ export function AppHeader() {
   return (
     <>
       <header className="flex justify-between items-start mb-8 bg-[#0C0817] font-barlow p-1 rounded-lg">
-        {/* LEFT SIDE: LOGO + HELLO */}
+    
         <div className="flex flex-col items-start pl-3 mt-4 mr-15">
           <Image
             src="/AC-glow.png"

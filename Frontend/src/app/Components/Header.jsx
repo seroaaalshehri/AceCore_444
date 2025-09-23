@@ -133,13 +133,3 @@ export function SignUpIn() {
 }
 
 
-export function GetStartedbtn() {
-  return (
-    <Button
-      size="md"
-      className=" md:inline-block bg-[#FCCC22] text-[#313166] px-6 py-2 text-base rounded-lg hover:neon-btn-goldGetstarted"
-    >
-      <span>Get Started</span>
-    </Button>
-  );
-}
