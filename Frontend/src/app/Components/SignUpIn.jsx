@@ -515,7 +515,7 @@ const onAvatarClick = () => {
     const alertMsg = () => alert(`Minimum allowed age is ${MIN_AGE}`);
 
     const safeChangeYear = (y) => {
-      // لو اختار سنة تتجاوز الحد
+    
       if (y > cutoffY || (y === cutoffY && curM > cutoffM)) {
         alertMsg();
         return;
@@ -524,7 +524,7 @@ const onAvatarClick = () => {
     };
 
     const safeChangeMonth = (m) => {
-      // لو الشهر يتجاوز الحد في نفس سنة الحد
+      
       if (curY > cutoffY || (curY === cutoffY && m > cutoffM)) {
         alertMsg();
         return;
@@ -533,7 +533,7 @@ const onAvatarClick = () => {
     };
 
     const safeIncreaseMonth = () => {
-      // منع السهم يمين من تخطي الحد
+      
       if (curY > cutoffY || (curY === cutoffY && curM >= cutoffM)) {
         alertMsg();
         return;
