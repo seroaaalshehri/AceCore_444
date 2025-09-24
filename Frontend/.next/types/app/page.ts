@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // File: C:\Users\roaa3\acecore\Frontend\src\app\page.jsx
+=======
+// File: C:\acecore\AceCore_444\AceCore_444-1\Frontend\src\app\page.jsx
+>>>>>>> 653fd8ee00c99a62dc0f385f418af4dc2fc1e4c7
 import * as entry from '../../../src/app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
