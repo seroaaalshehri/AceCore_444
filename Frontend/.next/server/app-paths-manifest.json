@@ -1,9 +1,4 @@
 {
-<<<<<<< HEAD
-  "/page": "app/page.js",
-  "/SignUp/page": "app/SignUp/page.js"
-=======
   "/SignUp/page": "app/SignUp/page.js",
   "/page": "app/page.js"
->>>>>>> 653fd8ee00c99a62dc0f385f418af4dc2fc1e4c7
 }

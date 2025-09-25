@@ -86,9 +86,7 @@ button {
   font-weight: 600;
   transition: all 0.3s ease;
 }
-button:hover {
-  background-color: #6a3ff2;
-}
+
 form button {
   margin-top: 20px;
   align-self: center; /* keeps it centered */
@@ -107,6 +105,27 @@ form button {
     margin: 0 3px;
     width: 40px;
     height: 40px;
+}
+.button-custom {
+  border: 2px solid #FCCC22;
+  background: #eeeeee;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+   margin: 0 3px;
+  color:  #2b2142;
+  gap: 8px;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;    /* font-medium */
+  transition: background 0.2s ease-in-out;
+}
+.button-custom:hover {
+  background: #eeeeee !important;
+  border: 2px solid #FCCC22 !important;
+  color: #2b2142 !important;
+ 
+
+  
 }
 
 /* Games grid */

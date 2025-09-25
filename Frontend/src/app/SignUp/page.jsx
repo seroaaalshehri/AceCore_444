@@ -5,7 +5,7 @@ import "../SignUpIn.css";
 
 export default function Home() {
   return (
-<div className="flex items-center justify-center min-h-screen font-barlow ">
+<div className="flex items-center justify-center min-h-screen font-barlow overflow-x:hidden">
       {/* Background Particles */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Particles

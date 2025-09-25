@@ -1,15 +1,15 @@
 "use client";
 import React, { useState, useRef } from "react";
 import { User } from "lucide-react";
-
 import Image from "next/image";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { subYears, isAfter, getYear, getMonth } from "date-fns";
 import Lottie from "lottie-react";
-import teamAnim from "../assets/team.json"; 
-import clubAnim from "../assets/Experienced.json";
+import DateAlert from "./DateAlert";
+import clubSignUp from "../../../public/ClubSignUpIcon.json";
+import gamerSignUp from "../../../public/GamerSignup.json"; 
 import Link from "next/link";
 
 
@@ -70,7 +70,7 @@ const onAvatarClick = () => {
     "Fiji","Finland","France",
     "Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana",
     "Haiti","Honduras","Hungary",
-    "Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy",
+    "Iceland","India","Indonesia","Iran","Iraq","Ireland","Palestine","Italy",
     "Jamaica","Japan","Jordan",
     "Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan",
     "Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg",
@@ -87,7 +87,9 @@ const onAvatarClick = () => {
     "Yemen",
     "Zambia","Zimbabwe"
   ];
+const [showDateAlert, setShowDateAlert] = useState(false);
 
+const alertMsg = () => setShowDateAlert(true);
   const handleGameSelect = (game) => {
     setSelectedGames((prev) =>
       prev.includes(game) ? prev.filter((g) => g !== game) : [...prev, game]
@@ -120,7 +122,7 @@ const onAvatarClick = () => {
       </div>
 
       {/* Club Sign Up Form */}
-      <div className="form-container club-form">
+      <div className="form-container club-form ">
        {/* Club avatar uploader */}
 <div className="w-full flex justify-center my-4">
   <div className="relative flex flex-col items-center">
@@ -150,7 +152,7 @@ const onAvatarClick = () => {
     </div>
 
     {clubAvatar && avatarMenuOpen && (
-      <div className="absolute top-full mt-2 w-32 bg-[#1C1633] rounded-md shadow-[0_0_12px_#5f4a87] p-1">
+      <div className="absolute top-full mt-2 w-32 bg-[#1C1633] rounded-md shadow-[0_0_12px_#5f4a87] p-1 ">
         <button
           type="button"
           onClick={pickClubAvatar}
@@ -169,18 +171,17 @@ const onAvatarClick = () => {
     )}
   </div>
 </div>
+ <div>
+  <p>Upload Cl </p>
+ </div>
 
         <form className="flex flex-col items-center w-full max-w-md">
           
           {/* Social icons */}
   {/* Twitch Button */}
 <div className="w-full flex justify-center mb-3">
-  <button
-    type="button"
-    className="flex items-center justify-center gap-2 w-full py-2 px-4 rounded-md 
-               bg-[#5f4a87] text-white text-sm font-medium 
-               hover:bg-[#7a66c7] transition"
-  >
+  <button className="button-custom ">
+
     <Image
       src="/twitchIcon.svg"
       alt="Twitch"
@@ -188,7 +189,7 @@ const onAvatarClick = () => {
       height={18}
       className="inline-block"
     />
-    <span>Continue with Twitch</span>
+    <span>  Continue with Twitch</span>
   </button>
 </div>
 
@@ -333,7 +334,7 @@ const onAvatarClick = () => {
 </div>
 
 
-          {/* Game Selection (same as gamer) */}
+          {/* Game Selection */}
           <div className="w-full mt-4">
             <label className="block text-left text-sm font-medium text-gray-300">
               Choose games
@@ -489,120 +490,127 @@ const onAvatarClick = () => {
               </div>
             </div>
 
-            <div className="w-1/2">
-              <label htmlFor="birthdate" className="block text-xs mb-1">Select your birth date</label>
-              <DatePicker
-  id="birthdate"
-  selected={birthDate}
-  onChange={setBirthDate}
-  placeholderText="MM/dd/yyyy"
-  dateFormat="MM/dd/yyyy"
-  showPopperArrow={false}
-  maxDate={cutoffDate}
-  onChangeRaw={(e) => e.preventDefault()}
-  popperClassName="z-[10000] custom-popper"
-  className="w-full p-2 pr-10 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
-  calendarClassName="dp-dark dp-compact w=[320px] overflow-hidden"
-  renderCustomHeader={({ 
-    date, changeYear, changeMonth, decreaseMonth, increaseMonth,
-    prevMonthButtonDisabled, nextMonthButtonDisabled 
-  }) => {
-    const cutoffY = getYear(cutoffDate);
-    const cutoffM = getMonth(cutoffDate);
-    const curY = getYear(date);
-    const curM = getMonth(date);
+         
 
-    const alertMsg = () => alert(`Minimum allowed age is ${MIN_AGE}`);
+    <div className="w-1/2">
+  <label htmlFor="birthdate" className="block text-xs mb-1">
+    Select your birth date
+  </label>
 
-    const safeChangeYear = (y) => {
-    
-      if (y > cutoffY || (y === cutoffY && curM > cutoffM)) {
-        alertMsg();
-        return;
-      }
-      changeYear(y);
-    };
+  <DatePicker
+    id="birthdate"
+    selected={birthDate}
+    onChange={setBirthDate}
+    placeholderText="MM/dd/yyyy"
+    dateFormat="MM/dd/yyyy"
+    showPopperArrow={false}
+    maxDate={cutoffDate}
+    onChangeRaw={(e) => e.preventDefault()}
+    popperClassName="z-[10000] custom-popper"
+    className="w-full p-2 pr-10 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+    calendarClassName="dp-dark dp-compact w-[320px] overflow-hidden"
+    renderCustomHeader={({
+      date,
+      changeYear,
+      changeMonth,
+      decreaseMonth,
+      increaseMonth,
+      prevMonthButtonDisabled,
+      nextMonthButtonDisabled,
+    }) => {
+      const cutoffY = cutoffDate.getFullYear();
+      const cutoffM = cutoffDate.getMonth();
+      const curY = date.getFullYear();
+      const curM = date.getMonth();
 
-    const safeChangeMonth = (m) => {
-      
-      if (curY > cutoffY || (curY === cutoffY && m > cutoffM)) {
-        alertMsg();
-        return;
-      }
-      changeMonth(m);
-    };
+      const safeChangeYear = (y) => {
+        if (y > cutoffY || (y === cutoffY && curM > cutoffM)) return alertMsg();
+        changeYear(y);
+      };
 
-    const safeIncreaseMonth = () => {
-      
-      if (curY > cutoffY || (curY === cutoffY && curM >= cutoffM)) {
-        alertMsg();
-        return;
-      }
-      increaseMonth();
-    };
+      const safeChangeMonth = (m) => {
+        if (curY > cutoffY || (curY === cutoffY && m > cutoffM)) return alertMsg();
+        changeMonth(m);
+      };
 
-    return (
-      <div className="flex flex-col bg-[#5f4a87] px-3 py-2 rounded-t-md">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <select
-            value={curY}
-            onChange={({ target: { value } }) => safeChangeYear(Number(value))}
-            className="bg-[#2b2142] text-white text-sm rounded-md p-1 cursor-pointer"
-          >
-            {years.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
+      const safeIncreaseMonth = () => {
+        if (curY > cutoffY || (curY === cutoffY && curM >= cutoffM)) return alertMsg();
+        increaseMonth();
+      };
 
-          <select
-            value={curM}
-            onChange={({ target: { value } }) => safeChangeMonth(Number(value))}
-            className="bg-[#2b2142] text-white text-sm rounded-md p-1 cursor-pointer"
-          >
-            {months.map((month, index) => (
-              <option key={month} value={index}>{month}</option>
-            ))}
-          </select>
-        </div>
+      return (
+        <div className="flex flex-col bg-[#5f4a87] px-3 py-2 rounded-t-md">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <select
+              value={curY}
+              onChange={({ target: { value } }) => safeChangeYear(Number(value))}
+              className="bg-[#2b2142] text-white text-sm rounded-md p-1 cursor-pointer"
+            >
+              {years.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
 
-        <div className="relative flex items-center justify-center">
-          <FiChevronLeft
-            size={18}
-            role="button"
-            tabIndex={0}
-            aria-label="Previous month"
-            onClick={decreaseMonth}
-            className={`absolute left-2 cursor-pointer text-white/90 hover:text-white ${prevMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""}`}
-          />
-          <span className="text-white text-sm font-medium select-none">
-            {months[curM]} {curY}
-          </span>
-          <FiChevronRight
-            size={18}
-            role="button"
-            tabIndex={0}
-            aria-label="Next month"
-            onClick={safeIncreaseMonth}
-            className={`absolute right-2 cursor-pointer text-white/90 hover:text-white ${nextMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""}`}
-          />
-        </div>
-      </div>
-    );
-  }}
-/>
-              {isUnderage && (
-                <p className="mt-2 text-xs text-red-400">
-                  You must be at least {MIN_AGE} years old to sign up.
-                </p>
-              )}
-            </div>
+            <select
+              value={curM}
+              onChange={({ target: { value } }) => safeChangeMonth(Number(value))}
+              className="bg-[#2b2142] text-white text-sm rounded-md p-1 cursor-pointer"
+            >
+              {months.map((month, index) => (
+                <option key={month} value={index}>
+                  {month}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <div className="relative flex items-center justify-center">
+            <FiChevronLeft
+              size={18}
+              role="button"
+              tabIndex={0}
+              aria-label="Previous month"
+              onClick={decreaseMonth}
+              className={`absolute left-2 cursor-pointer text-white/90 hover:text-white ${
+                prevMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""
+              }`}
+            />
+            <span className="text-white text-sm font-medium select-none">
+              {months[curM]} {curY}
+            </span>
+            <FiChevronRight
+              size={18}
+              role="button"
+              tabIndex={0}
+              aria-label="Next month"
+              onClick={safeIncreaseMonth}
+              className={`absolute right-2 cursor-pointer text-white/90 hover:text-white ${
+                nextMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""
+              }`}
+            />
+          </div>
+        </div>
+      );
+    }}
+  />
+
+  
+  <DateAlert
+    open={showDateAlert}
+    message={`Minimum allowed age is ${MIN_AGE}`}
+    onClose={() => setShowDateAlert(false)}
+  />
+</div>
+
+    </div>
 
           {/* Select Games */}
           <div className="w-full mt-4">
             <label className="block text-left text-sm font-medium text-gray-300">Select games</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
-              {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
+              {["Rocket League", "Call of Duty", "Overwatch"].map((game) => ( 
                 <div
                   key={game}
                   className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-40 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${selectedGames.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""}`}
@@ -628,7 +636,7 @@ const onAvatarClick = () => {
             </div>
           </div>
 
-          <button type="button" className="bg-[#161630] mt-6 w-1/2 mx-auto">
+          <button type="button" className="bg-[#161630] mt-6 w-1/2 mx-auto hover:neon-btn-indigo">
             Sign Up
           </button>
           <p className="mt-3 text-sm text-gray-400 text-center">
@@ -647,7 +655,7 @@ const onAvatarClick = () => {
     <div className="toggle-panel toggle-left">
      
       <div className="w-64 h-64 mb-6">
-        <Lottie animationData={clubAnim} loop={true} />
+        <Lottie animationData={gamerSignUp} loop={true} />
       </div>
 
      
@@ -662,7 +670,7 @@ const onAvatarClick = () => {
    
     <div className="toggle-panel toggle-right">
       <div className="w-64 h-64 mb-6">
-        <Lottie animationData={teamAnim} loop={true} />
+        <Lottie animationData={clubSignUp} loop={true} />
       </div>
       <p className="text-2xl font-bold mb-4">Are You a Club?</p>
       <button type="button" onClick={() => setIsActive(true)}>
