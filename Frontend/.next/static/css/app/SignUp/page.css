@@ -779,9 +779,10 @@ h2.react-datepicker__current-month {
   border-radius: 30px;
   position: relative;
   overflow: hidden;
-  width: 800px;
+  width: 1000px;
+  height: 850px;
   max-width: 100%;
-  min-height: 700px;
+  min-height: 800px;
   margin: 40px auto;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
   transition: all 0.6s ease-in-out;
@@ -866,11 +867,8 @@ form button {
   margin-top: 20px;
   align-self: center; /* keeps it centered */
 }
-.social-icons{
-    margin: 20px 0;
-}
 
-.social-icons a{
+.social-icons {
     border: 2px solid #FCCC22;
      background: #eeeeee;
     border-radius: 20%;
@@ -880,6 +878,7 @@ form button {
     margin: 0 3px;
     width: 40px;
     height: 40px;
+     margin: 20px 0;
 }
 .button-custom {
   border: 2px solid #FCCC22;

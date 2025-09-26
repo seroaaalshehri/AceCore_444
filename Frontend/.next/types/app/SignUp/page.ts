@@ -1,4 +1,4 @@
-// File: C:\Users\roaa3\acecore\Frontend\src\app\SignUp\page.jsx
+// File: C:\acecore\AceCore_444\AceCore_444-1\Frontend\src\app\SignUp\page.jsx
 import * as entry from '../../../../src/app/SignUp/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

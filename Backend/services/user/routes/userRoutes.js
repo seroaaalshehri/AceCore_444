@@ -3,12 +3,11 @@ const router = express.Router();
 const userController = require("../controllers/userController");
 const authenticate = require("../../../middlewares/auth");
 
-// note:add  authenticatein fields after testinf routes end
 
 router.post("/", userController.createUser);
 router.get("/", userController.getAllUsers);
 router.get("/:id", userController.getUser);
-router.put("/:id", userController.updateUser);
-router.delete("/:id", userController.deleteUser);
+router.put("/:id", authenticate, userController.updateUser);
+router.delete("/:id", authenticate, userController.deleteUser);
 
 module.exports = router;

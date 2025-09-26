@@ -6,7 +6,9 @@ export default function DateAlert({ open, message, onClose }) {
   return (<div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-[2147483647]">
 
   <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[350px] text-center">
-        <p className="text-lg font-bold mb-4">Age Restriction</p>
+        <p className="text-lg font-bold mb-4 text-red-500">
+  Age Restriction
+</p>
         <p className="text-sm text-gray-300 mb-6">{message}</p>
         <div className="flex w-full">
           <button
@@ -17,6 +19,6 @@ export default function DateAlert({ open, message, onClose }) {
           </button>
         </div>
       </div>
-    </div>
-  );
+    </div>
+  );
 }
