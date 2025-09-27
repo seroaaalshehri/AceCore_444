@@ -1,4 +1,3 @@
-// Backend/services/user/userServices/userService.js
 const admin = require("firebase-admin");
 const { db } = require("../../../Firebase/firebaseBackend");
 const { FieldValue } = admin.firestore;
@@ -28,6 +27,9 @@ async function createUserService(payload = {}) {
   const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
   const username = payload.username || "";
   const role     = payload.role || ""; // "gamer" | "club"
+
+  // NEW: Firebase Auth UID mapping (optional for non-auth flows)
+  const authUid  = typeof payload.authUid === "string" ? payload.authUid.trim() : "";
 
   if (!rawEmail) throw badRequest("Email required.");
   if (!username) throw badRequest("Username required.");
@@ -69,6 +71,15 @@ async function createUserService(payload = {}) {
       throw conflict("Username already in use.");
     }
 
+    // NEW 2.5) Optional: ensure a Firebase Auth user cannot be linked twice
+    if (authUid) {
+      const qAuth = usersCol.where("authUid", "==", authUid).limit(1);
+      const sAuth = await tx.get(qAuth);
+      if (!sAuth.empty) {
+        throw conflict("Auth user already linked.");
+      }
+    }
+
     // 3) Allocate sequential ID (still a READ in the counter doc)
     const docId = await allocateSequentialId(tx);
 
@@ -90,14 +101,17 @@ async function createUserService(payload = {}) {
         gamerEmail: role === "gamer" ? rawEmail : "",
         clubEmail:  role === "club"  ? rawEmail : "",
 
+        // NEW: map to Firebase Auth user (empty string if not provided)
+        authUid,
+
         username,
         username_lower: usernameLower,
 
-        password:   payload.password || "",
-        birthdate:  payload.birthdate || null,
+        password:    payload.password || "",
+        birthdate:   payload.birthdate || null,
         nationality: payload.nationality || "",
         gender:      payload.gender || "",
-        games: Array.isArray(payload.games) ? payload.games : [],
+        games:       Array.isArray(payload.games) ? payload.games : [],
 
         createdAt: FieldValue.serverTimestamp(),
       },

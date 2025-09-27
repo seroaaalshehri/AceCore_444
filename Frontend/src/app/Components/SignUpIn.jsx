@@ -116,6 +116,7 @@ React.useEffect(() => {
   
 
   // Google registration (GAMER only)
+  
   React.useEffect(() => {
     (async () => {
       try {
@@ -414,11 +415,6 @@ const hasAtLeastOneGame = games.length > 0;
 </div>
 
 
-
-
-
-
-
           {/* Select Games */}
       <div className="w-full mt-4">
   <label className="block text-left text-base font-medium text-gray-300">
@@ -488,7 +484,7 @@ const hasAtLeastOneGame = games.length > 0;
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
             <a href="/login" className="text-[#FCCC22] hover:underline">
-              Log in
+              Sign in
             </a>
           </p>
         </form>
@@ -832,7 +828,7 @@ const hasAtLeastOneGame = games.length > 0;
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
             <a href="/login" className="text-[#FCCC22] hover:underline">
-              Log in
+              Sign in
             </a>
           </p>
         </form>

@@ -7,6 +7,51 @@ const {
   deleteUserService,
 } = require("../userServices/userService");
 
+
+
+
+exports.verifyComplete = async (req, res) => {
+  try {
+    const { email, payload } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email required." });
+    }
+
+    // 1) Look up the Firebase Auth user by email
+    const userRecord = await admin
+      .auth()
+      .getUserByEmail(String(email).trim().toLowerCase());
+
+    // 2) Must already be verified (Firebase hosted page does the verification)
+    if (!userRecord.emailVerified) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email not verified yet." });
+    }
+
+    // 3) Create your app user (sequential id) and map to Firebase UID
+    //    - No extra uniqueness checks here; your service already does them.
+    const data = {
+      ...(payload || {}),
+      email: userRecord.email,
+      role: (payload && payload.role) || "gamer",
+      authUid: userRecord.uid, // mapping to Firebase Auth UID
+    };
+
+    const created = await createUserService(data);
+    return res.status(201).json({ success: true, id: created.id });
+  } catch (e) {
+ 
+    if (e?.status === 409) {
+      return res.status(200).json({ success: true, message: "Already exists" });
+    }
+    console.error("verifyComplete error:", e);
+    return res
+      .status(e.status || 500)
+      .json({ success: false, message: e.message || "Internal error" });
+  }
+};
+
 const isGmail = (email) => {
   if (typeof email !== "string") return false;
   const parts = email.trim().toLowerCase().split("@");
