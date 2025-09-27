@@ -18,9 +18,9 @@ import {
   signInWithRedirect,
   getRedirectResult,
   fetchSignInMethodsForEmail,
-    signOut,
+  signOut,
 } from "firebase/auth";
-import countryList from "react-select-country-list";
+import countries from "world-countries";
 import { useMemo } from "react";
 import SocialAlert from "./SocialAlert";
 
@@ -34,40 +34,70 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [clubEmailLocal, setClubEmailLocal] = useState("");
-const [emailLockedGamer, setEmailLockedGamer] = useState(false);
-const [authBusy, setAuthBusy] = useState(false);
-const SOCIALS = [
-  { key: "twitch", label: "Twitch", icon: "/twitchIcon.svg" },
-  { key: "youtube", label: "YouTube", icon: "/youtube (3).png" },
-  { key: "x", label: "X", icon: "/x.svg" },
-  { key: "discord", label: "Discord", icon: "/discord.svg" },
-];
-const [socialPlatform, setSocialPlatform] = useState(null);
-const [socialInputValue, setSocialInputValue] = useState("");
-const [socialAlertOpen, setSocialAlertOpen] = useState(false);
+  const [emailLockedGamer, setEmailLockedGamer] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+
+  // added: field-level notes
+  const [genderError, setGenderError] = useState("");
+  const [gamesError, setGamesError] = useState("");
+
+  const SOCIALS = [
+    { key: "twitch", label: "Twitch", icon: "/twitchIcon.svg" },
+    { key: "youtube", label: "YouTube", icon: "/youtube (3).png" },
+    { key: "x", label: "X", icon: "/x.svg" },
+    { key: "discord", label: "Discord", icon: "/discord.svg" },
+  ];
+  const [socialPlatform, setSocialPlatform] = useState(null);
+  const [socialInputValue, setSocialInputValue] = useState("");
+  const [socialAlertOpen, setSocialAlertOpen] = useState(false);
   const MIN_AGE = 16;
   const cutoffDate = subYears(new Date(), MIN_AGE);
   const years = Array.from({ length: 100 }, (_, i) => getYear(new Date()) - i);
   const fileClubRef = useRef(null);
 
-React.useEffect(() => {
-  handleChange({
-    target: { name: "role", value: isActive ? "club" : "gamer" },
-  });
-}, [isActive]);
+  const getNationality = (c) =>
+    c?.demonyms?.eng?.m || c?.demonym || c?.nationality || c?.name?.common;
 
- const switchToGamer = () => {
+  const NATIONALITY_OPTIONS = countries
+    .filter((c) => c.cca2 !== "IL")
+    .map((c) => ({ key: c.cca2, label: getNationality(c) }))
+    .filter((o) => !!o.label)
+    .sort((a, b) => a.label.localeCompare(b.label));
+  React.useEffect(() => {
+    handleChange({
+      target: { name: "role", value: isActive ? "club" : "gamer" },
+    });
+  }, [isActive]);
+
+  const switchToGamer = () => {
     setIsActive(false);
-    onRoleChange && onRoleChange("gamer");
-    handleChange({ target: { name: "clubEmail", value: "" } });
+
+    // Only call onRoleChange if it exists
+    if (typeof onRoleChange === "function") {
+      onRoleChange("gamer");
+    }
+
+    handleChange({
+      target: { name: "clubEmail", value: "" },
+    });
+
     setEmailLockedGamer(Boolean(formData?.gamerEmail));
   };
 
   const switchToClub = () => {
     setIsActive(true);
-    onRoleChange && onRoleChange("club");
-    setOkMsg(""); setErrorMsg("");
+
+    // Only call onRoleChange if it exists
+    if (typeof onRoleChange === "function") {
+      onRoleChange("club");
+    }
+
+    setOkMsg("");
+    setErrorMsg("");
   };
+
+
+
 
 
   const showAlert = (msg) => {
@@ -107,16 +137,16 @@ React.useEffect(() => {
   const handleBirthDate = (date) => {
     if (!date) return;
     if (isAfter(date, cutoffDate)) {
-    showAlert(`Minimum allowed age is ${MIN_AGE}`);
+      showAlert(`Minimum allowed age is ${MIN_AGE}`);
       handleChange({ target: { name: "birthdate", value: null } });
       return;
     }
     handleChange({ target: { name: "birthdate", value: date } });
   };
-  
+
 
   // Google registration (GAMER only)
-  
+
   React.useEffect(() => {
     (async () => {
       try {
@@ -182,75 +212,118 @@ React.useEffect(() => {
     "July", "August", "September", "October", "November", "December",
   ];
 
-  const options = useMemo(() => countryList().getData(), []);
 
-const games = Array.isArray(formData?.games) ? formData.games : [];
-const hasAtLeastOneGame = games.length > 0;
+  const games = Array.isArray(formData?.games) ? formData.games : [];
+  const hasAtLeastOneGame = games.length > 0;
   const handleGameSelect = (game) => {
     const next = games.includes(game)
       ? games.filter((g) => g !== game)
       : [...games, game];
     handleChange({ target: { name: "games", value: next } });
   };
-  
+
+  // added: validation helpers and submit wrappers
+  const resetNotes = () => {
+    setGenderError("");
+    setGamesError("");
+  };
+
+  const validateGamerForm = () => {
+    let ok = true;
+    if (!formData?.gender) {
+      setGenderError("Please select your gender.");
+      ok = false;
+    }
+    if (games.length === 0) {
+      setGamesError("Please select at least one game.");
+      ok = false;
+    }
+    return ok;
+  };
+
+  const validateClubForm = () => {
+    let ok = true;
+    if (games.length === 0) {
+      setGamesError("Please select at least one game.");
+      ok = false;
+    }
+    return ok;
+  };
+
+  const onSubmitGamer = (e) => {
+    e.preventDefault();
+    resetNotes();
+    if (!validateGamerForm()) return;
+    handleSubmit(e);
+  };
+
+  const onSubmitClub = (e) => {
+    e.preventDefault();
+    resetNotes();
+    if (!validateClubForm()) return;
+    handleSubmit(e);
+  };
+
   return (
     <div className={`container ${isActive ? "active" : ""}`} id="container">
 
       <div className="flex md:hidden justify-center gap-10 w-full pt-4 pb-2 border-b border-gray-700 ">
         <span
-          onClick={(switchToGamer) => setIsActive(false)}
+          onClick={switchToGamer}
           className={`cursor-pointer pb-1 text-lg font-semibold relative
-            ${!isActive ? "text-white after:w-full" : "text-gray-400 after:w-0"}
-            after:absolute after:left-0 after:-bottom-1 after:h-[3px]
-            after:bg-[#FCCC22] after:transition-all after:duration-300`}
+    ${!isActive ? "text-white after:w-full" : "text-gray-400 after:w-0"}
+    after:absolute after:left-0 after:-bottom-1 after:h-[3px]
+    after:bg-[#FCCC22] after:transition-all after:duration-300`}
         >
           As Gamer
         </span>
+
         <span
-          onClick={(switchToClub) => setIsActive(true)}
+          onClick={switchToClub}
           className={`cursor-pointer pb-1 text-lg font-semibold relative
-            ${isActive ? "text-white after:w-full" : "text-gray-400 after:w-0"}
-            after:absolute after:left-0 after:-bottom-1 after:h-[3px]
-            after:bg-[#FCCC22] after:transition-all after:duration-300`}
+    ${isActive ? "text-white after:w-full" : "text-gray-400 after:w-0"}
+    after:absolute after:left-0 after:-bottom-1 after:h-[3px]
+    after:bg-[#FCCC22] after:transition-all after:duration-300`}
         >
           As Club
         </span>
+
       </div>
 
       {/* Club Sign Up Form */}
       <div className="form-container club-form font-bold">
         <h1 className="text-2xl font-bold mb-3 text-center">Sign Up as a Club</h1>
 
-       <div className="relative flex flex-col items-center justify-center my-4 w-full">
-  <label className="mb-2 text-base text-gray-200">Upload Profile Photo</label>
+        <div className="relative flex flex-col items-center justify-center my-4 w-full">
+          <label className="mb-2 text-base text-gray-200">Upload Profile Photo</label>
 
-  {/* Hidden file input */}
-  <input
-    ref={fileClubRef}
-    type="file"
-    accept="image/*"
-    className="hidden"
-    onChange={onClubAvatarChange}
-  />
+          {/* Hidden file input */}
+          <input
+            ref={fileClubRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onClubAvatarChange}
+          />
 
-  {/* Clickable circle with preview */}
-  <div
-    onClick={() => fileClubRef.current && fileClubRef.current.click()}
-    className="rounded-full bg-[#1C1633] shadow-[0_0_16px_#5f4a87]
+          {/* Clickable circle with preview */}
+          <div
+            onClick={() => fileClubRef.current && fileClubRef.current.click()}
+            className="rounded-full bg-[#1C1633] shadow-[0_0_16px_#5f4a87]
       cursor-pointer overflow-hidden flex items-center justify-center
       hover:shadow-[0_0_20px_#7a66c7] transition-transform hover:scale-105"
-    style={{ width: "120px", height: "120px" }}
-  >
-    {clubAvatarPreview ? (
-      <img
-        src={clubAvatarPreview}
-        alt="Club logo"
-        className="w-full h-full object-cover"
-      />
-    ) : (
-      <User className="text-gray-300" style={{ width: "90px", height: "90px" }} />
-    )}
-  </div>
+            style={{ width: "120px", height: "120px" }}
+          >
+            {clubAvatarPreview ? (
+              <img
+                src={clubAvatarPreview}
+                alt="Club logo"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="text-gray-300" style={{ width: "90px", height: "90px" }} />
+            )}
+          </div>
 
 
           {clubAvatarPreview && avatarMenuOpen && (
@@ -277,7 +350,7 @@ const hasAtLeastOneGame = games.length > 0;
         </div>
 
         {/* Social icons header button (kept visual) */}
-     
+
         <div className="w-full flex justify-center mb-3">
           <button type="button" className="button-custom">
             <Image
@@ -293,7 +366,7 @@ const hasAtLeastOneGame = games.length > 0;
 
         <form
           className="flex flex-col items-center w-full max-w-md"
-          onSubmit={handleSubmit}
+          onSubmit={onSubmitClub}
         >
           {/* Email + Password */}
           <div className="flex gap-3 w-full">
@@ -301,28 +374,29 @@ const hasAtLeastOneGame = games.length > 0;
               <label htmlFor="club-email" className="block text-base mb-1">
                 Email
               </label>
-            <input
-  id="club-email"
-  name="clubEmail"
-  type="email"
-  placeholder="Enter email"
-  value={formData.clubEmail || ""}  
-  onChange={handleChange}
-  required
-  className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
-/>
+              <input
+                id="club-email"
+                name="clubEmail"
+                type="email"
+                placeholder="Enter email"
+                value={formData.clubEmail || ""}
+                onChange={handleChange}
+                required
+                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+              />
+
 
             </div>
-        <div className="w-1/2">
+            <div className="w-1/2">
               <label htmlFor="club-password" className="block text-base mb-1">
                 Password
               </label>
               <input
                 id="club-password"
-                name="password"
+                name="clubPassword"           // ⬅️ was "password"
                 type="password"
                 placeholder="Enter password"
-                value={formData.password || ""}
+                value={formData.clubPassword || ""}   // ⬅️ was formData.password
                 onChange={handleChange}
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
@@ -347,7 +421,7 @@ const hasAtLeastOneGame = games.length > 0;
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
             </div>
-        <div className="w-1/2">
+            <div className="w-1/2">
               <label htmlFor="club-name" className="block text-base mb-1">
                 Club Name
               </label>
@@ -363,107 +437,174 @@ const hasAtLeastOneGame = games.length > 0;
               />
             </div>
           </div>
- <div className="flex gap-3 w-full mt-3 items-start">
-  {/* Country Field */}
-  <div className="w-1/2">
-    <label htmlFor="Country" className="block text-base mb-1">
-      Country
-    </label>
-    <select
-      id="Country"
-      name="country"
-      value={formData.country || ""}
-      onChange={handleChange}
-      required
-      className="w-full h-10 p-2 rounded-md bg-[#eee] text-gray-600 text-sm
+          <div className="flex gap-3 w-full mt-3 items-start">
+            {/* Country Field */}
+            <div className="w-1/2">
+              <label htmlFor="Country" className="block text-base mb-1">
+                Country
+              </label>
+              <select
+                id="Country"
+                name="country"
+                value={formData.country || ""}
+                onChange={handleChange}
+                required
+                className="w-full h-10 p-2 rounded-md bg-[#eee] text-gray-600 text-sm
       hover:shadow-[0_0_12px_#5f4a87] focus:outline-none cursor-pointer"
-    >
-      <option value="" disabled hidden>
-        Select Country
-      </option>
-      {options.map(({ value, label }) => (
-        <option key={value} value={label} className="text-gray-600">
-          {label}
-        </option>
-      ))}
-    </select>
-  </div>
+              >
+                <option value="" disabled hidden>
+                  Select Country
+                </option>
+                {countries
+                  .filter((c) => c.cca2 !== "IL")
+                  .sort((a, b) => a.name.common.localeCompare(b.name.common))
+                  .map((c) => (
+                    <option key={c.cca2} value={c.name.common} className="text-gray-600">
+                      {c.name.common}
+                    </option>
+                  ))}
 
-  {/* Social Media Icons */}
-  <div className="w-1/2">
-    <label className="block text-base mb-1">Social Media</label>
-    <div className="flex gap-3 items-center mt-1">
-      {SOCIALS.map(({ key, icon }) => (
- <Image
-  key={key}
-  src={icon}
-  alt={key}
-  width={40}
-  height={40}
-  onClick={() => {
-    setSocialPlatform(key);
-    setSocialInputValue(formData[key] || "");
-    setSocialAlertOpen(true);
-  }}
-  className={`cursor-pointer rounded-lg bg-[#eeeeee] p-2 hover:bg-[#eeeeee] shadow-[0_0_6px_#5f4a87] transition 
+              </select>
+            </div>
+
+{/* Social Media Icons (Club) */}
+<div className="w-1/2">
+  <label className="block text-base mb-1">Social Media</label>
+  <div className="flex gap-3 items-center mt-1">
+    {SOCIALS.map(({ key, icon }) => (
+      <Image
+        key={key}
+        src={icon}
+        alt={key}
+        width={40}
+        height={40}
+        onClick={() => {
+          setSocialPlatform(key);
+          setSocialInputValue(formData[key] || "");
+          setSocialAlertOpen(true);
+        }}
+        className={`cursor-pointer rounded-lg bg-[#eeeeee] p-2 hover:bg-[#eeeeee] shadow-[0_0_6px_#5f4a87] transition 
     ${formData[key] ? "ring-2 ring-[#FCCC22]" : ""}`}
-/>
-
-))}
-    </div>
+      />
+    ))}
   </div>
+  
+
+  {/* Inline note when missing either link */}
+  {(!formData?.twitch || !formData?.x) && (
+    <p className="mt-2 text-xs text-red-400">
+      Twitch and X links are required.
+    </p>
+  )}
+
+  {/* Off-screen required validators. These block submit and show native messages */}
+  <input
+    type="url"
+    value={formData.twitch || ""}
+    onChange={() => {}}
+    required
+    pattern="https?://(www\\.)?twitch\\.tv/.*"
+    title="Please add your Twitch link."
+    onInvalid={(e) => e.currentTarget.setCustomValidity("Please add your Twitch link.")}
+    onInput={(e) => e.currentTarget.setCustomValidity("")}
+    tabIndex={-1}
+    aria-hidden="true"
+    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
+  />
+  <input
+    type="url"
+    value={formData.x || ""}
+    onChange={() => {}}
+    required
+    pattern="https?://(www\\.)?(x\\.com|twitter\\.com)/.*"
+    title="Please add your X link."
+    onInvalid={(e) => e.currentTarget.setCustomValidity("Please add your X link.")}
+    onInput={(e) => e.currentTarget.setCustomValidity("")}
+    tabIndex={-1}
+    aria-hidden="true"
+    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
+  />
 </div>
+
+  {/* Show an inline note if missing any required link */}
+  {(!formData?.twitch || !formData?.x) && (
+    <p className="mt-2 text-xs text-red-400">
+      Twitch and X links are required.
+    </p>
+  )}
+
+  {/* Off-screen required validators to block submit until both exist */}
+  <input
+    type="url"
+    value={formData.twitch || ""}
+    onChange={() => {}}
+    required
+    readOnly
+    pattern="https?://(www\\.)?twitch\\.tv/.*"
+    title="Please add your Twitch link."
+    tabIndex={-1}
+    aria-hidden="true"
+    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
+  />
+  <input
+    type="url"
+    value={formData.x || ""}
+    onChange={() => {}}
+    required
+    readOnly
+    pattern="https?://(www\\.)?(x\\.com|twitter\\.com)/.*"
+    title="Please add your X link."
+    tabIndex={-1}
+    aria-hidden="true"
+    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
+  />
+</div>
+
+          </div>
 
 
           {/* Select Games */}
-      <div className="w-full mt-4">
-  <label className="block text-left text-base font-medium text-gray-300">
-    Select games
-  </label>
-  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
-    {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
-      <div
-        key={game}
-        className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${
-          games.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""
-        }`}
-        onClick={() => handleGameSelect(game)}
-      >
- 
-        <p className="absolute inset-0 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold  drop-shadow-md z-20">
-          {game}
-        </p>
+          <div className="w-full mt-4">
+            <label className="block text-left text-base font-medium text-gray-300">
+              Select games
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
+              {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
+                <div
+                  key={game}
+                  className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${games.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""
+                    }`}
+                  onClick={() => handleGameSelect(game)}
+                >
+
+                  <p className="absolute inset-0 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold  drop-shadow-md z-20">
+                    {game}
+                  </p>
 
 
-        <div className="relative w-full h-10">
-          <Image
-            src={
-              game === "Rocket League"
-                ? "/Rocket_League_cover.png"
-                : game === "Call of Duty"
-                ? "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg"
-                : "/Overwatch_cover_art.jpg"
-            }
-            alt={game}
-            fill
-            className="z-0 object-cover  rounded-b-xl opacity-80"
-          />
-    
-          <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
-        </div>
-      </div>
-    ))}
-  </div>
-            {/* enforce required games in HTML */}
-            <input
-              type="text"
-              name="games_required_check_gamer"
-              value={games.length ? "ok" : ""}
-              onChange={() => {}}
-              required
-              hidden
-              readOnly
-            />
+                  <div className="relative w-full h-10">
+                    <Image
+                      src={
+                        game === "Rocket League"
+                          ? "/Rocket_League_cover.png"
+                          : game === "Call of Duty"
+                            ? "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg"
+                            : "/Overwatch_cover_art.jpg"
+                      }
+                      alt={game}
+                      fill
+                      className="z-0 object-cover  rounded-b-xl opacity-80"
+                    />
+
+                    <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* added: games note for club form */}
+            {gamesError && (
+              <p className="mt-2 text-sm text-red-400">{gamesError}</p>
+            )}
           </div>
 
           {/* Submit */}
@@ -492,10 +633,10 @@ const hasAtLeastOneGame = games.length > 0;
 
       {/* Gamer Sign Up Form (kept) */}
       <div className="form-container gamer-form font-bold">
-<form
-  className="flex flex-col items-center w-full max-w-6xl md:max-w-7xl px-4"
-  onSubmit={handleSubmit}
->
+        <form
+          className="flex flex-col items-center w-full max-w-6xl md:max-w-7xl px-4"
+          onSubmit={onSubmitGamer}
+        >
 
 
 
@@ -519,15 +660,14 @@ const hasAtLeastOneGame = games.length > 0;
           <span className="block text-md text-gray-400 mb-4">
             or use your email & password
           </span>
-{!isActive && (okMsg || errorMsg) && (
-  <p
-    className={`mt-2 mb-2 text-sm text-center ${
-      errorMsg ? "text-red-400" : "text-green-400"
-    }`}
-  >
-    {errorMsg || okMsg}
-  </p>
-)}
+          {!isActive && (okMsg || errorMsg) && (
+            <p
+              className={`mt-2 mb-2 text-sm text-center ${errorMsg ? "text-red-400" : "text-green-400"
+                }`}
+            >
+              {errorMsg || okMsg}
+            </p>
+          )}
           {/* Inputs */}
           <div className="flex flex-col gap-2 items-start w-full">
             <div className="w-full">
@@ -535,15 +675,16 @@ const hasAtLeastOneGame = games.length > 0;
                 Username
               </label>
               <input
-                id="username"
-                name="username"
+                id="gamer-username"
+                name="gamerUsername"
                 type="text"
-                placeholder="Enter your username"
-                value={formData.username || ""}
+                value={formData.gamerUsername || ""}
+                placeholder="Enter your Username"
                 onChange={handleChange}
-                required
-                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+                autoComplete="off"
+                className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
+
             </div>
 
             {/* Email + Password */}
@@ -552,17 +693,18 @@ const hasAtLeastOneGame = games.length > 0;
                 <label htmlFor="gamer-email" className="block text-base mb-1">
                   Email
                 </label>
-            <input
-  id="gamer-email"
-  name="gamerEmail"
-  type="email"
-  placeholder="Enter your email"
-  value={formData.gamerEmail || ""} 
-  onChange={handleChange}
-  required
-  disabled={emailLockedGamer}
-  className={`w-full p-2 rounded-md bg-[#eee] text-gray-600  text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none ${emailLockedGamer ? "opacity-70 cursor-not-allowed" : ""}`}
-/>
+                <input
+                  id="gamer-email"
+                  name="gamerEmail"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={formData.gamerEmail || ""}
+                  onChange={handleChange}
+                  required
+                  disabled={emailLockedGamer}
+                  className={`w-full p-2 rounded-md bg-[#eee] text-gray-600  text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none ${emailLockedGamer ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                />
 
 
               </div>
@@ -572,11 +714,11 @@ const hasAtLeastOneGame = games.length > 0;
                   Password
                 </label>
                 <input
-                  id="password"
-                  name="password"
+                  id="gamer-password"                // ⬅️ was "password"
+                  name="gamerPassword"               // ⬅️ was "password"
                   type="password"
                   placeholder="Enter your password"
-                  value={formData.password || ""}
+                  value={formData.gamerPassword || ""}   // ⬅️ was formData.password
                   onChange={handleChange}
                   required
                   className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
@@ -590,20 +732,21 @@ const hasAtLeastOneGame = games.length > 0;
               <select
                 id="nationality"
                 name="nationality"
-                value={formData.nationality || ""}   
-                onChange={handleChange}             
+                value={formData.nationality || ""}
+                onChange={handleChange}
                 required
                 className="w-full bg-[#eee] text-gray-600 text-sm rounded-md p-2 cursor-pointer focus:outline-none hover:shadow-[0_0_12px_#5f4a87] appearance-none"
               >
                 <option value="" disabled hidden>
                   Select Nationality
                 </option>
-                {options.map(({ value, label }) => (
-                  <option key={value} value={label} className="bg-[#eee] text-black">
-                    {label}
+                {NATIONALITY_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.label} className="bg-[#eee] text-black">
+                    {o.label}
                   </option>
                 ))}
               </select>
+
             </div>
           </div>
 
@@ -619,7 +762,6 @@ const hasAtLeastOneGame = games.length > 0;
                     value="male"
                     checked={formData.gender === "male"}
                     onChange={handleChange}
-                    required
                     className="peer hidden"
                   />
                   <span className="w-4 h-4 rounded-full border border-gray-400 peer-checked:bg-[#FCCC22] peer-checked:shadow-[0_0_12px_#FCCC22]" />
@@ -632,13 +774,16 @@ const hasAtLeastOneGame = games.length > 0;
                     value="female"
                     checked={formData.gender === "female"}
                     onChange={handleChange}
-                    required
                     className="peer hidden"
                   />
                   <span className="w-4 h-4 rounded-full border border-gray-400 peer-checked:bg-[#FCCC22] peer-checked:shadow-[0_0_12px_#FCCC22]" />
                   <span className="text-base font-medium text-gray-200">Female</span>
                 </label>
               </div>
+              {/* added: gender note */}
+              {genderError && (
+                <p className="mt-2 text-sm text-red-400">{genderError}</p>
+              )}
             </div>
 
             <div className="w-full md:w-1/2">
@@ -733,9 +878,8 @@ const hasAtLeastOneGame = games.length > 0;
                           tabIndex={0}
                           aria-label="Previous month"
                           onClick={decreaseMonth}
-                          className={`absolute left-2 cursor-pointer text-white/90 hover:text-white ${
-                            prevMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""
-                          }`}
+                          className={`absolute left-2 cursor-pointer text-white/90 hover:text-white ${prevMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""
+                            }`}
                         />
                         <span className="text-white text-sm font-medium select-none">
                           {months[curM]} {curY}
@@ -746,9 +890,8 @@ const hasAtLeastOneGame = games.length > 0;
                           tabIndex={0}
                           aria-label="Next month"
                           onClick={safeIncreaseMonth}
-                          className={`absolute right-2 cursor-pointer text-white/90 hover:text-white ${
-                            nextMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""
-                          }`}
+                          className={`absolute right-2 cursor-pointer text-white/90 hover:text-white ${nextMonthButtonDisabled ? "opacity-40 pointer-events-none" : ""
+                            }`}
                         />
                       </div>
                     </div>
@@ -763,57 +906,49 @@ const hasAtLeastOneGame = games.length > 0;
             </div>
           </div>
 
-       {/* Select Games (same tiles) */}
-<div className="w-full mt-4">
-  <label className="block text-left text-base font-medium text-gray-300">
-    Select games
-  </label>
-  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
-    {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
-      <div
-        key={game}
-        className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${
-          games.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""
-        }`}
-        onClick={() => handleGameSelect(game)}
-      >
- 
-        <p className="absolute inset-0 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold  drop-shadow-md z-20">
-          {game}
-        </p>
+          {/* Select Games (same tiles) */}
+          <div className="w-full mt-4">
+            <label className="block text-left text-base font-medium text-gray-300">
+              Select games
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
+              {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
+                <div
+                  key={game}
+                  className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${games.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""
+                    }`}
+                  onClick={() => handleGameSelect(game)}
+                >
+
+                  <p className="absolute inset-0 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold  drop-shadow-md z-20">
+                    {game}
+                  </p>
 
 
-        <div className="relative w-full h-10">
-          <Image
-            src={
-              game === "Rocket League"
-                ? "/Rocket_League_cover.png"
-                : game === "Call of Duty"
-                ? "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg"
-                : "/Overwatch_cover_art.jpg"
-            }
-            alt={game}
-            fill
-            className="z-0 object-cover rounded-b-xl opacity-80"
-          />
-    
-          <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
-        </div>
-      </div>
-    ))}
-  </div>
+                  <div className="relative w-full h-10">
+                    <Image
+                      src={
+                        game === "Rocket League"
+                          ? "/Rocket_League_cover.png"
+                          : game === "Call of Duty"
+                            ? "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg"
+                            : "/Overwatch_cover_art.jpg"
+                      }
+                      alt={game}
+                      fill
+                      className="z-0 object-cover rounded-b-xl opacity-80"
+                    />
 
+                    <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
+                  </div>
+                </div>
+              ))}
+            </div>
 
-            {/* enforce required games in HTML */}
-            <input
-              type="text"
-              name="games_required_check_gamer"
-              value={games.length ? "ok" : ""}
-              onChange={() => {}}
-              required
-              hidden
-              readOnly
-            />
+            {/* added: games note for gamer form */}
+            {gamesError && (
+              <p className="mt-2 text-sm text-red-400">{gamesError}</p>
+            )}
           </div>
 
           <button
@@ -824,7 +959,7 @@ const hasAtLeastOneGame = games.length > 0;
             {loading ? "Creating..." : "Sign Up"}
           </button>
 
-     
+
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
             <a href="/login" className="text-[#FCCC22] hover:underline">
@@ -832,47 +967,48 @@ const hasAtLeastOneGame = games.length > 0;
             </a>
           </p>
         </form>
-      </div>
-{/* Toggle Panels */}
-<div className="toggle-container">
-  <div className="toggle">
-    <div className="toggle-panel toggle-left">
-      <div className="w-64 h-64 mb-6">
-        <Lottie animationData={gamer} loop />
-      </div>
-      <p className="text-2xl font-bold mb-4">Are You a Gamer?</p>
-      <button type="button" onClick={switchToGamer}>
-        Sign Up as Gamer
-      </button>
-    </div>
+      </div >
+      {/* Toggle Panels */}
+      <div className="toggle-container" >
+        <div className="toggle">
+          <div className="toggle-panel toggle-left">
+            <div className="w-64 h-64 mb-6">
+              <Lottie animationData={gamer} loop />
+            </div>
+            <p className="text-2xl font-bold mb-4">Are You a Gamer?</p>
+            <button type="button" onClick={switchToGamer}>
+              Sign Up as Gamer
+            </button>
+          </div>
 
-    <div className="toggle-panel toggle-right">
-      <div className="w-64 h-64 mb-6">
-        <Lottie animationData={club} loop />
-      </div>
-      <p className="text-2xl font-bold mb-4">Are You a Club?</p>
+          <div className="toggle-panel toggle-right">
+            <div className="w-64 h-64 mb-6">
+              <Lottie animationData={club} loop />
+            </div>
+            <p className="text-2xl font-bold mb-4">Are You a Club?</p>
 
-      <button type="button" onClick={switchToClub}>
-        Sign Up as Club
-      </button>
-    </div>
-  </div>
-</div>
+            <button type="button" onClick={switchToClub}>
+              Sign Up as Club
+            </button>
+          </div>
+        </div>
+      </div >
 
 
       <DateAlert open={alertOpen} message={alertMessage} onClose={closeAlert} />
-     <SocialAlert
-  open={socialAlertOpen}
-  platform={socialPlatform}
-  value={socialInputValue}
-  onChange={setSocialInputValue}
-  onSave={() => {
-    handleChange({ target: { name: socialPlatform, value: socialInputValue } });
-    setSocialAlertOpen(false);
-  }}
-  onClose={() => setSocialAlertOpen(false)}
-/>
+      <SocialAlert
+        open={socialAlertOpen}
+        platform={socialPlatform}
+        value={socialInputValue}
+        onChange={setSocialInputValue}
+        onSave={() => {
+          handleChange({ target: { name: socialPlatform, value: socialInputValue } });
+          setSocialAlertOpen(false);
+        }}
+        onClose={() => setSocialAlertOpen(false)}
+      />
 
-    </div>
+    </div >
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           

@@ -5,29 +5,26 @@ const {
   getUserService,
   updateUserService,
   deleteUserService,
+  finalizeVerifiedUserService,
 } = require("../userServices/userService");
-
 
 
 
 exports.verifyComplete = async (req, res) => {
   try {
-    const { email, payload } = req.body;
-    if (!email) {
-      return res.status(400).json({ success: false, message: "Email required." });
+    const { email, payload } = req.body || {};
+    if (!email || !payload) {
+      return res.status(400).json({ success: false, message: " Try to signUp again the info not saved" });
     }
-
-    // 1) Look up the Firebase Auth user by email
-    const userRecord = await admin
-      .auth()
-      .getUserByEmail(String(email).trim().toLowerCase());
-
-    // 2) Must already be verified (Firebase hosted page does the verification)
-    if (!userRecord.emailVerified) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email not verified yet." });
-    }
+    const out = await finalizeVerifiedUserService(email, payload);
+    return res.status(200).json({ success: true, id: out.id });
+  } catch (e) {
+    console.error("verifyComplete error:", e);
+    return res
+      .status(e.status || 500)
+      .json({ success: false, message: e.message || "Internal error" });
+  }
+};
 
     // 3) Create your app user (sequential id) and map to Firebase UID
     //    - No extra uniqueness checks here; your service already does them.

@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import BlackHoleLayout from "./Components/BlackHoleLayout";
+import BlackHoleRedirect from "./Components/BlackHoleRedirect";
 import { NavbarDefault, SignUpIn } from "./Components/Header";
 import Image from "next/image";
 import Particles from "./Components/Particles";
@@ -11,9 +12,12 @@ import HomeContent from "./Components/HomeContent";
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState("home");
+  const [redirect, setRedirect] = useState(null);
+
+  if (redirect) return <BlackHoleRedirect to={redirect} />;
 
   return (
-    <BlackHoleLayout>
+ 
       <div className="relative min-h-screen mt-10 bg-[acecoreBackground] font-barlow overflow-x-hidden">
         {/* Background Particles */}
         <div className="absolute inset-0 z-0 pointer-events-none">
@@ -41,20 +45,17 @@ export default function Home() {
             />
           </a>
 
-          <NavbarDefault
-            onNavigate={setActiveSection}
-            activeSection={activeSection}
-          />
+          <NavbarDefault onNavigate={setActiveSection} activeSection={activeSection} />
 
-          <SignUpIn />
+          <SignUpIn onSignIn={() => setRedirect("/Signin")} onSignUp={() => setRedirect("/SignUp")} />
         </header>
 
         {/* Main Content */}
-        {activeSection === "home" && <HomeContent />}
+        {activeSection === "home" && <HomeContent onGetStarted={() => setRedirect("/SignUp")} />}
         {activeSection === "about" && <AboutUs />}
         {activeSection === "clubs" && <Clubs />}
         {activeSection === "contact" && <ContactUs />}
       </div>
-    </BlackHoleLayout>
+
   );
 }

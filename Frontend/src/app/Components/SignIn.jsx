@@ -15,85 +15,193 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
+  deleteUser,
+  OAuthProvider,
 } from "firebase/auth";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+
+const ROUTES = {
+  gamer: "/admin",
+  club: "/club/home",
+};
+
+async function resolveEmail(identifier) {
+  const id = identifier.trim();
+  if (id.includes("@")) return id;
+
+  const idLower = id.toLowerCase();
+  const q = query(
+    collection(db, "users"),
+    where("username_lower", "==", idLower),
+    limit(1)
+  );
+  const qs = await getDocs(q);
+
+  if (!qs.empty) {
+    const data = qs.docs[0].data();
+    const email =
+      data.email || data.gamerEmail || data.normalizedEmail || null;
+    if (email) return email;
+  }
+
+  try {
+    const mapSnap = await getDoc(doc(db, "usernames", id));
+    if (mapSnap.exists() && mapSnap.data()?.email) {
+      return mapSnap.data().email;
+    }
+  } catch { }
+
+  const e = new Error("usernames/not-found");
+  e.code = "usernames/not-found";
+  throw e;
+}
+
+async function handleLogin(
+  identifier,
+  password,
+  expectedRole,
+  router,
+  setError,
+  setLoading
+) {
+  setError("");
+  setLoading(true);
+  try {
+    const email = await resolveEmail(identifier);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const uid = cred.user.uid;
+
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) {
+      await signOut(auth);
+      setError("No profile found for this account. Please sign up first.");
+      return;
+    }
+
+    const role = snap.data().role;
+    if (role !== expectedRole) {
+      await signOut(auth);
+      setError(
+        role === "club"
+          ? "This is a Club account. Please sign in from the Club tab."
+          : "This is a Gamer account. Please sign in from the Gamer tab."
+      );
+      return;
+    }
+
+    router.replace(role === "club" ? ROUTES.club : ROUTES.gamer);
+  } catch (err) {
+    console.error("LOGIN ERROR:", err?.code, err?.message);
+    const msg =
+      err?.code === "auth/user-not-found" ||
+        err?.code === "auth/wrong-password" ||
+        err?.code === "auth/invalid-credential" ||
+        err?.code === "usernames/not-found"
+        ? "Email/username or password is wrong."
+        : "Login failed. Please try again.";
+    setError(msg);
+  } finally {
+    setLoading(false);
+  }
+}
 
 export default function SignIn() {
-  const [isActive, setIsActive] = useState(false);
   const router = useRouter();
+  const [isActive, setIsActive] = useState(false);
 
-  // Gamer state
   const [gId, setGId] = useState("");
   const [gPw, setGPw] = useState("");
   const [gLoading, setGLoading] = useState(false);
   const [gError, setGError] = useState("");
 
-  // Club state
   const [cId, setCId] = useState("");
   const [cPw, setCPw] = useState("");
   const [cLoading, setCLoading] = useState(false);
   const [cError, setCError] = useState("");
 
-  /**
-   * Resolve username -> email if needed
-   */
-  const resolveEmail = async (identifier) => {
-    if (identifier.includes("@")) return identifier; // already email
-    const q = query(collection(db, "users"), where("username", "==", identifier));
-    const snap = await getDocs(q);
-    if (snap.empty) throw new Error("No account found for this username.");
-    return snap.docs[0].data().gamerEmail; // we assume you store gamerEmail always
+  const googleProvider = new GoogleAuthProvider();
+  const signInWithGoogle = async () => {
+    setGError("");
+    setGLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (!snap.exists()) {
+        try {
+          await deleteUser(user);
+        } catch {
+          await signOut(auth);
+        }
+        setGError("No account found for this Google email. Please sign up first.");
+        return;
+      }
+
+      const role = snap.data().role;
+      if (role !== "gamer") {
+        await signOut(auth);
+        setGError("This Google account is not a Gamer account.");
+        return;
+      }
+
+      router.replace(ROUTES.gamer);
+    } catch (err) {
+      console.error("GOOGLE SIGNIN ERROR", err);
+      setGError("Google sign-in failed. Please try again.");
+    } finally {
+      setGLoading(false);
+    }
   };
 
-  /**
-   * Handle login for gamer or club
-   */
-  const handleLogin = async (identifier, password, expectedRole, setError, setLoading) => {
-    setError("");
-    setLoading(true);
+  const signInWithTwitchClub = async () => {
+    setCError("");
+    setCLoading(true);
     try {
-      // 1. resolve email (username → email)
-      const email = await resolveEmail(identifier);
+      const provider = new OAuthProvider("oidc.twitch");
+      provider.addScope("openid");
+      provider.addScope("user:read:email");
 
-      // 2. Firebase Auth sign-in
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const uid = cred.user.uid;
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-      // 3. Fetch profile from Firestore
-      const profileRef = doc(db, "users", uid);
-      const profileSnap = await getDoc(profileRef);
-
-      if (!profileSnap.exists()) {
-        await signOut(auth);
-        throw new Error("Profile not found in Firestore.");
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (!snap.exists()) {
+        try {
+          await deleteUser(user);
+        } catch {
+          await signOut(auth);
+        }
+        setCError("No account found for this Twitch login. Please sign up first.");
+        return;
       }
 
-      const profile = profileSnap.data();
-
-      // 4. Check role (gamer vs club)
-      const userRole = profile.role || (profile.clubEmail ? "club" : "gamer");
-      if (userRole !== expectedRole) {
+      const role = snap.data().role;
+      if (role !== "club") {
         await signOut(auth);
-        throw new Error(
-          userRole === "club"
-            ? "This is a Club account. Please sign in from the Club tab."
-            : "This is a Gamer account. Please sign in from the Gamer tab."
-        );
+        setCError("This Twitch login is not a Club account.");
+        return;
       }
 
-      // 5. Redirect based on role
-      router.replace(userRole === "club" ? "/club/home" : "/admin");
+      router.replace(ROUTES.club);
     } catch (err) {
-      console.error("LOGIN ERROR:", err);
-      setError(err.message || "Login failed. Please try again.");
+      console.error("TWITCH SIGNIN ERROR", err);
+      setCError("Twitch sign-in failed. Please try again.");
     } finally {
-      setLoading(false);
+      setCLoading(false);
     }
   };
 
   return (
     <div className={`container ${isActive ? "active" : ""}`} id="container">
-      {/* Mobile Toggle */}
       <div className="flex md:hidden justify-center gap-10 w-full pt-4 pb-2 border-b border-gray-700">
         <span
           onClick={() => setIsActive(false)}
@@ -122,11 +230,10 @@ export default function SignIn() {
           className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
           onSubmit={(e) => {
             e.preventDefault();
-            handleLogin(cId, cPw, "club", setCError, setCLoading);
+            handleLogin(cId, cPw, "club", router, setCError, setCLoading);
           }}
         >
           <h1 className="text-2xl font-bold mb-3 text-center">Log In as a Club</h1>
-
           <div className="w-full flex flex-col gap-3">
             <div className="w-full">
               <label htmlFor="club-id" className="block text-base font-semibold mb-1 text-gray-200">
@@ -141,7 +248,6 @@ export default function SignIn() {
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
             </div>
-
             <div className="w-full">
               <label htmlFor="club-pass" className="block text-base font-semibold mb-1 text-gray-200">
                 Password
@@ -168,7 +274,12 @@ export default function SignIn() {
           </button>
 
           <div className="w-full flex justify-center mt-6">
-            <button type="button" onClick={() => (window.location.href = "/api/auth/twitch")} className="button-custom">
+            <button
+              type="button"
+              onClick={signInWithTwitchClub}
+              disabled={cLoading}
+              className="button-custom"
+            >
               <Image src="/twitchIcon.svg" alt="Twitch" width={20} height={20} />
               <span> Continue with Twitch</span>
             </button>
@@ -189,11 +300,10 @@ export default function SignIn() {
           className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
           onSubmit={(e) => {
             e.preventDefault();
-            handleLogin(gId, gPw, "gamer", setGError, setGLoading);
+            handleLogin(gId, gPw, "gamer", router, setGError, setGLoading);
           }}
         >
           <h1 className="text-2xl font-bold mb-3 text-center">Log In as a Gamer</h1>
-
           <div className="w-full flex flex-col gap-3">
             <div className="w-full">
               <label htmlFor="g-id" className="block text-base font-semibold mb-1 text-gray-200">
@@ -208,7 +318,6 @@ export default function SignIn() {
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
             </div>
-
             <div className="w-full">
               <label htmlFor="g-pass" className="block text-base font-semibold mb-1 text-gray-200">
                 Password
@@ -229,13 +338,13 @@ export default function SignIn() {
           <button
             disabled={gLoading}
             type="submit"
-            className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_16px_#5f4a87] rounded-xl py-2 text-white font-semibold"
+            className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_12px_#5f4a87] rounded-xl py-2 text-white font-semibold"
           >
             {gLoading ? "Logging in..." : "Log In"}
           </button>
 
           <div className="w-full flex justify-center mt-6">
-            <button type="button" className="button-custom">
+            <button type="button" onClick={signInWithGoogle} className="button-custom">
               <Image src="/googleIcon.svg" alt="Google" width={20} height={20} />
               <span> Continue with Google</span>
             </button>
