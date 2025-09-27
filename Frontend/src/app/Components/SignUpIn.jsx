@@ -23,6 +23,11 @@ import {
 import countries from "world-countries";
 import { useMemo } from "react";
 import SocialAlert from "./SocialAlert";
+const GAME_OPTIONS = [
+  { id: "rl",  label: "Rocket League", image: "/Rocket_League_cover.png" },
+  { id: "cod", label: "Call of Duty",  image: "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg" },
+  { id: "ow",  label: "Overwatch",     image: "/Overwatch_cover_art.jpg" },
+];
 
 export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [isActive, setIsActive] = useState(false);
@@ -467,7 +472,7 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
               </select>
             </div>
 
-{/* Social Media Icons (Club) */}
+           {/* Social Media Icons */}
 <div className="w-1/2">
   <label className="block text-base mb-1">Social Media</label>
   <div className="flex gap-3 items-center mt-1">
@@ -488,43 +493,6 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
       />
     ))}
   </div>
-  
-
-  {/* Inline note when missing either link */}
-  {(!formData?.twitch || !formData?.x) && (
-    <p className="mt-2 text-xs text-red-400">
-      Twitch and X links are required.
-    </p>
-  )}
-
-  {/* Off-screen required validators. These block submit and show native messages */}
-  <input
-    type="url"
-    value={formData.twitch || ""}
-    onChange={() => {}}
-    required
-    pattern="https?://(www\\.)?twitch\\.tv/.*"
-    title="Please add your Twitch link."
-    onInvalid={(e) => e.currentTarget.setCustomValidity("Please add your Twitch link.")}
-    onInput={(e) => e.currentTarget.setCustomValidity("")}
-    tabIndex={-1}
-    aria-hidden="true"
-    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
-  />
-  <input
-    type="url"
-    value={formData.x || ""}
-    onChange={() => {}}
-    required
-    pattern="https?://(www\\.)?(x\\.com|twitter\\.com)/.*"
-    title="Please add your X link."
-    onInvalid={(e) => e.currentTarget.setCustomValidity("Please add your X link.")}
-    onInput={(e) => e.currentTarget.setCustomValidity("")}
-    tabIndex={-1}
-    aria-hidden="true"
-    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
-  />
-</div>
 
   {/* Show an inline note if missing any required link */}
   {(!formData?.twitch || !formData?.x) && (
@@ -1011,4 +979,3 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
     </div >
   );
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
