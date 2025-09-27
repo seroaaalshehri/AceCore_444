@@ -12,7 +12,6 @@ const isGmail = (email) => {
   const parts = email.trim().toLowerCase().split("@");
   return parts.length === 2 && parts[1] === "gmail.com";
 };
-
 exports.createUser = async (req, res) => {
   try {
     const result = await createUserService(req.body || {});

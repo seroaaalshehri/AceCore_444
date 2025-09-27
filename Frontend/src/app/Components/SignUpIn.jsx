@@ -50,17 +50,24 @@ const [socialAlertOpen, setSocialAlertOpen] = useState(false);
   const years = Array.from({ length: 100 }, (_, i) => getYear(new Date()) - i);
   const fileClubRef = useRef(null);
 
-const switchToGamer = () => {
-  setIsActive(false);
-   
-  handleChange({ target: { name: "clubEmail", value: "" } });
-  setEmailLockedGamer(Boolean(formData?.gamerEmail));
-};
+React.useEffect(() => {
+  handleChange({
+    target: { name: "role", value: isActive ? "club" : "gamer" },
+  });
+}, [isActive]);
 
-const switchToClub = () => {
-  setIsActive(true);
-  setOkMsg(""); setErrorMsg("");
-};
+ const switchToGamer = () => {
+    setIsActive(false);
+    onRoleChange && onRoleChange("gamer");
+    handleChange({ target: { name: "clubEmail", value: "" } });
+    setEmailLockedGamer(Boolean(formData?.gamerEmail));
+  };
+
+  const switchToClub = () => {
+    setIsActive(true);
+    onRoleChange && onRoleChange("club");
+    setOkMsg(""); setErrorMsg("");
+  };
 
 
   const showAlert = (msg) => {
@@ -107,77 +114,68 @@ const switchToClub = () => {
     handleChange({ target: { name: "birthdate", value: date } });
   };
   
-{/*Google registeration*/}
-// After redirect back from Google (GAMER ONLY)
-React.useEffect(() => {
-  (async () => {
+
+  // Google registration (GAMER only)
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const res = await getRedirectResult(auth);
+        const email = res?.user?.email || "";
+        if (email) {
+          handleChange({ target: { name: "gamerEmail", value: email } });
+          handleChange({ target: { name: "signupMethod", value: "oauth" } });
+          setEmailLockedGamer(true);
+          setOkMsg("Email filled from Google. Please complete the rest.");
+        } else {
+          setEmailLockedGamer(false);
+        }
+      } catch (e) {
+        console.error("Google redirect result error:", e);
+        setEmailLockedGamer(false);
+      }
+    })();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    if (authBusy) return;
+    setAuthBusy(true);
+    setErrorMsg("");
+    setOkMsg("");
+    setEmailLockedGamer(false);
+
     try {
-      const res = await getRedirectResult(auth);
-      const email = res?.user?.email || "";
+      if (auth.currentUser) await signOut(auth);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      const result = await signInWithPopup(auth, provider);
+      const email = result?.user?.email || "";
       if (email) {
         handleChange({ target: { name: "gamerEmail", value: email } });
-        setEmailLockedGamer(true);           // lock because we got a value
+        handleChange({ target: { name: "signupMethod", value: "oauth" } });
+        setEmailLockedGamer(true);
         setOkMsg("Email filled from Google. Please complete the rest.");
       } else {
-        setEmailLockedGamer(false);          // nothing returned -> keep editable
+        setErrorMsg("No email returned by Google.");
+        setEmailLockedGamer(false);
       }
-    } catch (e) {
-      console.error("Google redirect result error:", e);
-      setEmailLockedGamer(false);
+    } catch (err) {
+      console.warn("Popup failed, attempting redirect…", err?.code);
+      try {
+        const providerForRedirect = new GoogleAuthProvider();
+        providerForRedirect.setCustomParameters({ prompt: "select_account" });
+        await signInWithRedirect(auth, providerForRedirect);
+      } catch (redirectErr) {
+        console.error("Google redirect failed:", redirectErr);
+        setErrorMsg(
+          "Google sign-in failed. Check popup/cookie settings and Authorized domains."
+        );
+        setEmailLockedGamer(false);
+      }
+    } finally {
+      setAuthBusy(false);
     }
-  })();
-}, []);
-const handleGoogleSignIn = async () => {
-  if (authBusy) return;
-  setAuthBusy(true);
-  setErrorMsg("");
-  setOkMsg("");
-  setEmailLockedGamer(false); // keep editable until success
-
-  try {
-    // If someone is already signed-in in this tab, sign them out first.
-    // This prevents Google from silently reusing that account.
-    if (auth.currentUser) {
-      await signOut(auth);
-    }
-
-    // New provider each time + force the Google account chooser
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" }); // <- always ask
-
-    // Try popup first
-    const result = await signInWithPopup(auth, provider);
-    const email = result?.user?.email || "";
-    if (email) {
-      handleChange({ target: { name: "gamerEmail", value: email } });
-      setEmailLockedGamer(true);
-      setOkMsg("Email filled from Google. Please complete the rest.");
-    } else {
-      setErrorMsg("No email returned by Google.");
-      setEmailLockedGamer(false);
-    }
-  } catch (err) {
-    console.warn("Popup failed, attempting redirect…", err?.code);
-
-    try {
-      // Build a NEW provider for redirect too (parameters attach to the instance)
-      const providerForRedirect = new GoogleAuthProvider();
-      providerForRedirect.setCustomParameters({ prompt: "select_account" });
-
-      await signInWithRedirect(auth, providerForRedirect);
-      // After returning, your getRedirectResult effect will run
-    } catch (redirectErr) {
-      console.error("Google redirect failed:", redirectErr);
-      setErrorMsg(
-        "Google sign-in failed. Check popup/cookie settings and Authorized domains."
-      );
-      setEmailLockedGamer(false);
-    }
-  } finally {
-    setAuthBusy(false);
-  }
-};
-
+  };
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -185,14 +183,15 @@ const handleGoogleSignIn = async () => {
 
   const options = useMemo(() => countryList().getData(), []);
 
-  const games = Array.isArray(formData?.games) ? formData.games : [];
+const games = Array.isArray(formData?.games) ? formData.games : [];
+const hasAtLeastOneGame = games.length > 0;
   const handleGameSelect = (game) => {
     const next = games.includes(game)
       ? games.filter((g) => g !== game)
       : [...games, game];
     handleChange({ target: { name: "games", value: next } });
   };
-
+  
   return (
     <div className={`container ${isActive ? "active" : ""}`} id="container">
 
