@@ -5093,6 +5093,9 @@ body {
 .disabled\:opacity-50:disabled {
   opacity: 0.5;
 }
+.disabled\:opacity-60:disabled {
+  opacity: 0.6;
+}
 .disabled\:shadow-none:disabled {
   --tw-shadow: 0 0 rgb(0, 0 / 0, 0);
   --tw-shadow-colored: 0 0 var(--tw-shadow-color);

@@ -2,7 +2,7 @@
 
 import { SignUpIn } from "../Components/SignUpIn";
 import Particles from "../Components/Particles";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "../SignUpIn.css";
 import { auth } from "../../../lib/firebaseClient";
 import {
@@ -12,45 +12,53 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 
+// 🔧 your API base
+const API_BASE = "http://localhost:4000/api/users";
+
+// Hosted email verification for email+password signups
 const actionCodeSettings = {
   url: "http://localhost:3000/SignUp?postVerify=1",
   handleCodeInApp: false,
 };
 
 export default function SignUpPage() {
+  // Form state shared with the SignUpIn UI
   const [formData, setFormData] = useState({
-  // Gamer fields
-  gamerUsername: "",
-  gamerEmail: "",
-  gamerPassword: "",
-  gamerBirthdate: "",
-
-  // Club fields
-  clubUsername: "",
-  clubEmail: "",
-  clubPassword: "",
-  clubBirthdate: "",
-  clubName: "",
-  clubAvatar: null,
-
-  // Shared
-  role: "",
-  games: [],
-  gender: "",
-  nationality: "",
-});
-
+    // Gamer fields
+    gamerUsername: "",
+    gamerEmail: "",
+    gamerPassword: "",
+    // Club fields
+    clubUsername: "",
+    clubEmail: "",
+    clubPassword: "",
+    clubName: "",
+    clubAvatar: null,
+    country: "",
+    twitch: "",
+    x: "",
+    youtube: "",
+    discord: "",
+    // Shared
+    role: "",            // set by SignUpIn toggle: "gamer" | "club"
+    birthdate: null,
+    games: [],
+    gender: "",
+    nationality: "",
+    // UI hint set by SignUpIn when Google was used
+    signupMethod: "",    // "oauth" when user clicked Google in SignUpIn
+  });
 
   const [okMsg, setOkMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Track if the user is currently signed in with Google (from the Google button)
+  // Track a Google user (or any OAuth user) from Firebase
   const [googleUser, setGoogleUser] = useState(null);
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      const isGoogle = u?.providerData?.some((p) => p.providerId === "google.com");
-      setGoogleUser(isGoogle ? u : null);
+      const byGoogle = u?.providerData?.some((p) => p.providerId === "google.com");
+      setGoogleUser(byGoogle ? u : null);
     });
     return () => unsub();
   }, []);
@@ -63,93 +71,102 @@ export default function SignUpPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Map form -> backend payloads
+  const mapGamerPayload = (overrides = {}) => {
+    const email = overrides.email ?? formData.gamerEmail ?? "";
+    return {
+      role: "gamer",
+      username: formData.gamerUsername?.trim() || "",
+      email,
+      gamerEmail: email,
+      password: overrides.password ?? formData.gamerPassword ?? "",
+      games: Array.isArray(formData.games) ? formData.games : [],
+      gender: formData.gender || "",
+      nationality: formData.nationality || "",
+      birthdate: formData.birthdate || null,
+      emailVerified: overrides.emailVerified ?? false,
+      provider: overrides.provider ?? "password",
+      authUid: overrides.authUid ?? "",   // IMPORTANT
+    };
+  };
+
+  const mapClubPayload = () => ({
+    role: "club",
+    username: formData.clubUsername?.trim() || "",
+    email: formData.clubEmail?.trim() || "",
+    clubEmail: formData.clubEmail?.trim() || "",
+    password: formData.clubPassword ?? "",
+    games: Array.isArray(formData.games) ? formData.games : [],
+    country: formData.country || "",
+    clubName: formData.clubName || "",
+    socials: {
+      twitch: formData.twitch || "",
+      x: formData.x || "",
+      youtube: formData.youtube || "",
+      discord: formData.discord || "",
+    },
+  });
+
+  // ---- 1) HANDLE SUBMIT (Gamer or Club) ----
   const handleSubmit = async (e) => {
     e.preventDefault();
     setOkMsg(""); setErrorMsg("");
 
-    // Gamer must pick at least one game
-    if (formData.role === "gamer") {
-      const games = Array.isArray(formData.games) ? formData.games : [];
-      if (games.length === 0) {
-        setErrorMsg("Please select at least one game.");
-        return;
-      }
-    }
-
     try {
       setLoading(true);
 
-      // ===== GAMER FLOW =====
       if (formData.role === "gamer") {
-        // If the user already signed in via Google, finalize using that Google account
-        if (googleUser) {
-          const email = googleUser.email;
-          const payload = {
-            ...formData,
-            email,
-            gamerEmail: email,
-            uid: googleUser.uid,
-            emailVerified: true,
-            provider: "google.com",
-          };
-
-          // You can either hit your create endpoint or your verify-complete flow.
-          const res = await fetch("http://localhost:4000/api/users/verify-complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, payload }),
-          });
-          const data = await res.json();
-
-          if (res.ok) {
-            setOkMsg("Signed up with Google. Your account is ready — you can log in now.");
-          } else {
-            // Even if backend finalize fails, don’t block signup UX.
-            setOkMsg("Signed up with Google. You can log in now.");
-          }
-          return;
+        // If the UI Google button was used, we finalize via the effect below.
+        if (formData.signupMethod === "oauth" && googleUser) {
+          setOkMsg("Google account detected. Finalizing signup…");
+          return; // the effect will POST to /verify-complete for us
         }
 
-        // Email+Password path (no Google session)
+        // Email+Password path (no Google session).
         const email = String(formData.gamerEmail || "").trim();
-        const password = String(formData.password || "").trim();
+        const password = String(formData.gamerPassword || "").trim();
         if (!email || !password) {
           setErrorMsg("Email and password are required.");
           return;
         }
 
-        // Prevent “email already in use” & provider mixups
+        // Optional: keep users from duplicating with Google
         const methods = await fetchSignInMethodsForEmail(auth, email);
         if (methods.includes("google.com")) {
-          setErrorMsg(
-            "This email is already registered with Google. Please use “Continue with Google”."
-          );
-          return;
-        }
-        if (methods.includes("password")) {
-          setErrorMsg("This email already has a password account. Please Sign In instead.");
+          setErrorMsg("This email is already registered with Google. Use “Continue with Google”.");
           return;
         }
 
-        // Create password user and send verification
-        await createUserWithEmailAndPassword(auth, email, password);
-        window.localStorage.setItem("signupPayload", JSON.stringify(formData));
+        // Create the Firebase Auth user (we need the UID for your profile link)
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Save payload (WITH authUid) for the post-verify finalize step
+        const payloadForBackend = mapGamerPayload({
+          email,
+          emailVerified: false,
+          provider: "password",
+          authUid: cred.user.uid, // <- CRITICAL to avoid "profile not found" at login
+        });
+        window.localStorage.setItem("signupPayload", JSON.stringify(payloadForBackend));
+
+        // Email verification
         await sendEmailVerification(auth.currentUser, actionCodeSettings);
-
-        setOkMsg("Verification link sent. After verifying, you’ll be redirected here.");
+        setOkMsg("Verification link sent. After verifying, you’ll return here and we’ll finish creating your profile.");
         return;
       }
 
-      // ===== CLUB (or any non-gamer) FLOW — call your backend as before =====
-      const res = await fetch("http://localhost:4000/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-
-      if (res.ok) setOkMsg("Signed up. Your request is pending admin review.");
-      else setErrorMsg(data.message || "Failed to create user.");
+      // Club path (no OAuth here yet) — write profile now
+      if (formData.role === "club") {
+        const clubPayload = mapClubPayload();
+        const res = await fetch(`${API_BASE}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(clubPayload),
+        });
+        const data = await res.json();
+        if (res.ok) setOkMsg(`Club profile saved as ${data?.id || "userN"}.`);
+        else setErrorMsg(data?.message || "Failed to create club profile.");
+      }
     } catch (err) {
       setErrorMsg(err?.message || "Sign up failed.");
     } finally {
@@ -157,63 +174,94 @@ export default function SignUpPage() {
     }
   };
 
-  // ✅ On redirect from Firebase (postVerify=1), finalize on backend
+  // ---- 2) FINALIZE EMAIL FLOW ON REDIRECT (?postVerify=1) ----
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("postVerify") === "1") {
-      (async () => {
-        try {
-          setLoading(true);
+    if (params.get("postVerify") !== "1") return;
 
-          const saved = window.localStorage.getItem("signupPayload");
-
-          // If no saved payload (different device/browser), just confirm success.
-          if (!saved) {
-            setOkMsg("Your email is verified. You can log in now.");
-            const clean = new URL(window.location.href);
-            clean.search = "";
-            window.history.replaceState({}, "", clean.toString());
-            return;
-          }
-
+    (async () => {
+      try {
+        setLoading(true);
+        const saved = window.localStorage.getItem("signupPayload");
+        if (!saved) {
+          setOkMsg("Email verified. You can sign in now.");
+        } else {
           const payload = JSON.parse(saved);
           const email = payload.gamerEmail || payload.email;
           if (!email) {
-            setOkMsg("Your email is verified. You can log in now.");
-            const clean = new URL(window.location.href);
-            clean.search = "";
-            window.history.replaceState({}, "", clean.toString());
-            return;
-          }
-
-          const res = await fetch("http://localhost:4000/api/users/verify-complete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, payload }),
-          });
-          const data = await res.json();
-
-          if (res.ok) {
-            setOkMsg("Email verified. Your account is ready. You can log in now.");
-            window.localStorage.removeItem("signupPayload");
+            setOkMsg("Email verified. You can sign in now.");
           } else {
-            setOkMsg("Your email is verified. You can log in now.");
+            // Create users/userN (+ authLinks/{authUid})
+            const res = await fetch(`${API_BASE}/verify-complete`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, payload }),
+            });
+            if (res.ok) {
+              setOkMsg("Email verified and profile saved. You can sign in now.");
+              window.localStorage.removeItem("signupPayload");
+            } else {
+              setOkMsg("Email verified. You can sign in now.");
+            }
           }
-
-          const clean = new URL(window.location.href);
-          clean.search = "";
-          window.history.replaceState({}, "", clean.toString());
-        } catch {
-          setOkMsg("Your email is verified. You can log in now.");
-          const clean = new URL(window.location.href);
-          clean.search = "";
-          window.history.replaceState({}, "", clean.toString());
-        } finally {
-          setLoading(false);
         }
-      })();
-    }
+      } catch {
+        setOkMsg("Email verified. You can sign in now.");
+      } finally {
+        // Clean the URL
+        const clean = new URL(window.location.href);
+        clean.search = "";
+        window.history.replaceState({}, "", clean.toString());
+        setLoading(false);
+      }
+    })();
   }, []);
+
+  // ---- 3) FINALIZE GOOGLE FLOW (no redirects, no navigation) ----
+  // Your SignUpIn component sets: handleChange({ name: "signupMethod", value: "oauth" })
+  // We watch for that + a Google user session, then POST once.
+  const googleFinalizedRef = useRef(false);
+  useEffect(() => {
+    if (!googleUser) return;
+    if (formData.role !== "gamer") return;
+    if (formData.signupMethod !== "oauth") return;
+    if (googleFinalizedRef.current) return; // only once per mount
+
+    googleFinalizedRef.current = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        const email = googleUser.email;
+        const uid = googleUser.uid;
+
+        const payload = mapGamerPayload({
+          email,
+          emailVerified: true,
+          provider: "google.com",
+          authUid: uid,
+          password: "", // not used for google
+        });
+
+        const res = await fetch(`${API_BASE}/verify-complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, payload }),
+        });
+
+        if (res.ok) {
+          setOkMsg("Google signup complete — profile saved.");
+        } else {
+          // Even if backend finalize fails, tell the user they can try sign-in
+          setOkMsg("Google account connected. If you cannot sign in, try again in a moment.");
+        }
+      } catch (e) {
+        setOkMsg("Google account connected. If you cannot sign in, try again.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [googleUser, formData.role, formData.signupMethod]); // runs when user clicked Google and Firebase session exists
 
   return (
     <div className="flex items-center justify-center min-h-screen font-barlow overflow-x-hidden relative">
@@ -230,6 +278,7 @@ export default function SignUpPage() {
         />
       </div>
 
+      {/* Banner only; no redirects */}
       <div className="absolute top-4 w-full flex justify-center z-10">
         {errorMsg ? (
           <div className="px-4 py-2 rounded bg-red-600/90 text-white text-sm shadow">{errorMsg}</div>

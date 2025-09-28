@@ -1,34 +1,141 @@
-const admin = require("firebase-admin");
+// services/user/userServices/userService.js
 const { db } = require("../../../Firebase/firebaseBackend");
-const { FieldValue } = admin.firestore;
+// Import FieldValue directly; no need to export admin from firebaseBackend
+const { FieldValue } = require("firebase-admin").firestore;
 
+/** Counter doc for sequential IDs (user1, user2, ...) */
 const COUNTER_REF = db.doc("meta/userCounter");
+/** Auth link map: authLinks/{authUid} -> { userId }  */
+const AUTH_LINKS = db.collection("authLinks");
 
-// helpers
-const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
 const lower = (s = "") => String(s).trim().toLowerCase();
+const normalizeEmail = (email = "") => lower(email);
 
 const badRequest = (msg) => { const e = new Error(msg); e.status = 400; return e; };
 const conflict   = (msg) => { const e = new Error(msg); e.status = 409; return e; };
 
-// allocate userN atomically from a counter doc
+/** Allocate next sequential id inside the transaction (READ then WRITE) */
 async function allocateSequentialId(tx) {
-  const snap = await tx.get(COUNTER_REF);
+  const snap = await tx.get(COUNTER_REF); // READ
   if (!snap.exists) {
-    tx.set(COUNTER_REF, { next: 2 });
+    tx.set(COUNTER_REF, { next: 2 });     // WRITE #1
     return "user1";
   }
   const next = snap.get("next") || 1;
-  tx.update(COUNTER_REF, { next: next + 1 });
+  tx.update(COUNTER_REF, { next: next + 1 }); // WRITE #1
   return `user${next}`;
 }
 
+/**
+ * VERIFY-COMPLETE (preferred): create user profile after
+ *  - Google OAuth success (immediate), or
+ *  - Email verification redirect (payload from localStorage).
+ *
+ * Enforces: unique email, username, authUid. Keeps sequential id.
+ * Returns { id: "userN" }.
+ */
+async function verifyCompleteService(payload = {}) {
+  const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
+  const username = payload.username || "";
+  const role     = payload.role || ""; 
+  const authUid  = typeof payload.authUid === "string" ? payload.authUid.trim() : "";
+
+  if (!rawEmail) throw badRequest("Email required.");
+  if (!username) throw badRequest("Username required.");
+  if (!role)     throw badRequest("Role required.");
+
+  const normalizedEmail = normalizeEmail(rawEmail);
+  const usernameLower   = lower(username);
+  const usersCol        = db.collection("users");
+
+  const userId = await db.runTransaction(async (tx) => {
+    // ---------------- ALL READS FIRST ----------------
+    // Email uniqueness (check legacy/new fields)
+    const qNorm   = usersCol.where("normalizedEmail", "==", normalizedEmail).limit(1);
+    const qEmail  = usersCol.where("email",          "==", rawEmail).limit(1);
+    const qGamer  = usersCol.where("gamerEmail",     "==", rawEmail).limit(1);
+    const qClub   = usersCol.where("clubEmail",      "==", rawEmail).limit(1);
+
+    const [sNorm, sEmail, sGamer, sClub] = await Promise.all([
+      tx.get(qNorm), tx.get(qEmail), tx.get(qGamer), tx.get(qClub),
+    ]);
+    if (!sNorm.empty || !sEmail.empty || !sGamer.empty || !sClub.empty) {
+      throw conflict("Email already in use.");
+    }
+
+    // Username uniqueness
+    const qUserLower = usersCol.where("username_lower", "==", usernameLower).limit(1);
+    const qUserExact = usersCol.where("username",       "==", username).limit(1);
+    const [sUserLower, sUserExact] = await Promise.all([
+      tx.get(qUserLower), tx.get(qUserExact)
+    ]);
+    if (!sUserLower.empty || !sUserExact.empty) {
+      throw conflict("Username already in use.");
+    }
+
+    // Auth UID uniqueness (READ ONLY here)
+    if (authUid) {
+      const linkSnap = await tx.get(AUTH_LINKS.doc(authUid));
+      if (linkSnap.exists) throw conflict("Auth user already linked.");
+    }
+
+    // Counter read happens inside this helper (still a READ)
+    const docId = await allocateSequentialId(tx); // (WRITE #1 happens inside)
+
+    // ---------------- WRITES ONLY AFTER THIS POINT ----------------
+    // User profile (WRITE #2)
+    const userRef = usersCol.doc(docId);
+    const nowData = {
+      id: docId,
+      role,
+      username,
+      username_lower: usernameLower,
+
+      email: rawEmail,
+      normalizedEmail,
+      gamerEmail: role === "gamer" ? rawEmail : "",
+      clubEmail:  role === "club"  ? rawEmail : "",
+
+      authUid, // may be empty for email flow until verified finalize
+
+      // MVP extras (don’t store real passwords long-term)
+      password:    payload.password || "",
+      birthdate:   payload.birthdate || null,
+      nationality: payload.nationality || "",
+      gender:      payload.gender || "",
+      games:       Array.isArray(payload.games) ? payload.games : [],
+      clubName:    payload.clubName || "",
+      country:     payload.country || "",
+      socials:     payload.socials || {},
+
+      emailVerified: !!payload.emailVerified,
+      provider:      payload.provider || "password",
+
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    tx.set(userRef, nowData, { merge: true });
+
+    // Auth link (WRITE #3) — NO READ HERE
+    if (authUid) {
+      tx.set(AUTH_LINKS.doc(authUid), {
+        userId: docId,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    return docId;
+  });
+
+  return { id: userId };
+}
+
+/** Legacy create user (still sequential); same read-before-write discipline */
 async function createUserService(payload = {}) {
   const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
   const username = payload.username || "";
-  const role     = payload.role || ""; // "gamer" | "club"
-
-  // NEW: Firebase Auth UID mapping (optional for non-auth flows)
+  const role     = payload.role || "";
   const authUid  = typeof payload.authUid === "string" ? payload.authUid.trim() : "";
 
   if (!rawEmail) throw badRequest("Email required.");
@@ -39,84 +146,63 @@ async function createUserService(payload = {}) {
   const usersCol        = db.collection("users");
 
   const newId = await db.runTransaction(async (tx) => {
-    // ==== ALL READS (must be before any write) ====
-
-    // 1) Email uniqueness against new & legacy fields
+    // READS
     const qNorm   = usersCol.where("normalizedEmail", "==", normalizedEmail).limit(1);
-    const qEmail  = usersCol.where("email",          "==", rawEmail).limit(1);       // legacy
-    const qGamer  = usersCol.where("gamerEmail",     "==", rawEmail).limit(1);       // legacy
-    const qClub   = usersCol.where("clubEmail",      "==", rawEmail).limit(1);       // legacy
+    const qEmail  = usersCol.where("email",          "==", rawEmail).limit(1);
+    const qGamer  = usersCol.where("gamerEmail",     "==", rawEmail).limit(1);
+    const qClub   = usersCol.where("clubEmail",      "==", rawEmail).limit(1);
 
     const [sNorm, sEmail, sGamer, sClub] = await Promise.all([
-      tx.get(qNorm),
-      tx.get(qEmail),
-      tx.get(qGamer),
-      tx.get(qClub),
+      tx.get(qNorm), tx.get(qEmail), tx.get(qGamer), tx.get(qClub),
     ]);
-
     if (!sNorm.empty || !sEmail.empty || !sGamer.empty || !sClub.empty) {
       throw conflict("Email already in use.");
     }
 
-    // 2) Username uniqueness against new & legacy fields
     const qUserLower = usersCol.where("username_lower", "==", usernameLower).limit(1);
-    const qUserExact = usersCol.where("username",       "==", username).limit(1); // for older docs
-
+    const qUserExact = usersCol.where("username",       "==", username).limit(1);
     const [sUserLower, sUserExact] = await Promise.all([
-      tx.get(qUserLower),
-      tx.get(qUserExact),
+      tx.get(qUserLower), tx.get(qUserExact)
     ]);
+    if (!sUserLower.empty || !sUserExact.empty) throw conflict("Username already in use.");
 
-    if (!sUserLower.empty || !sUserExact.empty) {
-      throw conflict("Username already in use.");
-    }
-
-    // NEW 2.5) Optional: ensure a Firebase Auth user cannot be linked twice
     if (authUid) {
-      const qAuth = usersCol.where("authUid", "==", authUid).limit(1);
-      const sAuth = await tx.get(qAuth);
-      if (!sAuth.empty) {
-        throw conflict("Auth user already linked.");
-      }
+      const linkSnap = await tx.get(AUTH_LINKS.doc(authUid));
+      if (linkSnap.exists) throw conflict("Auth user already linked.");
     }
 
-    // 3) Allocate sequential ID (still a READ in the counter doc)
-    const docId = await allocateSequentialId(tx);
+    const docId = await allocateSequentialId(tx); // write #1 inside
 
-    // Safety guard: never allow slashes in IDs
-    if (/[\/\\]/.test(docId)) throw badRequest("Internal ID generator produced an invalid id.");
+    // WRITES only
+    tx.set(usersCol.doc(docId), {
+      id: docId,
+      role: role || null,
+      username,
+      username_lower: usernameLower,
 
-    // ==== WRITE (after all reads) ====
-    const userRef = usersCol.doc(docId);
-    tx.set(
-      userRef,
-      {
-        role: role || null,
+      email: rawEmail,
+      normalizedEmail,
+      gamerEmail: role === "gamer" ? rawEmail : "",
+      clubEmail:  role === "club"  ? rawEmail : "",
+      authUid,
 
-        // canonical email fields going forward
-        email: rawEmail,
-        normalizedEmail,
+      password:    payload.password || "",
+      birthdate:   payload.birthdate || null,
+      nationality: payload.nationality || "",
+      gender:      payload.gender || "",
+      games:       Array.isArray(payload.games) ? payload.games : [],
 
-        // keep role-specific convenience fields too
-        gamerEmail: role === "gamer" ? rawEmail : "",
-        clubEmail:  role === "club"  ? rawEmail : "",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
 
-        // NEW: map to Firebase Auth user (empty string if not provided)
-        authUid,
-
-        username,
-        username_lower: usernameLower,
-
-        password:    payload.password || "",
-        birthdate:   payload.birthdate || null,
-        nationality: payload.nationality || "",
-        gender:      payload.gender || "",
-        games:       Array.isArray(payload.games) ? payload.games : [],
-
+    if (authUid) {
+      tx.set(AUTH_LINKS.doc(authUid), {
+        userId: docId,
         createdAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
 
     return docId;
   });
@@ -135,20 +221,37 @@ async function getUserService(id) {
   return { id: doc.id, ...doc.data() };
 }
 
+async function getUserByAuthUidService(authUid) {
+  if (!authUid) return null;
+  const link = await AUTH_LINKS.doc(authUid).get();
+  if (!link.exists) return null;
+  const userId = link.get("userId");
+  return await getUserService(userId);
+}
+
 async function updateUserService(id, payload) {
-  await db.collection("users").doc(id).set(payload, { merge: true });
+  await db.collection("users").doc(id).set({
+    ...payload,
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
   return { id };
 }
 
 async function deleteUserService(id) {
-  await db.collection("users").doc(id).delete();
+  const batch = db.batch();
+  const snap = await AUTH_LINKS.where("userId", "==", id).get();
+  snap.forEach((d) => batch.delete(AUTH_LINKS.doc(d.id)));
+  batch.delete(db.collection("users").doc(id));
+  await batch.commit();
   return { id };
 }
 
 module.exports = {
+  verifyCompleteService,
   createUserService,
   getAllUsersService,
   getUserService,
+  getUserByAuthUidService,
   updateUserService,
   deleteUserService,
 };

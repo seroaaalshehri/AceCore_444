@@ -52,6 +52,28 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
     { key: "x", label: "X", icon: "/x.svg" },
     { key: "discord", label: "Discord", icon: "/discord.svg" },
   ];
+  const SOCIAL_PATTERNS = {
+  twitch: [
+    /^https?:\/\/(www\.)?twitch\.tv\/[A-Za-z0-9_]+\/?$/i
+  ],
+  x: [
+    /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/[A-Za-z0-9_]{1,15}(\/.*)?$/i
+  ],
+  youtube: [
+    /^https?:\/\/(www\.)?youtube\.com\/(watch\?v=|shorts\/|channel\/|c\/|user\/|@)[\w\-]+/i,
+    /^https?:\/\/youtu\.be\/[\w\-]+/i
+  ],
+  discord: [
+    /^https?:\/\/(www\.)?discord\.gg\/[A-Za-z0-9-]+\/?$/i,
+    /^https?:\/\/(www\.)?discord\.com\/invite\/[A-Za-z0-9-]+\/?$/i
+  ]
+};
+const isValidSocialUrl = (platform, url) => {
+  if (!url) return false;
+  const rules = SOCIAL_PATTERNS[platform] || [];
+  return rules.some((re) => re.test((url || "").trim()));
+};
+
   const [socialPlatform, setSocialPlatform] = useState(null);
   const [socialInputValue, setSocialInputValue] = useState("");
   const [socialAlertOpen, setSocialAlertOpen] = useState(false);
@@ -102,9 +124,6 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   };
 
 
-
-
-
   const showAlert = (msg) => {
     setAlertMessage(msg);
     setAlertOpen(true);
@@ -152,80 +171,81 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
 
   // Google registration (GAMER only)
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const res = await getRedirectResult(auth);
-        const email = res?.user?.email || "";
-        if (email) {
-          handleChange({ target: { name: "gamerEmail", value: email } });
-          handleChange({ target: { name: "signupMethod", value: "oauth" } });
-          setEmailLockedGamer(true);
-          setOkMsg("Email filled from Google. Please complete the rest.");
-        } else {
-          setEmailLockedGamer(false);
-        }
-      } catch (e) {
-        console.error("Google redirect result error:", e);
-        setEmailLockedGamer(false);
-      }
-    })();
-  }, []);
+const handleGoogleSignIn = async () => {
+  if (authBusy) return;
+  setAuthBusy(true);
+  setErrorMsg("");
+  setOkMsg("");
+  setEmailLockedGamer(false);
 
-  const handleGoogleSignIn = async () => {
-    if (authBusy) return;
-    setAuthBusy(true);
-    setErrorMsg("");
-    setOkMsg("");
-    setEmailLockedGamer(false);
+  try {
+    if (auth.currentUser) await signOut(auth);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
 
-    try {
-      if (auth.currentUser) await signOut(auth);
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
+    // 1) OAuth popup
+    const result = await signInWithPopup(auth, provider);
+    const user = result?.user;
+    const email = user?.email || "";
+    const uid   = user?.uid || "";
+    if (!email || !uid) throw new Error("No email/uid from Google.");
 
-      const result = await signInWithPopup(auth, provider);
-      const email = result?.user?.email || "";
-      if (email) {
-        handleChange({ target: { name: "gamerEmail", value: email } });
-        handleChange({ target: { name: "signupMethod", value: "oauth" } });
-        setEmailLockedGamer(true);
-        setOkMsg("Email filled from Google. Please complete the rest.");
-      } else {
-        setErrorMsg("No email returned by Google.");
-        setEmailLockedGamer(false);
-      }
-    } catch (err) {
-      console.warn("Popup failed, attempting redirect…", err?.code);
-      try {
-        const providerForRedirect = new GoogleAuthProvider();
-        providerForRedirect.setCustomParameters({ prompt: "select_account" });
-        await signInWithRedirect(auth, providerForRedirect);
-      } catch (redirectErr) {
-        console.error("Google redirect failed:", redirectErr);
-        setErrorMsg(
-          "Google sign-in failed. Check popup/cookie settings and Authorized domains."
-        );
-        setEmailLockedGamer(false);
-      }
-    } finally {
-      setAuthBusy(false);
+    handleChange({ target: { name: "gamerEmail", value: email } });
+    handleChange({ target: { name: "signupMethod", value: "oauth" } });
+    setEmailLockedGamer(true);
+    const payload = {
+      role: "gamer",
+      username: (formData.gamerUsername || "").trim(),
+      games: Array.isArray(formData.games) ? formData.games : [],
+      nationality: formData.nationality || "",
+      gender: formData.gender || "",
+      birthdate: formData.birthdate || null,
+      provider: "google.com",
+      authUid: uid,
+    
+    };
+
+    const res = await fetch("http://localhost:4000/api/users/verify-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, payload }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.message || "Finalize failed.");
     }
-  };
+
+    setOkMsg("Signed up with Google. Your account is ready — you can log in now.");
+  } catch (err) {
+    console.error("Google signup error:", err);
+    setErrorMsg(err?.message || "Google sign-in failed. Check popup/cookie settings.");
+    setEmailLockedGamer(false);
+  } finally {
+    setAuthBusy(false);
+  }
+};
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
   ];
 
 
-  const games = Array.isArray(formData?.games) ? formData.games : [];
-  const hasAtLeastOneGame = games.length > 0;
-  const handleGameSelect = (game) => {
-    const next = games.includes(game)
-      ? games.filter((g) => g !== game)
-      : [...games, game];
-    handleChange({ target: { name: "games", value: next } });
-  };
+ // Selected IDs live in formData.games
+const selectedGameIds = Array.isArray(formData?.games) ? formData.games : [];
+
+const handleGameSelect = (id) => {
+  const current = selectedGameIds; // <-- use the derived array
+  const next = current.includes(id)
+    ? current.filter((g) => g !== id)
+    : [...current, id];
+
+  handleChange({ target: { name: "games", value: next } });
+  setGamesError(next.length ? "" : "Please select at least one game.");
+};
+
+// Keep existing onClick={() => handleGameToggle(id)} working:
+const handleGameToggle = handleGameSelect;
 
   // added: validation helpers and submit wrappers
   const resetNotes = () => {
@@ -233,27 +253,31 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
     setGamesError("");
   };
 
-  const validateGamerForm = () => {
-    let ok = true;
-    if (!formData?.gender) {
-      setGenderError("Please select your gender.");
-      ok = false;
-    }
-    if (games.length === 0) {
-      setGamesError("Please select at least one game.");
-      ok = false;
-    }
-    return ok;
-  };
+const validateGamerForm = () => {
+  if (!formData?.gamerUsername || formData.gamerUsername.trim() === "") {
+    setErrorMsg("Please enter a username.");
+    return false;
+  }
+  if (!formData?.gender) {
+    setErrorMsg("Please select your gender.");
+    return false;
+  }
+  if (selectedGameIds.length === 0) {
+   setErrorMsg("Please select at least one game.");
+    return false;
+  }
+  setErrorMsg(""); // clear previous error
+  return true;
+};
 
-  const validateClubForm = () => {
-    let ok = true;
-    if (games.length === 0) {
-      setGamesError("Please select at least one game.");
-      ok = false;
-    }
-    return ok;
-  };
+const validateClubForm = () => {
+ 
+  if (selectedGameIds.length === 0) {
+   setErrorMsg("Please select at least one game.");
+    return false;
+  }
+  return true;
+};
 
   const onSubmitGamer = (e) => {
     e.preventDefault();
@@ -261,11 +285,34 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
     if (!validateGamerForm()) return;
     handleSubmit(e);
   };
+const validateSocialLinks = () => {
+  const twitchValid =
+    formData.twitch &&
+    /^https?:\/\/(www\.)?twitch\.tv\/.+/i.test(formData.twitch);
+  const xValid =
+    formData.x &&
+    /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/.+/i.test(formData.x);
 
+  if (!twitchValid || !xValid) {
+    setErrorMsg("Please provide valid Twitch and X links before signing up.");
+    return false;
+  }
+  return true;
+};
+
+const validateClubLogo = () => {
+  if (!clubAvatarPreview) {
+    setErrorMsg("Please upload your club logo before signing up.");
+    return false;
+  }
+  return true;
+};
   const onSubmitClub = (e) => {
     e.preventDefault();
     resetNotes();
     if (!validateClubForm()) return;
+     if (!validateClubLogo()) return; 
+  if (!validateSocialLinks()) return;  
     handleSubmit(e);
   };
 
@@ -388,6 +435,7 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
                 onChange={handleChange}
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+              //add verfication for club email((roaa))
               />
 
 
@@ -417,10 +465,10 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
               </label>
               <input
                 id="club-username"
-                name="username"
+                name="clubUsername"
                 type="text"
                 placeholder="Unique username"
-                value={formData.username || ""}
+                value={formData.clubUsername || ""}
                 onChange={handleChange}
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
@@ -494,86 +542,82 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
     ))}
   </div>
 
-  {/* Show an inline note if missing any required link */}
-  {(!formData?.twitch || !formData?.x) && (
-    <p className="mt-2 text-xs text-red-400">
-      Twitch and X links are required.
+ {/* Inline validation messages for bad syntax */}
+  {formData?.twitch && !isValidSocialUrl("twitch", formData.twitch) && (
+    <p className="mt-1 text-xs text-red-400">
+      Invalid Twitch link. Example: https://twitch.tv/yourname
     </p>
   )}
-
-  {/* Off-screen required validators to block submit until both exist */}
-  <input
-    type="url"
-    value={formData.twitch || ""}
-    onChange={() => {}}
-    required
-    readOnly
-    pattern="https?://(www\\.)?twitch\\.tv/.*"
-    title="Please add your Twitch link."
-    tabIndex={-1}
-    aria-hidden="true"
-    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
-  />
-  <input
-    type="url"
-    value={formData.x || ""}
-    onChange={() => {}}
-    required
-    readOnly
-    pattern="https?://(www\\.)?(x\\.com|twitter\\.com)/.*"
-    title="Please add your X link."
-    tabIndex={-1}
-    aria-hidden="true"
-    style={{ position: "absolute", left: "-10000px", width: 0, height: 0, opacity: 0 }}
-  />
+  {formData?.x && !isValidSocialUrl("x", formData.x) && (
+    <p className="mt-1 text-xs text-red-400">
+      Invalid X link. Example: https://x.com/yourhandle
+    </p>
+  )}
+  {formData?.youtube && !isValidSocialUrl("youtube", formData.youtube) && (
+    <p className="mt-1 text-xs text-red-400">
+      Invalid YouTube link. Examples: 
+      https://youtube.com/@channel • https://youtu.be/VIDEO_ID
+    </p>
+  )}
+  {formData?.discord && !isValidSocialUrl("discord", formData.discord) && (
+    <p className="mt-1 text-xs text-red-400">
+      Invalid Discord invite link. Example: https://discord.gg/abc123
+    </p>
+  )}
+  
 </div>
 
           </div>
 
 
           {/* Select Games */}
-          <div className="w-full mt-4">
-            <label className="block text-left text-base font-medium text-gray-300">
-              Select games
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
-              {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
-                <div
-                  key={game}
-                  className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${games.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""
-                    }`}
-                  onClick={() => handleGameSelect(game)}
-                >
+        <div className="w-full mt-4">
+  <label className="block text-left text-base font-medium text-gray-300">
+    Select games
+  </label>
 
-                  <p className="absolute inset-0 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold  drop-shadow-md z-20">
-                    {game}
-                  </p>
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
+    {GAME_OPTIONS.map(({ id, label, image }) => {
+      const isSelected = selectedGameIds.includes(id);
+      return (
+        <div
+          key={id}
+          onClick={() => handleGameToggle(id)}
+          className={`relative rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300
+                      bg-[#372859FF] shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87]
+                      ${isSelected ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""}`}
+        >
+          <p className="absolute inset-0 z-20 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold drop-shadow-md">
+            {label}
+          </p>
 
-
-                  <div className="relative w-full h-10">
-                    <Image
-                      src={
-                        game === "Rocket League"
-                          ? "/Rocket_League_cover.png"
-                          : game === "Call of Duty"
-                            ? "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg"
-                            : "/Overwatch_cover_art.jpg"
-                      }
-                      alt={game}
-                      fill
-                      className="z-0 object-cover  rounded-b-xl opacity-80"
-                    />
-
-                    <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* added: games note for club form */}
-            {gamesError && (
-              <p className="mt-2 text-sm text-red-400">{gamesError}</p>
-            )}
+          <div className="relative w-full h-10">
+            <Image
+              src={image}
+              alt={label}
+              fill
+              className="z-0 object-cover rounded-b-xl opacity-80"
+            />
+            <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
           </div>
+        </div>
+      );
+    })}
+  </div>
+
+
+  {/* HTML required guard (if you use it) */}
+  <input
+    type="text"
+    name="games_required_check"
+    value={selectedGameIds.length ? "ok" : ""}
+    onChange={() => {}}
+    required
+    hidden
+    readOnly
+  />
+</div>
+
 
           {/* Submit */}
           <button
@@ -628,6 +672,8 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
           <span className="block text-md text-gray-400 mb-4">
             or use your email & password
           </span>
+
+           {/* for testing */}
           {!isActive && (okMsg || errorMsg) && (
             <p
               className={`mt-2 mb-2 text-sm text-center ${errorMsg ? "text-red-400" : "text-green-400"
@@ -635,7 +681,8 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
             >
               {errorMsg || okMsg}
             </p>
-          )}
+          )} 
+         
           {/* Inputs */}
           <div className="flex flex-col gap-2 items-start w-full">
             <div className="w-full">
@@ -682,11 +729,11 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
                   Password
                 </label>
                 <input
-                  id="gamer-password"                // ⬅️ was "password"
-                  name="gamerPassword"               // ⬅️ was "password"
+                  id="gamer-password"                
+                  name="gamerPassword"               
                   type="password"
                   placeholder="Enter your password"
-                  value={formData.gamerPassword || ""}   // ⬅️ was formData.password
+                  value={formData.gamerPassword || ""}   
                   onChange={handleChange}
                   required
                   className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
@@ -748,10 +795,7 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
                   <span className="text-base font-medium text-gray-200">Female</span>
                 </label>
               </div>
-              {/* added: gender note */}
-              {genderError && (
-                <p className="mt-2 text-sm text-red-400">{genderError}</p>
-              )}
+            
             </div>
 
             <div className="w-full md:w-1/2">
@@ -760,7 +804,7 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
               </label>
               <DatePicker
                 id="birthdate"
-                selected={formData.birthdate || null}
+                selected={formData.birthdate|| null}
                 onChange={handleBirthDate}
                 required
                 placeholderText="MM/dd/yyyy"
@@ -875,49 +919,53 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
           </div>
 
           {/* Select Games (same tiles) */}
-          <div className="w-full mt-4">
-            <label className="block text-left text-base font-medium text-gray-300">
-              Select games
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
-              {["Rocket League", "Call of Duty", "Overwatch"].map((game) => (
-                <div
-                  key={game}
-                  className={`relative bg-[#372859FF] rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300 shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87] ${games.includes(game) ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""
-                    }`}
-                  onClick={() => handleGameSelect(game)}
-                >
+        <div className="w-full mt-4">
+  <label className="block text-left text-base font-medium text-gray-300">
+    Select games
+  </label>
 
-                  <p className="absolute inset-0 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold  drop-shadow-md z-20">
-                    {game}
-                  </p>
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3 w-full">
+    {GAME_OPTIONS.map(({ id, label, image }) => {
+      const isSelected = selectedGameIds.includes(id);
+      return (
+        <div
+          key={id}
+          onClick={() => handleGameSelect(id)}
+          className={`relative rounded-xl overflow-hidden h-10 cursor-pointer transition-transform duration-300
+                      bg-[#372859FF] shadow-[0_0_10px_#1e182f] hover:shadow-[0_0_20px_#5f4a87]
+                      ${isSelected ? "ring-2 ring-[#FCCC22] shadow-[0_0_20px_#FCCC22]" : ""}`}
+        >
+          <p className="absolute inset-0 z-20 flex items-center justify-center text-sm uppercase text-gray-200 font-semibold drop-shadow-md">
+            {label}
+          </p>
 
-
-                  <div className="relative w-full h-10">
-                    <Image
-                      src={
-                        game === "Rocket League"
-                          ? "/Rocket_League_cover.png"
-                          : game === "Call of Duty"
-                            ? "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg"
-                            : "/Overwatch_cover_art.jpg"
-                      }
-                      alt={game}
-                      fill
-                      className="z-0 object-cover rounded-b-xl opacity-80"
-                    />
-
-                    <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* added: games note for gamer form */}
-            {gamesError && (
-              <p className="mt-2 text-sm text-red-400">{gamesError}</p>
-            )}
+          <div className="relative w-full h-10">
+            <Image
+              src={image}
+              alt={label}
+              fill
+              className="z-0 object-cover rounded-b-xl opacity-80"
+            />
+            <div className="absolute inset-0 rounded-xl bg-[#2b2142]/30 pointer-events-none z-10" />
           </div>
+        </div>
+      );
+    })}
+  </div>
+
+
+  {/* HTML required guard (if you use it) */}
+  <input
+    type="text"
+    name="games_required_check"
+    value={selectedGameIds.length ? "ok" : ""}
+    onChange={() => {}}
+    required
+    hidden
+    readOnly
+  />
+</div>
+
 
           <button
             type="submit"
@@ -926,11 +974,13 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
-
+{errorMsg && (
+  <p className="mt-2 text-sm text-red-400 text-center">{errorMsg}</p>
+)}
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
-            <a href="/login" className="text-[#FCCC22] hover:underline">
+            <a href="/Signin" className="text-[#FCCC22] hover:underline">
               Sign in
             </a>
           </p>
