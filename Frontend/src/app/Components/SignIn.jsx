@@ -6,6 +6,9 @@ import Lottie from "lottie-react";
 import clubSignUp from "../../../public/ClubSignUpIcon.json";
 import gamerSignUp from "../../../public/GamerSignup.json";
 
+import { auth } from "../../../lib/firebaseClient";
+import { OAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
+
 export default function SignIn({
   isClub,
   setIsClub,
@@ -14,7 +17,7 @@ export default function SignIn({
   onGamerEmailLogin,
   onClubEmailLogin,
   onGoogleLogin,
-  onTwitchLogin,
+  onTwitchLogin, // kept for compatibility, but not required
 
   // status from parent (page.jsx)
   gLoading = false,
@@ -27,6 +30,36 @@ export default function SignIn({
   const [gPw, setGPw] = useState("");
   const [cEmail, setCEmail] = useState("");
   const [cPw, setCPw] = useState("");
+
+  // Added: Twitch local state
+  const [tLoading, setTLoading] = useState(false);
+  const [tError, setTError] = useState("");
+
+  // Added: Twitch login handler (embedded)
+  const handleTwitchLogin = async () => {
+    try {
+      setTError("");
+      setTLoading(true);
+
+      // If you prefer redirect (iOS/Safari), set useRedirect = true
+      const useRedirect = false;
+
+      const provider = new OAuthProvider("oidc.twitch");
+      provider.addScope("openid");
+      provider.addScope("user:read:email");
+
+      if (useRedirect) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        await signInWithPopup(auth, provider);
+      }
+    } catch (e) {
+      console.error(e);
+      setTError(e?.message || "Failed to sign in with Twitch.");
+    } finally {
+      setTLoading(false);
+    }
+  };
 
   return (
     <div className={`container ${isClub ? "active" : ""}`} id="container">
@@ -58,7 +91,7 @@ export default function SignIn({
           className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!cLoading) onClubEmailLogin?.(cEmail, cPw);
+            if (!cLoading && !tLoading) onClubEmailLogin?.(cEmail, cPw);
           }}
         >
           <h1 className="text-2xl font-bold mb-3 text-center">Sign In as a Club</h1>
@@ -75,7 +108,7 @@ export default function SignIn({
                 onChange={(e) => setCEmail(e.target.value)}
                 placeholder="you@club.com"
                 required
-                disabled={cLoading}
+                disabled={cLoading || tLoading}
                 autoComplete="email"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -91,17 +124,19 @@ export default function SignIn({
                 onChange={(e) => setCPw(e.target.value)}
                 placeholder="••••••••"
                 required
-                disabled={cLoading}
+                disabled={cLoading || tLoading}
                 autoComplete="current-password"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
-          {cError && <p className="text-red-400 text-sm mt-2">{cError}</p>}
+          {(cError || tError) && (
+            <p className="text-red-400 text-sm mt-2">{tError || cError}</p>
+          )}
 
           <button
-            disabled={cLoading}
+            disabled={cLoading || tLoading}
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_16px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
@@ -111,12 +146,12 @@ export default function SignIn({
           <div className="w-full flex justify-center mt-6">
             <button
               type="button"
-              onClick={() => onTwitchLogin?.()}
-              disabled={cLoading}
+              onClick={handleTwitchLogin}
+              disabled={cLoading || tLoading}
               className="button-custom disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Image src="/twitchIcon.svg" alt="Twitch" width={20} height={20} />
-              <span> Continue with Twitch</span>
+              <span>{tLoading ? " Connecting to Twitch..." : " Continue with Twitch"}</span>
             </button>
           </div>
         </form>

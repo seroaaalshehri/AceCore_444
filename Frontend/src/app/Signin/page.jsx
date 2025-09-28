@@ -6,8 +6,7 @@ import SignIn from "../Components/SignIn";
 import "../SignUpIn.css";
 
 import { auth } from "../../../lib/firebaseClient";
-// If you want to call protected backend endpoints later, keep this import:
-import { authedFetch } from "../../../lib/authedFetch";
+// fornext print 2 : import { authedFetch } from "../../../lib/authedFetch";
 
 import {
   signInWithEmailAndPassword,

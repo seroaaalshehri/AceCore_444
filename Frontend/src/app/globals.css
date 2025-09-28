@@ -14,6 +14,7 @@ body {
 
 :root {
   --foreground: #dee1e6;
+  --page-transition-bg: #0C0817;
 }
 
 
@@ -296,3 +297,13 @@ body {
   overflow: hidden;
   border-radius: 8px;
 }
+.perspective {
+  perspective: 100px;
+  transform-style: preserve-3d;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }

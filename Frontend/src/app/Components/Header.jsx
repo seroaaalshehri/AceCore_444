@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { IconButton, Button } from "@material-tailwind/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export function NavbarDefault({ onNavigate, activeSection }) {
   const [openNav, setOpenNav] = useState(false);
@@ -17,32 +18,32 @@ export function NavbarDefault({ onNavigate, activeSection }) {
   const navItems = [
     { name: "home", label: "Home" },
     { name: "about", label: "AboutUs" },
-    { name: "clubs", label: "Clubs" },
+
     { name: "contact", label: "ContactUs" },
   ];
 
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden lg:flex items-center justify-center px-8 py-3 rounded-full bg-[#0C0C1D]/70 backdrop-blur-md shadow-[0_0_12px_#5f4a87,0_0_20px_rgba(95,74,135,0.4)] gap-10">
-        {navItems.map((item) => (
-          <Link
-            key={item.name}
-            href="#"
-            onClick={() => {
-              setCurrentSection(item.name);
-              onNavigate(item.name);
-            }}
-            className={`relative px-3 py-1 font-bold transition-all duration-200 rounded-md ${
-              currentSection === item.name
-                ? "text-[#FCCC22] drop-shadow-[0_0_8px_#FCCC22] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-[#FCCC22] after:shadow-[0_0_8px_#FCCC22] after:rounded-full"
-                : "text-white hover:text-[#FCCC22] hover:drop-shadow-[0_0_6px_#FCCC22]"
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+    <nav className="hidden lg:flex items-center justify-center px-12 py-5 rounded-full bg-[#0C0C1D]/70 backdrop-blur-md shadow-[0_0_15px_#5f4a87,0_0_25px_rgba(95,74,135,0.5)] gap-14">
+  {navItems.map((item) => (
+    <Link
+      key={item.name}
+      href="#"
+      onClick={() => {
+        setCurrentSection(item.name);
+        onNavigate(item.name);
+      }}
+      className={`relative px-4 py-2 text-xl font-bold transition-all duration-200 rounded-md ${
+        currentSection === item.name
+          ? "text-[#FCCC22] drop-shadow-[0_0_10px_#FCCC22] after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[4px] after:bg-[#FCCC22] after:shadow-[0_0_10px_#FCCC22] after:rounded-full"
+          : "text-white hover:text-[#FCCC22] hover:drop-shadow-[0_0_8px_#FCCC22]"
+      }`}
+    >
+      {item.label}
+    </Link>
+  ))}
+</nav>
 
       {/* Mobile Sidebar */}
       {openNav && (
@@ -125,33 +126,24 @@ export function NavbarDefault({ onNavigate, activeSection }) {
   );
 }
 
-export function SignUpIn() {
-  const pathname = usePathname();
-
+export function SignUpIn({ onSignIn, onSignUp }) {
   return (
-    <div
-      className={`hidden lg:flex items-center gap-x-2 transition-opacity duration-300 ${
-        pathname === "/Signin" || pathname === "/SignUp"
-          ? "opacity-0 pointer-events-none"
-          : "opacity-100"
-      }`}
-    >
-      <Link href="/Signin">
-        <Button
-          size="sm"
-          className="bg-[#E3E3EDFF] text-[#313166] px-4 py-2 text-sm rounded-md hover:neon-btn-white"
-        >
-          SignIn
-        </Button>
-      </Link>
-      <Link href="/SignUp">
-        <Button
-          size="sm"
-          className="bg-[#161630] text-[#E3E3EDFF] px-4 py-2 text-sm rounded-md hover:neon-btn-indigo"
-        >
-          SignUp
-        </Button>
-      </Link>
+    <div className="hidden lg:flex items-center gap-x-2 transition-opacity duration-300">
+      <Button
+        size="sm"
+        onClick={onSignIn} 
+        className="bg-[#E3E3EDFF] text-[#313166] px-4 py-2 text-sm rounded-md hover:neon-btn-white"
+      >
+        SignIn
+      </Button>
+
+      <Button
+        size="sm"
+        onClick={onSignUp} 
+        className="bg-[#161630] text-[#E3E3EDFF] px-4 py-2 text-sm rounded-md hover:neon-btn-indigo"
+      >
+        SignUp
+      </Button>
     </div>
   );
 }

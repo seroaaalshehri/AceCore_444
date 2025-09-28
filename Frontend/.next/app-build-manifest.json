@@ -17,6 +17,11 @@
       "static/css/app/SignUp/page.css",
       "static/chunks/app/SignUp/page.js"
     ],
+    "/admin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/page.js"
+    ],
     "/Signin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",

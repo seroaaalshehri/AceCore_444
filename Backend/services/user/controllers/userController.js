@@ -1,4 +1,3 @@
-// controllers/userController.js
 const {
   // preferred verify-complete path (creates userN + links authUid)
   verifyCompleteService,

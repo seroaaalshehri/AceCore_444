@@ -11,6 +11,8 @@ import club from "../../../public/ClubSignUpIcon.json";
 import gamer from "../../../public/GamerSignup.json";
 import Link from "next/link";
 import DateAlert from "./DateAlert";
+import FormAlert from "./FormAlert";
+
 import { auth } from "../../../lib/firebaseClient";
 import {
   GoogleAuthProvider,
@@ -41,8 +43,23 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [clubEmailLocal, setClubEmailLocal] = useState("");
   const [emailLockedGamer, setEmailLockedGamer] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
+  const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+  const usernameValid = USERNAME_RE.test((formData.gamerUsername || "").trim());
 
-  // added: field-level notes
+React.useEffect(() => {
+  if (errorMsg || okMsg) {
+    const timer = setTimeout(() => {
+      setErrorMsg("");
+      setOkMsg("");
+    }, 5000);
+    return () => clearTimeout(timer);
+  }
+}, [errorMsg, okMsg]);
+
+
+
+
+
   const [genderError, setGenderError] = useState("");
   const [gamesError, setGamesError] = useState("");
 
@@ -169,8 +186,7 @@ const isValidSocialUrl = (platform, url) => {
   };
 
 
-  // Google registration (GAMER only)
-
+// inside SignUpIn.jsx
 const handleGoogleSignIn = async () => {
   if (authBusy) return;
   setAuthBusy(true);
@@ -183,59 +199,35 @@ const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // 1) OAuth popup
     const result = await signInWithPopup(auth, provider);
-    const user = result?.user;
-    const email = user?.email || "";
-    const uid   = user?.uid || "";
-    if (!email || !uid) throw new Error("No email/uid from Google.");
+    const email = result?.user?.email || "";
+    if (!email) throw new Error("No email from Google");
 
+    // only reflect in the form; DO NOT finalize here
     handleChange({ target: { name: "gamerEmail", value: email } });
     handleChange({ target: { name: "signupMethod", value: "oauth" } });
     setEmailLockedGamer(true);
-    const payload = {
-      role: "gamer",
-      username: (formData.gamerUsername || "").trim(),
-      games: Array.isArray(formData.games) ? formData.games : [],
-      nationality: formData.nationality || "",
-      gender: formData.gender || "",
-      birthdate: formData.birthdate || null,
-      provider: "google.com",
-      authUid: uid,
-    
-    };
-
-    const res = await fetch("http://localhost:4000/api/users/verify-complete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, payload }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.message || "Finalize failed.");
-    }
-
-    setOkMsg("Signed up with Google. Your account is ready — you can log in now.");
+    // no fetch here
   } catch (err) {
-    console.error("Google signup error:", err);
-    setErrorMsg(err?.message || "Google sign-in failed. Check popup/cookie settings.");
+    console.error("Google popup error:", err);
+    setErrorMsg("Google sign-up failed.");
     setEmailLockedGamer(false);
   } finally {
     setAuthBusy(false);
   }
 };
+
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
   ];
 
 
- // Selected IDs live in formData.games
+
 const selectedGameIds = Array.isArray(formData?.games) ? formData.games : [];
 
 const handleGameSelect = (id) => {
-  const current = selectedGameIds; // <-- use the derived array
+  const current = selectedGameIds; 
   const next = current.includes(id)
     ? current.filter((g) => g !== id)
     : [...current, id];
@@ -244,14 +236,17 @@ const handleGameSelect = (id) => {
   setGamesError(next.length ? "" : "Please select at least one game.");
 };
 
-// Keep existing onClick={() => handleGameToggle(id)} working:
+
 const handleGameToggle = handleGameSelect;
 
-  // added: validation helpers and submit wrappers
+
   const resetNotes = () => {
-    setGenderError("");
-    setGamesError("");
-  };
+  setGenderError("");
+  setGamesError("");
+  setErrorMsg("");
+  setOkMsg("");
+};
+
 
 const validateGamerForm = () => {
   if (!formData?.gamerUsername || formData.gamerUsername.trim() === "") {
@@ -318,6 +313,9 @@ const validateClubLogo = () => {
 
   return (
     <div className={`container ${isActive ? "active" : ""}`} id="container">
+      
+
+      
 
       <div className="flex md:hidden justify-center gap-10 w-full pt-4 pb-2 border-b border-gray-700 ">
         <span
@@ -446,10 +444,10 @@ const validateClubLogo = () => {
               </label>
               <input
                 id="club-password"
-                name="clubPassword"           // ⬅️ was "password"
+                name="clubPassword"         
                 type="password"
                 placeholder="Enter password"
-                value={formData.clubPassword || ""}   // ⬅️ was formData.password
+                value={formData.clubPassword || ""}   
                 onChange={handleChange}
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
@@ -628,12 +626,6 @@ const validateClubLogo = () => {
             {loading ? "Creating..." : "Sign Up"}
           </button>
 
-          {errorMsg && (
-            <p className="mt-2 text-sm text-red-400 text-center">{errorMsg}</p>
-          )}
-          {okMsg && (
-            <p className="mt-2 text-sm text-green-400 text-center">{okMsg}</p>
-          )}
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
             <a href="/login" className="text-[#FCCC22] hover:underline">
@@ -656,7 +648,9 @@ const validateClubLogo = () => {
 
           {/* Social icons (Google sign in kept) */}
           <div className="w-full flex justify-center mb-3">
-            <button
+
+
+  <button
               type="button"
               onClick={handleGoogleSignIn}
               className="button-custom"
@@ -668,6 +662,7 @@ const validateClubLogo = () => {
               />
             </button>
           </div>
+          
 
           <span className="block text-md text-gray-400 mb-4">
             or use your email & password
@@ -974,9 +969,7 @@ const validateClubLogo = () => {
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
-{errorMsg && (
-  <p className="mt-2 text-sm text-red-400 text-center">{errorMsg}</p>
-)}
+
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
@@ -1025,6 +1018,16 @@ const validateClubLogo = () => {
         }}
         onClose={() => setSocialAlertOpen(false)}
       />
+
+      <FormAlert
+  open={Boolean(errorMsg || okMsg)}
+  type={errorMsg ? "error" : "success"}
+  message={errorMsg || okMsg}
+  onClose={() => {
+    setErrorMsg("");
+    setOkMsg("");
+  }}
+/>
 
     </div >
   );
