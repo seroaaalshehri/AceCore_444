@@ -27,7 +27,7 @@ import { useMemo } from "react";
 import SocialAlert from "./SocialAlert";
 const GAME_OPTIONS = [
   { id: "rl",  label: "Rocket League", image: "/Rocket_League_cover.png" },
-  { id: "cod", label: "Call of Duty",  image: "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg" },
+  { id: "code", label: "Call of Duty",  image: "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg" },
   { id: "ow",  label: "Overwatch",     image: "/Overwatch_cover_art.jpg" },
 ];
 

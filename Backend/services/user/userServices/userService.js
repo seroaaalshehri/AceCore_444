@@ -1,6 +1,5 @@
-// services/user/userServices/userService.js
+
 const { db } = require("../../../Firebase/firebaseBackend");
-// Import FieldValue directly; no need to export admin from firebaseBackend
 const { FieldValue } = require("firebase-admin").firestore;
 
 /** Counter doc for sequential IDs (user1, user2, ...) */
@@ -10,9 +9,9 @@ const AUTH_LINKS = db.collection("authLinks");
 
 const lower = (s = "") => String(s).trim().toLowerCase();
 const normalizeEmail = (email = "") => lower(email);
-
 const badRequest = (msg) => { const e = new Error(msg); e.status = 400; return e; };
 const conflict   = (msg) => { const e = new Error(msg); e.status = 409; return e; };
+const USER_GAMES = db.collection("userGames");
 
 /** Allocate next sequential id inside the transaction (READ then WRITE) */
 async function allocateSequentialId(tx) {
@@ -25,7 +24,29 @@ async function allocateSequentialId(tx) {
   tx.update(COUNTER_REF, { next: next + 1 }); // WRITE #1
   return `user${next}`;
 }
+function toGameIds(raw = []) {
+  if (!Array.isArray(raw)) return [];
+  const ids = raw
+    .map((g) => (typeof g === "string" ? g.trim()
+                 : typeof g === "object" ? String(g.gameid || g.id || "").trim()
+                 : ""))
+    .filter(Boolean);
+  return Array.from(new Set(ids));
+}
 
+async function writeUserGames(userId, rawGames = []) {
+  const gameIds = toGameIds(rawGames);
+  if (gameIds.length === 0) return;
+  const batch = db.batch();
+  for (const gameid of gameIds) {
+    const ref = USER_GAMES.doc(); 
+    batch.set(ref, {
+      userId,
+      gameid,
+    });
+  }
+  await batch.commit();
+}
 /**
  * VERIFY-COMPLETE (preferred): create user profile after
  *  - Google OAuth success (immediate), or
@@ -82,6 +103,7 @@ async function verifyCompleteService(payload = {}) {
     // Counter read happens inside this helper (still a READ)
     const docId = await allocateSequentialId(tx); // (WRITE #1 happens inside)
 
+
     // ---------------- WRITES ONLY AFTER THIS POINT ----------------
     // User profile (WRITE #2)
     const userRef = usersCol.doc(docId);
@@ -96,14 +118,12 @@ async function verifyCompleteService(payload = {}) {
       gamerEmail: role === "gamer" ? rawEmail : "",
       clubEmail:  role === "club"  ? rawEmail : "",
 
-      authUid, // may be empty for email flow until verified finalize
+      authUid, 
 
-      // MVP extras (don’t store real passwords long-term)
       password:    payload.password || "",
       birthdate:   payload.birthdate || null,
       nationality: payload.nationality || "",
       gender:      payload.gender || "",
-      games:       Array.isArray(payload.games) ? payload.games : [],
       clubName:    payload.clubName || "",
       country:     payload.country || "",
       socials:     payload.socials || {},
@@ -127,11 +147,11 @@ async function verifyCompleteService(payload = {}) {
 
     return docId;
   });
-
+try { await writeUserGames(userId, payload.games); } catch (e) { console.error("userGames fanout failed:", e); }
   return { id: userId };
 }
 
-/** Legacy create user (still sequential); same read-before-write discipline */
+/**First ver of the logic
 async function createUserService(payload = {}) {
   const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
   const username = payload.username || "";
@@ -206,10 +226,10 @@ async function createUserService(payload = {}) {
 
     return docId;
   });
-
+ try { await writeUserGames(newId, payload.games); } catch (e) { console.error("userGames fanout failed:", e); }
   return { id: newId };
 }
-
+*/
 async function getAllUsersService() {
   const snap = await db.collection("users").orderBy("__name__").get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -248,7 +268,7 @@ async function deleteUserService(id) {
 
 module.exports = {
   verifyCompleteService,
-  createUserService,
+ // createUserService,
   getAllUsersService,
   getUserService,
   getUserByAuthUidService,

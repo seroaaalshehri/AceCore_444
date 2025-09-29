@@ -4,9 +4,8 @@ import React, { useState } from "react";
 import Particles from "../Components/Particles";
 import SignIn from "../Components/SignIn";
 import "../SignUpIn.css";
-
 import { auth } from "../../../lib/firebaseClient";
-// fornext print 2 : import { authedFetch } from "../../../lib/authedFetch";
+import { useRouter } from "next/navigation";
 
 import {
   signInWithEmailAndPassword,
@@ -16,27 +15,41 @@ import {
   OAuthProvider,
 } from "firebase/auth";
 
-/** Toggle this ON only if your backend has GET /api/users/me working */
-const CHECK_PROFILE_AFTER_LOGIN = false; // <- keep false per your request (no /me check)
+/* ---------- ADDED: helper to load profile by Firebase UID (no tokens) ---------- */
+async function loadProfileByUid() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("No Firebase session.");
+  const res = await fetch(`http://localhost:4000/api/users/by-auth/${uid}`);
+  if (res.status === 404) throw new Error("Profile not found. Complete signup first.");
+  if (!res.ok) throw new Error("Failed to load profile.");
+  const { user } = await res.json();
+  return user; // { id, role, username, ... }
+}
 
-/** Optional: confirm a backend profile exists (no redirects) */
-async function maybeCheckProfileExists() {
-  if (!CHECK_PROFILE_AFTER_LOGIN) return { checked: false };
+/* ---------- ADDED: where to send user based on role ---------- */
+/* Adjust these paths to your app’s actual routes */
+function routeFor(user) {
+  if (user?.role === "club") return `/club/HomePage`;           // e.g. club landing
+  if (user?.role === "gamer") return `/gamer/profile/${user.id}`; // e.g. gamer profile by id
+  return `/`; // fallback
+}
+
+/* ---------- ADDED: do the redirect after successful login ---------- */
+async function redirectAfterLogin(router, setOk, setErr) {
   try {
-    const res = await authedFetch("http://localhost:4000/api/users/me");
-    if (res.status === 404) {
-      return { checked: true, exists: false };
-    }
-    if (!res.ok) {
-      return { checked: true, exists: undefined, error: "Failed to fetch profile." };
-    }
-    return { checked: true, exists: true };
+    const user = await loadProfileByUid();
+    const target = routeFor(user);
+    router.replace(target);
+    setOk && setOk(""); // clear banner if you want
   } catch (e) {
-    return { checked: true, exists: undefined, error: e?.message || "Failed to fetch profile." };
+    // If profile not found yet, keep the current banner and do not navigate
+    setErr && setErr(e?.message || "Failed to load profile.");
   }
 }
 
+
 export default function SignInPage() {
+    const router = useRouter();
   // Which tab is active
   const [isClub, setIsClub] = useState(false);
 
@@ -50,7 +63,7 @@ export default function SignInPage() {
   const [cOk, setCOk] = useState("");
 
   // ——— Email+Password (Gamer) ———
-  const onGamerEmailLogin = async (email, password) => {
+ const onGamerEmailLogin = async (email, password) => {
     setGError(""); setGOk(""); setGLoading(true);
     try {
       if (!email || !email.includes("@")) throw new Error("Please enter a valid email address.");
@@ -62,14 +75,9 @@ export default function SignInPage() {
       //   await signOut(auth); throw new Error("Please verify your email before logging in.");
       // }
 
-      const check = await maybeCheckProfileExists();
-      if (check.checked && check.exists === false) {
-        setGOk("Signed in with Firebase, but no profile found yet. Complete signup first.");
-      } else if (check.error) {
-        setGOk("Signed in. (Profile check skipped or failed — that’s OK for now.)");
-      } else {
-        setGOk("Signed in successfully.");
-      }
+
+      /* ---------- ADDED: redirect after login ---------- */
+      await redirectAfterLogin(router, setGOk, setGError);
     } catch (err) {
       const msg =
         err?.code === "auth/user-not-found" ||
@@ -82,9 +90,7 @@ export default function SignInPage() {
       setGLoading(false);
     }
   };
-
-  // ——— Email+Password (Club) ———
-  const onClubEmailLogin = async (email, password) => {
+ const onClubEmailLogin = async (email, password) => {
     setCError(""); setCOk(""); setCLoading(true);
     try {
       if (!email || !email.includes("@")) throw new Error("Please enter a valid email address.");
@@ -92,14 +98,8 @@ export default function SignInPage() {
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      const check = await maybeCheckProfileExists();
-      if (check.checked && check.exists === false) {
-        setCOk("Signed in with Firebase, but no profile found yet. Complete signup first.");
-      } else if (check.error) {
-        setCOk("Signed in. (Profile check skipped or failed — that’s OK for now.)");
-      } else {
-        setCOk("Signed in successfully.");
-      }
+      /* ---------- ADDED: redirect after login ---------- */
+      await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
       const msg =
         err?.code === "auth/user-not-found" ||
@@ -122,14 +122,8 @@ export default function SignInPage() {
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
 
-      const check = await maybeCheckProfileExists();
-      if (check.checked && check.exists === false) {
-        setGOk("Google sign-in ok, but no profile yet. Make sure signup finalized created your profile.");
-      } else if (check.error) {
-        setGOk("Google sign-in ok. (Profile check skipped or failed — that’s OK for now.)");
-      } else {
-        setGOk("Google sign-in successful.");
-      }
+      /* ---------- ADDED: redirect after login ---------- */
+      await redirectAfterLogin(router, setGOk, setGError);
     } catch (err) {
       setGError(err?.message || "Google sign-in failed. Please try again.");
     } finally {
@@ -147,14 +141,8 @@ export default function SignInPage() {
       provider.addScope("user:read:email");
       await signInWithPopup(auth, provider);
 
-      const check = await maybeCheckProfileExists();
-      if (check.checked && check.exists === false) {
-        setCOk("Twitch sign-in ok, but no profile yet. Make sure signup finalized created your profile.");
-      } else if (check.error) {
-        setCOk("Twitch sign-in ok. (Profile check skipped or failed — that’s OK for now.)");
-      } else {
-        setCOk("Twitch sign-in successful.");
-      }
+      /* ---------- ADDED: redirect after login ---------- */
+      await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
       setCError(err?.message || "Twitch sign-in failed. Please try again.");
     } finally {

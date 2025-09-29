@@ -1,9 +1,7 @@
 const {
-  // preferred verify-complete path (creates userN + links authUid)
-  verifyCompleteService,
 
-  // legacy + general CRUD
-  createUserService,
+  verifyCompleteService,
+  //createUserService,
   getAllUsersService,
   getUserService,
   getUserByAuthUidService,
@@ -16,17 +14,20 @@ const {
  * Expects { payload } in body. If you also send { email }, we’ll fold it in.
  */
 
-
-exports.getMe = async (req, res) => {
+exports.getByAuthUid = async (req, res) => {
   try {
-    const uid = req.user?.uid;  // set by authenticate middleware
-    if (!uid) return res.status(401).json({ success: false, message: "Unauthorized" });
-    const me = await getUserByAuthUidService(uid);
-    if (!me) return res.status(404).json({ success: false, message: "Profile not found" });
-    return res.json({ success: true, ...me });
+    const uid = req.params.uid;
+    if (!uid) return res.status(400).json({ success:false, message:"Missing uid" });
+
+    const user = await getUserByAuthUidService(uid);
+    if (!user) return res.status(404).json({ success:false, message:"Not found" });
+
+    
+    const { id, role, username, email, gamerEmail, clubEmail } = user;
+    return res.json({ success:true, user: { id, role, username, email, gamerEmail, clubEmail } });
   } catch (e) {
-    console.error("getMe error:", e);
-    return res.status(500).json({ success: false, message: "Internal error" });
+    console.error("getByAuthUid error:", e);
+    return res.status(500).json({ success:false, message:"Internal error" });
   }
 };
 

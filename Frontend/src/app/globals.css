@@ -15,8 +15,25 @@ body {
 :root {
   --foreground: #dee1e6;
   --page-transition-bg: #0C0817;
+   --profileBlockColor: 43, 33, 66, 0.71; 
+  --achivBlockColor: 43, 33, 66;
 }
 
+.icon-glow {
+  transition: all 0.2s ease-in-out;
+}
+
+.icon-glow:hover {
+  filter: drop-shadow(0 0 10px #FCCC22);
+}
+
+.icon-glow:active {
+  filter: drop-shadow(0 0 16px #FCCC22);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(15%) sepia(19%) saturate(1200%) hue-rotate(228deg) brightness(200%) contrast(75%);
+}
 
 @layer utilities {
   /* Navbar neon link hover */
