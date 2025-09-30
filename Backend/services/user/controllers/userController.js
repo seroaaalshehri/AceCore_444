@@ -14,6 +14,22 @@ const {
  * Expects { payload } in body. If you also send { email }, we’ll fold it in.
  */
 
+exports.getMe = async (req, res) => {
+  try {
+    const uid = req.user?.uid;          
+    if (!uid) return res.status(401).json({ success:false, message:"Unauthorized" });
+
+    const me = await getUserByAuthUidService(uid);
+    if (!me) return res.status(404).json({ success:false, message:"Profile not found" });
+
+    return res.json({ success:true, user: me });
+  } catch (e) {
+    console.error("getMe error:", e);
+    return res.status(500).json({ success:false, message:"Internal error" });
+  }
+}; 
+
+//Maybe will be removed-Roaa-:
 exports.getByAuthUid = async (req, res) => {
   try {
     const uid = req.params.uid;
@@ -68,7 +84,7 @@ exports.verifyComplete = async (req, res) => {
  * POST /api/users
  * Legacy direct create. Keeps sequential userN ids, runs uniqueness checks.
  * Safe to keep during transition; for new signups prefer /verify-complete.
- */
+
 exports.createUser = async (req, res) => {
   try {
     let payload = req.body || {};
@@ -87,7 +103,7 @@ exports.createUser = async (req, res) => {
       .json({ success: false, message: e.message || "Internal error" });
   }
 };
-
+ */
 /**
  * GET /api/users
  */

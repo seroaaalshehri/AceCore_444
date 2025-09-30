@@ -8,6 +8,8 @@ const {
   getGames,
 } = require("../gamerService");
 
+
+
 // Add achievement
 async function addAchievement(req, res) {
   try {
@@ -70,7 +72,7 @@ async function getUserProfile(req, res) {
 
 async function getFollowNums(req, res) {
   try {
-    const userId = req.params.id;
+    const userId = req.params.userid;
     const stats = await getFollowNum(userId);
     res.json({ success: true, ...stats });
   } catch (error) {
@@ -81,7 +83,8 @@ async function getFollowNums(req, res) {
 
 async function addGame(req, res) {
   try {
-    const { userid, gameid, username, rank } = req.body;
+    const { userid } = req.params;
+    const {gameid, username, rank } = req.body;
 
     if (!userid || !gameid) {
       return res.status(400).json({
@@ -91,7 +94,7 @@ async function addGame(req, res) {
     }
 
     const result = await addUserGame(
-      userid,
+    userid,               
       gameid,
       username ?? "—",
       rank ?? 0
@@ -106,6 +109,7 @@ async function addGame(req, res) {
 async function listGames(req, res) {
   try {
     const { userid } = req.params;
+  
     const games = await getUserGames(userid);
     res.json({ success: true, games });
   } catch (err) {
@@ -131,5 +135,6 @@ module.exports = {
   getFollowNums,
   addGame,
   listGames,
-  getAllGames
+  getAllGames,
+  
 };

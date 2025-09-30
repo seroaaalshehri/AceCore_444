@@ -2,6 +2,7 @@ const fs = require("fs");
 const admin = require("firebase-admin");
 const { db } = require("../../Firebase/firebaseBackend");
 
+
 async function addUserAchievement(userid, name, association, game, date, reqFile, baseUrl) {
   let fileUrl = null;
   let storagePath = null;
@@ -62,8 +63,9 @@ async function getFollowNum(userId) {
 }
 
 async function addUserGame(userid, gameid, username, rank) {
+  const userId=userid;
   const ref = await db.collection("userGames").add({
-    userid,
+    userId,
     gameid,
     username,
     rank
@@ -71,9 +73,15 @@ async function addUserGame(userid, gameid, username, rank) {
   return { id: ref.id };
 }
 
+
+
 async function getUserGames(userid) {
-  const snap = await db.collection("userGames").where("userid", "==", userid).get();
+  const userId=userid;
+  
+
+  const snap = await db.collection("userGames").where("userid", "==", userId).get();
   const results = [];
+
 
   for (const doc of snap.docs) {
     const ug = doc.data();

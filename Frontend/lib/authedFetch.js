@@ -1,24 +1,30 @@
-
 import { auth } from "./firebaseClient";
 
-export async function authedFetch(input, init = {}) {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-  
-    throw new Error("Not authenticated");
-  }
+export async function authedFetch(url, options = {}) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("No Firebase session");
 
-  const idToken = await currentUser.getIdToken(true);
+  const isFormData = options?.body instanceof FormData;
 
-  const headers = new Headers(init.headers || {});
-  if (!headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  headers.set("Authorization", `Bearer ${idToken}`);
+  const doFetch = async (forceRefresh) => {
+    const token = await user.getIdToken(forceRefresh);
+    const headers = {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+      // Only set JSON when caller didn't set it AND it's not FormData
+      ...(!isFormData && !("Content-Type" in (options.headers || {}))
+        ? { "Content-Type": "application/json" }
+        : {}),
+    };
 
-  return fetch(input, {
-    ...init,
-    headers,
-   
-  });
+    return fetch(url, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+  };
+
+  let res = await doFetch(false);
+  if (res.status === 401) res = await doFetch(true);
+  return res;
 }

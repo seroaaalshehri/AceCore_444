@@ -1,5 +1,8 @@
 "use client";
 
+
+
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
@@ -9,10 +12,14 @@ export default function SearchPage() {
     // highlight the Search tab in your sidebar
     const [leftTab, setLeftTab] = useState("search");
     const [q, setQ] = useState("");   // also rename set0 -> setQ (zero → Q)
+    const { id } = useParams();
+    const userId = Array.isArray(id) ? id[0] : id;
 
 
     return (
+
         <>
+        
             {/* background */}
             <div className="absolute inset-2 z-0">
                 <Particles
@@ -24,16 +31,11 @@ export default function SearchPage() {
                 />
             </div>
 
-            {/* left sidebar */}
-            <LeftSidebar active={leftTab} onChange={setLeftTab} />
-
-            {/* MAIN (same layout margins as follow list page) */}
-            <main
-                className="relative z-10 pt-8"
-                style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
-            >
+           <LeftSidebar role="gamer" active="search" userId={userId} />
+            <main className="p-4" style={{ marginLeft: SIDEBAR_WIDTH }}>
+           
                 <div className="mx-auto max-w-6xl">
-                    {/* Card wrapper — same look & feel as FollowListsPage */}
+
                     <div className="bg-[#2b2142b3] rounded-xl p-6 md:p-8">
 
 

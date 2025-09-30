@@ -7,8 +7,16 @@ const userRoutes = require("./services/user/routes/userRoutes");
 const gamerRoutes = require("./services/gamer/routes/gamerRoutes");
 const clubRoutes = require("./services/club/routes/clubRoutes");
 
-app.use(cors({ origin: "http://localhost:3000" }));
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+app.use(cors({ origin: "http://localhost:3000", 
+     credentials: true,  
+     methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],}));
+
 
 
 app.use("/api/users", userRoutes);

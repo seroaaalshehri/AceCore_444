@@ -1,4 +1,6 @@
 "use client";
+
+
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import '../../../globals.css';
@@ -8,8 +10,54 @@ import Link from "next/link";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { FaTrash, FaTrophy } from "react-icons/fa";
 import { Cake, Flag, FileText, Image as ImageIcon, File, User } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../../../../lib/firebaseClient";
+import { authedFetch } from "../../../../../lib/authedFetch";
 
 
+const ALLOWED_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+  "application/pdf",
+]);
+
+function useOwnerGuard() {
+  const router = useRouter();
+  const params = useParams();
+  const routeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser) {
+        router.replace(`/Signin?next=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
+      try {
+        const res = await authedFetch("http://localhost:4000/api/users/me");
+        if (res.status === 401) {
+          router.replace(`/Signin?next=${encodeURIComponent(location.pathname)}`);
+          return;
+        }
+        const data = await res.json();
+        const meId = data?.user?.id;
+        const currentId = decodeURIComponent(routeId || "");
+        if (!meId || meId !== currentId) {
+          router.replace(`/gamer/profile/${meId || ""}`);
+          return;
+        }
+        setReady(true);
+      } catch {
+        router.replace("/Signin");
+      }
+    });
+    return () => unsub && unsub();
+  }, [router, routeId]);
+
+  return ready;
+}
 
 function formatDate(date) {
   if (!date) return "";
@@ -31,11 +79,17 @@ function formatDate(date) {
   const year = parts.find(p => p.type === "year").value;
   return `${day} ${month} ${year}`;
 }
-
-
+const todayStr = (() => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`; // yyyy-mm-dd in LOCAL time
+})();
 
 export function AddAchievement({ userid }) {
   const [open, setOpen] = useState(false);
+  const uid = userid;
   const [achievements, setAchievements] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -44,30 +98,51 @@ export function AddAchievement({ userid }) {
     date: "",
     file: null,
   });
+  const [errors, setErrors] = useState({});
+  const [fileErr, setFileErr] = useState("");
 
-  const uid = userid;
 
 
   async function fetchAchievements() {
-    const res = await fetch(`http://localhost:4000/api/gamer/${uid}/achievements`);
+    const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/achievements`);
     const data = await res.json();
     if (data.success) setAchievements(data.achievements);
   }
+
   useEffect(() => {
     if (!uid) return;
     fetchAchievements();
   }, [uid]);
 
-
-
+  function handleFileChange(e) {
+    const f = e.target.files?.[0] || null;
+    if (!f) {
+      setForm({ ...form, file: null });
+      setFileErr("");
+      return;
+    }
+    if (!ALLOWED_MIME.has(f.type)) {
+      setFileErr("Only PNG, JPG, WebP, SVG, or PDF.");
+      setForm({ ...form, file: null });
+      e.target.value = "";
+      return;
+    }
+    setFileErr("");
+    setForm({ ...form, file: f });
+  }
 
   async function handleSave(e) {
     e.preventDefault();
 
-    if (!form.name || !form.association || !form.game || !form.date) {
-      alert("Please enter all required fields.");
-      return;
-    }
+    const nextErrors = {};
+    if (!form.name?.trim()) nextErrors.name = "Required.";
+    if (!form.game?.trim()) nextErrors.game = "Required.";
+    if (!form.association?.trim()) nextErrors.association = "Required.";
+    if (!form.date?.trim()) nextErrors.date = "Required.";
+    if (!form.file) nextErrors.file = "Required.";
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length || fileErr) return;
 
     try {
       const formData = new FormData();
@@ -79,7 +154,7 @@ export function AddAchievement({ userid }) {
         formData.append("file", form.file);
       }
 
-      const res = await fetch(`http://localhost:4000/api/gamer/${userid}/add`, {
+      const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/add`, {
         method: "POST",
         body: formData,
       });
@@ -89,6 +164,8 @@ export function AddAchievement({ userid }) {
 
       await fetchAchievements();
       setForm({ name: "", association: "", game: "", date: "", file: null });
+      setErrors({});
+      setFileErr("");
       setOpen(false);
 
     } catch (err) {
@@ -97,12 +174,11 @@ export function AddAchievement({ userid }) {
     }
   }
 
-
   return (
     <div>
-      <div className="p-6 mt-0 px-4 sm:px-6 lg:px-8 mx-auto w-full max-w-6xl grid grid-cols-1 gap-8">
+      <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full max-w-15xl grid grid-cols-1 gap-8">
         <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-3xl  mr-3 font-bold text-[#fccc22]">ACHIEVEMENTS</h1>
+          <h1 className="text-4xl mr-3 font-bold text-[#fccc22]">ACHIEVEMENTS</h1>
           <button
             onClick={() => setOpen(true)}
             className="text-white hover:text-[#6449b5]  font-bold text-4xl"
@@ -111,20 +187,18 @@ export function AddAchievement({ userid }) {
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {achievements.map((ach) => (
             <div
               key={ach.id}
-              className="flex items-center justify-between bg-[#2b2142b3] relative -top-5 rounded-xl p-6 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-8"
-            > {/* bg-[#1C1633]/60 border border-[#3b2d5e] rounded-xl   bg-[#34285a]     bg-[#2b2142b3] bg-gradient-to-br from-[#0C0817] via-[#28213a] to-[#1C1633]*/}
-
-              <FaTrophy size={22} className="text-[#FCCC22] text-3xl flex-shrink-0" />
+              className="flex items-center justify-between bg-[#2b2142b3] relative -top-5 rounded-xl p-6 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6"
+            >
+              <FaTrophy size={30} className="text-[#FCCC22] text-3xl flex-shrink-0" />
 
               <div className="flex flex-col min-w-[220px]">
                 <h3 className="text-3xl font-bold text-white">{ach.name}</h3>
                 <p className="text-xl text-gray-300">{ach.game}</p>
               </div>
-
 
               <div className="flex flex-col min-w-[200px]">
                 <p className="text-2xl text-gray-200">{ach.association}</p>
@@ -159,8 +233,7 @@ export function AddAchievement({ userid }) {
                 </div>
               </div>
 
-
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 mr-12">
                 <button
                   className="text-gray-400 hover:text-[#FCCC22] font-bold text-[17px]"
                 >
@@ -178,7 +251,7 @@ export function AddAchievement({ userid }) {
 
       {open && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-          <div className="bg-[#34285a]  rounded-xl p-6 w-96 relative">
+          <div className="bg-[#1d1530]  rounded-xl p-6 w-96 relative">
             <button
               onClick={() => setOpen(false)}
               className="absolute top-3 right-3 text-gray-400 hover:text-white text-21xl"
@@ -186,60 +259,95 @@ export function AddAchievement({ userid }) {
               ×
             </button>
 
-            <form onSubmit={(e) => {
-              handleSave(e);
-            }} className="flex flex-col">
+            <form onSubmit={handleSave} className="flex flex-col">
 
-              <p className="text-white text-lg font-semibold mb-2">Enter achievement name</p>
               <input
                 type="text"
                 placeholder="Achievement"
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-                className="p-3 rounded [#3b2d5e] mb-2"
+                onChange={(e) =>
+                  setForm({ ...form, name: e.target.value.slice(0, 35) })
+                }
+                maxLength={35}
+                className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${errors.name ? "ring-2 ring-red-500" : ""
+                  }`}
+                aria-describedby="name-err"
               />
+              <div id="name-err" className="text-xs text-gray-400 mb-2">
+                {errors.name ? <span className="text-red-400">{errors.name}</span> : `${form.name?.length || 0}/35`}
+              </div>
 
               <p className="text-white text-lg font-semibold mb-2">Select game</p>
               <select
                 value={form.game}
                 onChange={(e) => setForm({ ...form, game: e.target.value })}
-                required
-                className="p-3 rounded bg-[#0C0817] text-white mb-2"
+                className={`p-3 rounded bg-[#0C0817] text-white mb-1 ${errors.game ? "ring-2 ring-red-500" : ""
+                  }`}
+                aria-describedby="game-err"
               >
                 <option value="">Select</option>
                 <option value="Overwatch">Overwatch</option>
                 <option value="Rocket League">Rocket League</option>
                 <option value="Call of Duty">Call of Duty</option>
               </select>
+              <div id="game-err" className="text-xs text-red-400 mb-2">{errors.game || ""}</div>
 
               <p className="text-white text-lg font-semibold mb-2">Enter official association</p>
               <input
                 type="text"
                 placeholder="Association"
                 value={form.association}
-                onChange={(e) => setForm({ ...form, association: e.target.value })}
-                required
-                className="p-3 rounded bg-[#0C0817] mb-2"
+                onChange={(e) => setForm({ ...form, association: e.target.value.slice(0, 35) })}
+                maxLength={35}
+                className={`p-3 rounded bg-[#0C0817]  mb-1 text-white ${errors.association ? "ring-2 ring-red-500" : ""
+                  }`}
+                aria-describedby="assoc-err"
               />
+              <div id="assoc-err" className="text-xs text-gray-400 mb-2">
+                {errors.association ? <span className="text-red-400">{errors.association}</span> : `${form.association?.length || 0}/35`}
+              </div>
 
               <p className="text-white text-lg font-semibold mb-2">Enter the issued date</p>
               <input
                 type="date"
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-                className="p-3 rounded bg-[#0C0817] mb-2 date-yellow"
+                max={todayStr}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v && v > todayStr) {
+
+                    setForm((f) => ({ ...f, date: todayStr }));
+                    setErrors((errs) => ({ ...errs, date: "Date cannot be in the future." }));
+                  } else {
+                    setForm((f) => ({ ...f, date: v }));
+
+                    setErrors((errs) => ({ ...errs, date: "" }));
+                  }
+                }}
+                className={`p-3 rounded bg-[#0C0817] mb-1 text-white date-yellow ${errors.date ? "ring-2 ring-red-500" : ""
+                  }`}
+                aria-describedby="date-err"
               />
+              <div id="date-err" className="text-xs text-red-400 mb-2">{errors.date || ""}</div>
 
               <p className="text-white text-lg font-semibold mb-2">Upload file / photo</p>
               <input
                 type="file"
-                onChange={(e) => setForm({ ...form, file: e.target.files[0] })}
-                required
-                className="p-3 rounded bg-[#0C0817] mb-4"
+                accept=".png,.jpg,.jpeg,.webp,.svg,application/pdf"
+                onChange={handleFileChange}
+                className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${(errors.file || fileErr) ? "ring-2 ring-red-500" : ""
+                  }`}
+                aria-describedby="file-help"
               />
-
+              <div id="file-help" className="text-xs mb-2">
+                {fileErr ? (
+                  <span className="text-red-400">{fileErr}</span>
+                ) : errors.file ? (
+                  <span className="text-red-400">{errors.file}</span>
+                ) : (
+                  <span className="text-gray-400">Only PNG, JPG, WebP, SVG, or PDF.</span>
+                )}
+              </div>
               <button
                 type="submit"
                 className="px-9 py-2 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl mt-4 mb-2 hover:scale-105 transition-transform duration-200"
@@ -257,9 +365,9 @@ export function AddAchievement({ userid }) {
 
 
 export default function GamerProfile() {
-const params = useParams();
-const raw = Array.isArray(params?.id) ? params.id[0] : params?.id;
-const uid = decodeURIComponent(raw ?? "");
+  const params = useParams();
+  const raw = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const uid = decodeURIComponent(raw ?? "");
   const router = useRouter();
   const [games, setGames] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -270,52 +378,57 @@ const uid = decodeURIComponent(raw ?? "");
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [error, setError] = useState("");
+  const ready = useOwnerGuard();
+ const { id } = useParams();
+    const userId = Array.isArray(id) ? id[0] : id;
 
 
-// followers / following
-useEffect(() => {
-  if (!uid) return;
-  (async () => {
-    try {
-      const res = await fetch(`http://localhost:4000/api/gamer/${uid}/followNums`);
-      const data = await res.json();
-      if (data.success) {
-        setFollowersCount(data.followersCount);
-        setFollowingCount(data.followingCount);
+
+
+  // followers / following
+  useEffect(() => {
+    if (!ready || !uid) return;
+    (async () => {
+      try {
+        const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/followNums`);
+        const data = await res.json();
+        if (data.success) {
+          setFollowersCount(data.followersCount);
+          setFollowingCount(data.followingCount);
+        }
+      } catch (err) {
+        console.error("followNums:", err);
       }
-    } catch (err) {
-      console.error("followNums:", err);
-    }
-  })();
-}, [uid]);
+    })();
+  }, [uid, ready]);
 
-// all available games (doesn't need uid but fine to keep separate)
-useEffect(() => {
-  (async () => {
+  // all available games (doesn't need uid but fine to keep separate)
+  useEffect(() => {
+    if (!ready) return;
+    (async () => {
+      try {
+        const res = await authedFetch("http://localhost:4000/api/gamer/games/all");
+        const data = await res.json();
+        if (data.success) setAllGames(data.games);
+      } catch (e) {
+        console.error("getAllGames:", e);
+      }
+    })();
+  }, [ready]);
+
+  // user’s games
+  const refreshGames = async () => {
+    if (!ready || !uid) return;
     try {
-      const res = await fetch("http://localhost:4000/api/gamer/");
+      const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/games`);
       const data = await res.json();
-      if (data.success) setAllGames(data.games);
+      if (data.success) setGames(data.games);
     } catch (e) {
-      console.error("getAllGames:", e);
+      console.error("listGames:", e);
     }
-  })();
-}, []);
+  };
 
-// user’s games
-const refreshGames = async () => {
-  if (!uid) return;
-  try {
-    const res = await fetch(`http://localhost:4000/api/gamer/${uid}`);
-    const data = await res.json();
-    if (data.success) setGames(data.games);
-  } catch (e) {
-    console.error("listGames:", e);
-  }
-};
-
-useEffect(() => { refreshGames(); }, [uid]);
-
+  useEffect(() => { refreshGames(); }, [uid, ready]);
 
   async function handleAdd() {
     if (!selectedGame) {
@@ -324,58 +437,61 @@ useEffect(() => { refreshGames(); }, [uid]);
     }
     setError("");
 
-    await fetch("http://localhost:4000/api/gamer/add", {
+    await authedFetch(`http://localhost:4000/api/gamer/${uid}/add/games`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userid: uid,
         gameid: selectedGame.id,
         username: username || "—",
         rank: 0
       })
     });
+
     await refreshGames();
     setIsModalOpen(false);
     setSelectedGame(null);
     setUsername("");
   }
 
+
   const availableGames = allGames.filter(
     (g) => !games.some((ug) => ug.gameid === g.id)
   );
-const [profile, setProfile] = useState(null);
 
-useEffect(() => {
-  if (!uid) return; 
+  const [profile, setProfile] = useState(null);
+  useEffect(() => {
+    if (!ready || !uid) return;
 
-  (async () => {
-    try {
-      const res = await fetch(`http://localhost:4000/api/gamer/${uid}/profile`);
-      const data = await res.json();
+    (async () => {
+      try {
+        const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/profile`);
+        const data = await res.json();
 
-      if (data.success) {
-        setProfile(data.profile);
-       
-        setAchievements(data.achievements ?? []);
-      } else {
-        console.error("API Error:", data.message || data.error || "Unknown error");
+        if (data.success) {
+          setProfile(data.profile);
+          setAchievements(data.achievements ?? []);
+        } else {
+          console.error("API Error:", data.message || data.error || "Unknown error");
+        }
+      } catch (err) {
+        console.error("Fetch profile failed:", err);
       }
-    } catch (err) {
-      console.error("Fetch profile failed:", err);
-    }
-  })();
-}, [uid]);
+    })();
+  }, [uid, ready]);
 
-if (!profile) {
-  return <div className="text-gray-400 p-6">Loading profile...</div>;
-}
+  if (!profile) {
+    return <div className="text-gray-400 p-6">Loading profile...</div>;
+  }
 
   return (
 
+
+
+
     <div className="flex min-h-screen">
       <div className="w-[250px]">
-        <LeftSidebar />
-      </div>
+ <LeftSidebar role="gamer" active="profile" userId={id} />      </div>
+ 
       <div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
 
 
@@ -401,11 +517,11 @@ if (!profile) {
             {/* Gamer Info  #1d1338*/}
             <section className="relative z-10 rounded-xl p-20 shadow-lg bg-[#2b2142b3]">
               <button
-                onClick={() => router.push("/gamer/addinfo")}
-                className="absolute top-4 right-4 text-[#fff] hover:text-[#FCCC22] font-bold text-[20px] z-30"
-              >
-                <span className="inline-block transform -scale-x-100">✎</span>
-              </button>
+  onClick={() => router.push(`/gamer/addinfo/${uid}`)}
+  className="absolute top-4 right-4 text-[#fff] hover:text-[#FCCC22] font-bold text-[20px] z-30"
+>
+  <span className="inline-block transform -scale-x-100">✎</span>
+</button>
 
               <div className="flex relative top-2 ml-4 items-start gap-6">
 
@@ -414,44 +530,44 @@ if (!profile) {
                     <Image
                       src={profile.profilePhoto}
                       alt="Profile Avatar"
-                      width={260}           // match w-72 (18rem = 288px)
-                      height={260}
-                      className="w-60 h-60 object-cover"
+                      width={105}           // match w-72 (18rem = 288px)
+                      height={105}
+                      className="w-40 h-40 object-cover"
                     />
                   </div>
                 ) : (
-                  <div className="w-60 h-60 flex items-center justify-center rounded-full bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
-                    <User className="w-32 h-32 text-gray-400" /> {/* ≈128×128 */}
+                  <div className="w-40 h-40 flex items-center justify-center rounded-full bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                    <User size={80} className=" text-gray-400" /> {/* ≈128×128 */}
                     {/* or: <User size={128} className="text-gray-400" /> */}
                   </div>
                 )}
 
                 <div className="flex-1 min-w-0">
                   <div className=" relative top-2 min-w-0">
-                    <h2 className="text-[32px] font-bold truncate">
+                    <h2 className="text-[40px] font-bold truncate">
                       {profile.firstName} {profile.lastName}
                     </h2>
-                    <p className="text-[21px] text-gray-400 mt-1 truncate">
+                    <p className="text-[26px] text-gray-400 mt-1 truncate">
                       @{profile.username}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="absolute left-1/2 top-8 md:top-10 transform z-40">
-                <div className="flex gap-8 bg-transparent relative top-5 items-center">
+              <div className="absolute left-1/2 top-8 md:top-10  transform z-40">
+                <div className="flex gap-4 bg-transparent ml-20 relative top-20 items-center">
                   <Link href="/gamer/profile/followers" className="cursor-pointer text-center">
-                    <div className="text-3xl font-bold text-white">
+                    <div className="text-4xl font-bold text-white">
                       {followersCount}
                     </div>
-                    <div className="text-xl text-gray-400">Followers</div>
+                    <div className="text-2xl text-gray-400">Followers</div>
                   </Link>
 
                   <Link href="/gamer/profile/following" className="cursor-pointer text-center">
-                    <div className="text-3xl font-bold text-white">
+                    <div className="text-4xl font-bold text-white">
                       {followingCount}
                     </div>
-                    <div className="text-xl text-gray-400">Following</div>
+                    <div className="text-2xl text-gray-400">Following</div>
                   </Link>
                 </div>
               </div>
@@ -463,7 +579,7 @@ if (!profile) {
 
 
                 <div className="flex flex-col items-end">
-                  <div className="text-white-400 text-lg text-right -mt-4 md:-mt-6">
+                  <div className="text-white-400 text-xl text-right -mt-4 md:-mt-6">
                     <div className="mt-3 flex items-center gap-2">
                       <Flag className="size-5 text-fuchsia-300 relative top-1" />
                       {profile.nationality}
@@ -477,22 +593,22 @@ if (!profile) {
                   <div className="flex space-x-2 relative top-10 mt-8">
                     {profile.socials?.twitch && (
                       <a href={profile.socials.twitch} target="_blank" rel="noopener noreferrer">
-                        <img src="/twitchIcon.svg" alt="Twitch" className="w-7 h-7 relative -top-1 icon-glow" />
+                        <img src="/twitchIcon.svg" alt="Twitch" className="w-9 h-9 relative -top-1 icon-glow" />
                       </a>
                     )}
                     {profile.socials?.discord && (
                       <a href={profile.socials.discord} target="_blank" rel="noopener noreferrer">
-                        <img src="/discord.svg" alt="Discord" className="w-9 h-9 relative -top-2 ml-2.5 icon-glow" />
+                        <img src="/discord.svg" alt="Discord" className="w-11 h-11 relative -top-2 ml-2.5 icon-glow" />
                       </a>
                     )}
                     {profile.socials?.youtube && (
                       <a href={profile.socials.youtube} target="_blank" rel="noopener noreferrer">
-                        <img src="/youtube.svg" alt="YouTube" className="w-[55px] h-[55px] relative -top-4 icon-glow" />
+                        <img src="/youtube.svg" alt="YouTube" className="w-[68px] h-[68px] relative -top-4 icon-glow" />
                       </a>
                     )}
                     {profile.socials?.x && (
                       <a href={profile.socials.x} target="_blank" rel="noopener noreferrer">
-                        <img src="/x.svg" alt="X" className="w-6 h-6 icon-glow" />
+                        <img src="/x.svg" alt="X" className="w-8 h-8 icon-glow" />
                       </a>
                     )}
                   </div>
@@ -514,19 +630,21 @@ if (!profile) {
                 )}
               </div>
 
-              <div className="mt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-[20]">
+              <div className="mt-0 grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative z-[20]">
+               
+               
                 {games.map((g) => (
                   <div
                     key={g.id}
-                    className="w-80 rounded-xl shadow-md  bg-[#2b2142b3] border border-[#1f2430] overflow-hidden flex flex-col"
+                    className="w-150 h-150 rounded-xl shadow-md  bg-[#2b2142b3] border border-[#1f2430] overflow-hidden flex flex-col"
                   >
                     <img
                       src={g.gamePhoto}
                       alt={g.gameName}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-60 object-cover"
                     />
 
-                    <div className="p-4 flex flex-col gap-2 text-left">
+                    <div className="p-4 flex flex-col gap-1 text-left">
                       <div className="flex items-center">
 
                         <div className="flex flex-col">
@@ -556,7 +674,7 @@ if (!profile) {
 
               {isModalOpen && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-[5000]">
-                  <div className="bg-[#2b2142b3] rounded-xl p-6 w-96 relative">
+                  <div className="bg-[#1d1530] rounded-xl p-6 w-96 relative">
                     <button
                       onClick={() => { setIsModalOpen(false); setSelectedGame(null); setError(""); }}
                       className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
@@ -596,8 +714,9 @@ if (!profile) {
                       type="text"
                       placeholder="username"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full mb-4 p-3 rounded bg-[#0C0817]"
+                      onChange={(e) => setUsername(e.target.value.slice(0, 16))}
+                      maxLength={16}
+                      className="w-full mb-1 p-3 rounded bg-[#0C0817] text-white outline-none"
                     />
 
                     <button
@@ -623,12 +742,5 @@ if (!profile) {
 
 
   );
+
 }
-
-
-
-
-
-
-
-

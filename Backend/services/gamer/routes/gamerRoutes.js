@@ -4,7 +4,10 @@ const path = require("path");
 const fs = require("fs");
 const router = express.Router();
 const gamerController = require("../controllers/gamerController");
-
+const authenticate = require("../../../middlewares/auth");
+const { buildRequireOwner } = require("../../../middlewares/requireOwner");
+const { getUserByAuthUidService } = require("../../user/userServices/userService");
+const requireOwner = buildRequireOwner(getUserByAuthUidService);
 const uploadPath = path.join(__dirname, "../../../storage/achievements");
 
 if (!fs.existsSync(uploadPath)) {
@@ -22,13 +25,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Routes
-router.post("/:userid/add", upload.single("file"), gamerController.addAchievement);//
-router.get("/:userid/achievements", gamerController.listAchievements);//
-router.get("/:userid/profile", gamerController.getUserProfile);//
-router.get("/:id/followNums", gamerController.getFollowNums);//
-router.post("/add", gamerController.addGame);//
-router.get("/:userid", gamerController.listGames);//
-router.get("/", gamerController.getAllGames);//
+
+
+router.get("/:userid/profile",       authenticate, requireOwner, gamerController.getUserProfile);
+router.get("/:userid/achievements",  authenticate, requireOwner, gamerController.listAchievements);
+router.get("/:userid/games",         authenticate, requireOwner, gamerController.listGames);
+router.get("/:userid/followNums",    authenticate, requireOwner, gamerController.getFollowNums);
+router.post("/:userid/add/games",authenticate, requireOwner, gamerController.addGame);
+router.post("/:userid/add",authenticate, requireOwner, upload.single("file"), gamerController.addAchievement);
+router.get("/games/all",  gamerController.getAllGames); 
+
 
 module.exports = router;

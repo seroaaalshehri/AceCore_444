@@ -34,27 +34,22 @@ function toGameIds(raw = []) {
   return Array.from(new Set(ids));
 }
 
-async function writeUserGames(userId, rawGames = []) {
+async function writeUserGames(userid, rawGames = []) {
   const gameIds = toGameIds(rawGames);
   if (gameIds.length === 0) return;
   const batch = db.batch();
   for (const gameid of gameIds) {
     const ref = USER_GAMES.doc(); 
     batch.set(ref, {
-      userId,
       gameid,
+      rank:0,
+      userid,
+      username:"-"
     });
   }
   await batch.commit();
 }
-/**
- * VERIFY-COMPLETE (preferred): create user profile after
- *  - Google OAuth success (immediate), or
- *  - Email verification redirect (payload from localStorage).
- *
- * Enforces: unique email, username, authUid. Keeps sequential id.
- * Returns { id: "userN" }.
- */
+
 async function verifyCompleteService(payload = {}) {
   const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
   const username = payload.username || "";

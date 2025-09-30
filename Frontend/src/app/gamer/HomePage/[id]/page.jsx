@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { Radio } from "lucide-react";
+import { useParams } from "next/navigation";             
+
 
 const CARD = "bg-[#1C1633]/60 border border-[#3b2d5e] rounded-xl";
-
 // demo posts (will change in coming sprints)
 const seedPosts = [
   { id: "p1", title: "Valorant-Game start 4 Oct-3pm", team: "Falcons" },
@@ -58,11 +59,11 @@ const liveNow = [
 export default function GamerHomePage() {
   const [leftTab, setLeftTab] = useState("home");
   const [q, setQ] = useState("");
-
-  // ---- Load-more for POSTS ----
   const PAGE_SIZE = 6; // show 6, then load 6 more per click
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
+  const { id } = useParams();                 // ← get dynamic segment in clients
+  const userId = Array.isArray(id) ? id[0] : id;
 
   // filter posts by search (matches title or game)
   const filtered = useMemo(() => {
@@ -111,11 +112,9 @@ export default function GamerHomePage() {
         />
       </div>
 
-      {/* left sidebar */}
-      <LeftSidebar active={leftTab} onChange={setLeftTab} />
+      <LeftSidebar role="gamer" active="home" userId={id} />
+      <main style={{ marginLeft: SIDEBAR_WIDTH }} className="p-4"
 
-      {/* MAIN */}
-      <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 100, marginRight: 30 }}
       >

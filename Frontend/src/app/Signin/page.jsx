@@ -6,7 +6,6 @@ import SignIn from "../Components/SignIn";
 import "../SignUpIn.css";
 import { auth } from "../../../lib/firebaseClient";
 import { useRouter } from "next/navigation";
-
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
@@ -14,46 +13,42 @@ import {
   signOut,
   OAuthProvider,
 } from "firebase/auth";
+import { authedFetch } from "../../../lib/authedFetch";
 
-/* ---------- ADDED: helper to load profile by Firebase UID (no tokens) ---------- */
-async function loadProfileByUid() {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("No Firebase session.");
-  const res = await fetch(`http://localhost:4000/api/users/by-auth/${uid}`);
+/* ---------- CHANGED: load the signed-in user via token (no UID in URL) ---------- */
+async function loadMe() {
+  const res = await authedFetch("http://localhost:4000/api/users/me");
   if (res.status === 404) throw new Error("Profile not found. Complete signup first.");
+  if (res.status === 401) throw new Error("Please sign in again.");
   if (!res.ok) throw new Error("Failed to load profile.");
   const { user } = await res.json();
   return user; // { id, role, username, ... }
 }
 
-/* ---------- ADDED: where to send user based on role ---------- */
-/* Adjust these paths to your app’s actual routes */
+/* ---------- where to send user based on role (unchanged) ---------- */
 function routeFor(user) {
-  if (user?.role === "club") return `/club/HomePage`;           // e.g. club landing
-  if (user?.role === "gamer") return `/gamer/profile/${user.id}`; // e.g. gamer profile by id
-  return `/`; // fallback
+  if (user?.role === "club") return `/club/HomePage`;
+  if (user?.role === "gamer") return `/gamer/profile/${user.id}`;
+  return `/`;
 }
 
-/* ---------- ADDED: do the redirect after successful login ---------- */
+/* ---------- redirect after successful login (uses /users/me) ---------- */
 async function redirectAfterLogin(router, setOk, setErr) {
   try {
-    const user = await loadProfileByUid();
+    const user = await loadMe();
     const target = routeFor(user);
     router.replace(target);
-    setOk && setOk(""); // clear banner if you want
+    setOk && setOk("");
   } catch (e) {
-    // If profile not found yet, keep the current banner and do not navigate
     setErr && setErr(e?.message || "Failed to load profile.");
   }
 }
 
-
 export default function SignInPage() {
-    const router = useRouter();
-  // Which tab is active
+  const router = useRouter();
+
   const [isClub, setIsClub] = useState(false);
 
-  // Loading/errors per tab
   const [gLoading, setGLoading] = useState(false);
   const [gError, setGError] = useState("");
   const [gOk, setGOk] = useState("");
@@ -63,20 +58,15 @@ export default function SignInPage() {
   const [cOk, setCOk] = useState("");
 
   // ——— Email+Password (Gamer) ———
- const onGamerEmailLogin = async (email, password) => {
+  const onGamerEmailLogin = async (email, password) => {
     setGError(""); setGOk(""); setGLoading(true);
     try {
       if (!email || !email.includes("@")) throw new Error("Please enter a valid email address.");
       if (!password) throw new Error("Please enter your password.");
 
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      // If you want to enforce verified emails, uncomment next 3 lines:
-      // if (!cred.user.emailVerified) {
-      //   await signOut(auth); throw new Error("Please verify your email before logging in.");
-      // }
+      await signInWithEmailAndPassword(auth, email.trim(), password);
 
-
-      /* ---------- ADDED: redirect after login ---------- */
+      /* redirect after login */
       await redirectAfterLogin(router, setGOk, setGError);
     } catch (err) {
       const msg =
@@ -90,7 +80,9 @@ export default function SignInPage() {
       setGLoading(false);
     }
   };
- const onClubEmailLogin = async (email, password) => {
+
+  // ——— Email+Password (Club) ———
+  const onClubEmailLogin = async (email, password) => {
     setCError(""); setCOk(""); setCLoading(true);
     try {
       if (!email || !email.includes("@")) throw new Error("Please enter a valid email address.");
@@ -98,7 +90,7 @@ export default function SignInPage() {
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      /* ---------- ADDED: redirect after login ---------- */
+      /* redirect after login */
       await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
       const msg =
@@ -122,7 +114,7 @@ export default function SignInPage() {
       provider.setCustomParameters({ prompt: "select_account" });
       await signInWithPopup(auth, provider);
 
-      /* ---------- ADDED: redirect after login ---------- */
+      /* redirect after login */
       await redirectAfterLogin(router, setGOk, setGError);
     } catch (err) {
       setGError(err?.message || "Google sign-in failed. Please try again.");
@@ -141,7 +133,7 @@ export default function SignInPage() {
       provider.addScope("user:read:email");
       await signInWithPopup(auth, provider);
 
-      /* ---------- ADDED: redirect after login ---------- */
+      /* redirect after login */
       await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
       setCError(err?.message || "Twitch sign-in failed. Please try again.");
@@ -168,7 +160,6 @@ export default function SignInPage() {
 
       {/* Sign In content + inline banners */}
       <div className="relative z-10 w-full">
-        {/* Inline success/error banners (gamer/club) */}
         {(gError || gOk || cError || cOk) && (
           <div className="flex justify-center my-4">
             {gError && <div className="px-4 py-2 rounded bg-red-600/90 text-white text-sm shadow">{gError}</div>}

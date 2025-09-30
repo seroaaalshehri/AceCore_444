@@ -1,28 +1,16 @@
-// Backend/middlewares/auth.js
-const { auth } = require("../Firebase/firebaseBackend");
+const { admin } = require("../Firebase/firebaseBackend");
 
-const authenticate = async (req, res, next) => {
+module.exports = async function authenticate(req, res, next) {
   try {
-    // Get token from header: "Authorization: Bearer <token>"
-    const header = req.headers.authorization;
-    if (!header) {
-      return res.status(401).json({ success: false, error: "No token provided" });
-    }
+    const hdr = req.headers.authorization || "";
+    const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;
+    if (!token) return res.status(401).json({ success: false, message: "Missing token" });
 
-    const token = header.split(" ")[1]; // remove "Bearer"
-    if (!token) {
-      return res.status(401).json({ success: false, error: "Invalid token format" });
-    }
-
-    // Verify with Firebase Admin
-    const decoded = await auth.verifyIdToken(token);
-
-    // Attach user info to request
-    req.user = decoded;
-    next(); // continue to controller
-  } catch (err) {
-    return res.status(401).json({ success: false, error: "Unauthorized: " + err.message });
+    const decoded = await admin.auth().verifyIdToken(token);
+    // Attach the authenticated Firebase user to the request:
+    req.user = { uid: decoded.uid, email: decoded.email || null };
+    next();
+  } catch (e) {
+    return res.status(401).json({ success: false, message: "Invalid/expired token wait then try again" });
   }
 };
-
-module.exports = authenticate;
