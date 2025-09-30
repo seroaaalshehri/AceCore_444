@@ -62,13 +62,13 @@ async function getFollowNum(userId) {
   };
 }
 
-async function addUserGame(userid, gameid, username, rank) {
-  const userId=userid;
+async function addUserGame( gameid,rank, userid, username) {
+
   const ref = await db.collection("userGames").add({
-    userId,
     gameid,
-    username,
-    rank
+    rank,
+   userid,
+   username
   });
   return { id: ref.id };
 }

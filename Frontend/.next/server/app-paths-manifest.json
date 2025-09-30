@@ -1,10 +1,8 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/Signin/page": "app/Signin/page.js",
+  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js",
   "/gamer/addinfo/[id]/page": "app/gamer/addinfo/[id]/page.js",
   "/SignUp/page": "app/SignUp/page.js",
-  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js",
-  "/Signin/page": "app/Signin/page.js",
-  "/gamer/HomePage/[id]/page": "app/gamer/HomePage/[id]/page.js",
-  "/Logout/page": "app/Logout/page.js",
-  "/Home/page": "app/Home/page.js"
+  "/gamer/HomePage/[id]/page": "app/gamer/HomePage/[id]/page.js"
 }

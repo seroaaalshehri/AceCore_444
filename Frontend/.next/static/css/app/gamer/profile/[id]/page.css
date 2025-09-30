@@ -792,9 +792,6 @@ video {
 .z-\[999\] {
   z-index: 999;
 }
-.col-span-3 {
-  grid-column: span 3 / span 3;
-}
 .m-0 {
   margin: 0px;
 }
@@ -1336,9 +1333,6 @@ video {
 }
 .max-w-\[150px\] {
   max-width: 150px;
-}
-.max-w-\[260px\] {
-  max-width: 260px;
 }
 .max-w-\[32px\] {
   max-width: 32px;
@@ -2621,10 +2615,6 @@ video {
 .py-6 {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
-}
-.py-8 {
-  padding-top: 2rem;
-  padding-bottom: 2rem;
 }
 .\!pr-7 {
   padding-right: 1.75rem !important;
@@ -6287,10 +6277,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
   .md\:max-w-7xl {
     max-width: 80rem;
-  }
-
-  .md\:max-w-\[420px\] {
-    max-width: 420px;
   }
 
   .md\:max-w-\[60\%\] {

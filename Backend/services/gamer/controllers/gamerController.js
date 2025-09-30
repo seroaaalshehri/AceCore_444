@@ -94,10 +94,11 @@ async function addGame(req, res) {
     }
 
     const result = await addUserGame(
-    userid,               
-      gameid,
+       gameid,
+       rank ?? 0,
+       userid,
       username ?? "—",
-      rank ?? 0
+  
     );
 
     res.json({ success: true, ...result });

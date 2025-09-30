@@ -5,19 +5,14 @@ import Image from "next/image";
 import countries from "world-countries";
 import { User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
 
-/* -------------------- API base + safe join -------------------- */
+/* -------------------- ABSOLUTE BACKEND URL (NO DOUBLE /api) -------------------- */
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
-const API_ROOT = RAW_BASE.replace(/\/+$/, "");
-const api = (path) => {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  if (API_ROOT.endsWith("/api")) return `${API_ROOT}${p.replace(/^\/api/, "")}`;
-  return `${API_ROOT}${p}`;
-};
+const API_BASE = RAW_BASE.replace(/\/+$/, "");                // no trailing slash
+const profileUrl = (id) => `${API_BASE}/api/gamer/${encodeURIComponent(id)}/profile`;
 
 /* -------------------- styles -------------------- */
 const FIELD_CLS =
@@ -40,18 +35,13 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
     (error
       ? " border-red-500 focus:ring-red-400 focus:border-red-400 focus:shadow-[0_0_12px_#f87171]"
       : "");
-
   return (
     <div>
       {label && (
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <label className="block text-base font-semibold text-gray-300">{label}</label>
-            {error && (
-              <span className="text-red-400 text-xs whitespace-nowrap truncate max-w-[260px] md:max-w-[420px]" title={error}>
-                {error}
-              </span>
-            )}
+            {error && <span className="text-red-400 text-xs" title={error}>{error}</span>}
           </div>
           <span className="opacity-0 select-none">✎</span>
         </div>
@@ -72,7 +62,13 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
         >
           <Image src={iconSrc} alt={placeholder} width={24} height={24} />
         </button>
-        <input type="url" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className={"pl-12 " + cls} />
+        <input
+          type="url"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={"pl-12 " + cls}
+        />
       </div>
     </div>
   );
@@ -111,14 +107,15 @@ const isValidSocialUrlByPlatform = (platform, url) => {
 };
 
 /* ---- nationality options ---- */
-const getNationality = (c) => c?.demonyms?.eng?.m || c?.demonym || c?.nationality || c?.name?.common;
+const getNationality = (c) =>
+  c?.demonyms?.eng?.m || c?.demonym || c?.nationality || c?.name?.common;
 const NATIONALITY_OPTIONS = countries
   .filter((c) => c.cca2 !== "IL")
   .map((c) => ({ key: c.cca2, label: getNationality(c) }))
   .filter((o) => !!o.label)
   .sort((a, b) => a.label.localeCompare(b.label));
 
-/** Safely parse JSON (guards against HTML/redirect pages) */
+/** Guard: throw if HTML (e.g. 404 page from Next dev server) */
 async function readApiJson(res) {
   if (res.status === 204) return { success: true };
   const ct = res.headers.get("content-type") || "";
@@ -127,12 +124,13 @@ async function readApiJson(res) {
   throw new Error(`Non-JSON response ${res.status} ${res.statusText}: ${text.slice(0, 200)}`);
 }
 
-/* =============================================================== */
+/* ===================================================================== */
 
 export default function GamerPage() {
   const router = useRouter();
   const { id } = useParams();
   const USER_ID = Array.isArray(id) ? id[0] : id;
+  const PROFILE_URL = profileUrl(USER_ID);
   const VIEW_PROFILE_URL = `/gamer/profile/${USER_ID}`;
 
   const [form, setForm] = useState({
@@ -162,13 +160,12 @@ export default function GamerPage() {
     setForm((p) => ({ ...p, [group]: { ...p[group], [key]: value } }));
   };
 
-  /** READ */
+  /** READ profile FROM BACKEND (4000) */
   useEffect(() => {
     (async () => {
       try {
-        const res = await authedFetch(api(`/api/gamer/${USER_ID}/profile`), {
-          headers: { Accept: "application/json" },
-        });
+        // absolute URL → hit 4000 directly (avoid /api on 3000)
+        const res = await authedFetch(PROFILE_URL, { headers: { Accept: "application/json" } });
         const data = await readApiJson(res);
         if (data?.success) {
           const d = data.profile || {};
@@ -194,7 +191,7 @@ export default function GamerPage() {
         setLoading(false);
       }
     })();
-  }, [USER_ID]);
+  }, [PROFILE_URL]);
 
   const validate = () => {
     const errs = {};
@@ -207,9 +204,10 @@ export default function GamerPage() {
     return Object.keys(errs).length === 0;
   };
 
-  /** Single place to call API (returns `{success:true}` or throws) */
-  const callApi = async (method, path, body, headers) => {
-    const res = await authedFetch(api(path), { method, body, headers });
+  /** PUT profile (4000). No POST fallback unless your server supports it. */
+  const putProfile = async (body, headers) => {
+    console.log("[PUT]", PROFILE_URL, photoFile ? "multipart" : "json"); // see it's :4000
+    const res = await authedFetch(PROFILE_URL, { method: "PUT", body, headers });
     if (res.redirected || res.url.includes("/Signin") || res.status === 401) {
       window.location.href = `/Signin?next=${encodeURIComponent(window.location.pathname)}`;
       return { success: false };
@@ -219,7 +217,6 @@ export default function GamerPage() {
     return data;
   };
 
-  /** Save trying multiple METHODS and PATHS to match your backend */
   const doSave = async () => {
     if (!validate()) {
       setShowSaveConfirm(false);
@@ -241,49 +238,19 @@ export default function GamerPage() {
 
     setSaving(true);
     try {
-      const paths = [
-        `/api/gamer/${USER_ID}/profile`,
-        `/api/gamer/profile/${USER_ID}`,
-        `/api/gamer/profile`, // for "current user" style backends
-      ];
-      const methods = ["PATCH", "POST", "PUT"];
-
-      let saved = false;
-      let lastErr;
-
-      for (const path of paths) {
-        for (const method of methods) {
-          try {
-            if (photoFile) {
-              const fd = new FormData();
-              // send both top-level fields and a single JSON blob for maximum compatibility
-              fd.append("firstName", payload.firstName);
-              fd.append("lastName", payload.lastName);
-              fd.append("bio", payload.bio);
-              fd.append("nationality", payload.nationality);
-              fd.append("socials", JSON.stringify(payload.socials));
-              fd.append("profile", JSON.stringify(payload));
-              fd.append("file", photoFile);
-              await callApi(method, path, fd, undefined);
-            } else {
-              await callApi(
-                method,
-                path,
-                JSON.stringify(payload),
-                { "Content-Type": "application/json", Accept: "application/json" }
-              );
-            }
-            saved = true;
-            break;
-          } catch (e) {
-            lastErr = e;
-            // continue trying the next method/path (handles 404/405 cleanly)
-          }
-        }
-        if (saved) break;
+      let data;
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append("profile", JSON.stringify(payload));
+        fd.append("file", photoFile);
+        data = await putProfile(fd /* multipart: no headers */);
+      } else {
+        const headers = { "Content-Type": "application/json", Accept: "application/json" };
+        const body = JSON.stringify(payload);
+        data = await putProfile(body, headers);
       }
 
-      if (!saved) throw lastErr || new Error("All save attempts failed");
+      if (!data?.success) return;
 
       setOriginalForm(form);
       setIsCountryEditing(false);
@@ -309,7 +276,6 @@ export default function GamerPage() {
     setPhotoFile(null);
   };
 
-  const fileRef = useRef(null);
   const onPickAvatar = () => fileRef.current?.click();
   const onAvatarSelected = (e) => {
     const f = e.target.files?.[0] || null;
@@ -325,22 +291,43 @@ export default function GamerPage() {
 
   return (
     <>
+      {/* bg particles */}
       <div className="absolute inset-2 z-0">
-        <Particles particleColors={["#ffffff"]} particleCount={200} particleSpread={10} speed={0.1} particleBaseSize={100} />
+        <Particles
+          particleColors={["#ffffff"]}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+        />
       </div>
 
       <LeftSidebar role="gamer" active="profile" userId={USER_ID} />
 
-      <main className="relative z-10 pt-8" style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}>
+      {/* RIGHT: Editable card area */}
+      <main
+        className="relative z-10 pt-8"
+        style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
+      >
         <div className="mx-auto max-w-6xl" style={{ height: "calc(100vh - 100px)" }}>
           <div className="bg-[#2b2142b3] rounded-xl p-6 h-full">
             {loading ? (
               <p className="text-gray-300">Loading profile…</p>
             ) : (
-              <form id="profile-form" onSubmit={onSubmit} className="h-full grid gap-8 md:grid-cols-[320px,1fr]">
+              <form
+                id="profile-form"
+                onSubmit={onSubmit}
+                className="h-full grid gap-8 md:grid-cols-[320px,1fr]"
+              >
                 {/* LEFT: avatar */}
                 <div className="flex flex-col items-center justify-center">
-                  <button type="button" onClick={onPickAvatar} className="focus:outline-none" title="Upload your Portfolio Picture" aria-label="Upload your Portfolio Picture">
+                  <button
+                    type="button"
+                    onClick={onPickAvatar}
+                    className="focus:outline-none"
+                    title="Upload your Portfolio Picture"
+                    aria-label="Upload your Portfolio Picture"
+                  >
                     <div className="w-72 h-72 mx-auto rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)] flex items-center justify-center cursor-pointer">
                       {photoPreview ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -351,49 +338,125 @@ export default function GamerPage() {
                     </div>
                   </button>
 
-                  <input ref={fileRef} type="file" accept="image/*" onChange={onAvatarSelected} className="hidden" />
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={onAvatarSelected}
+                    className="hidden"
+                  />
 
-                  <span className="text-l font-bold text-gray-300 text-center mt-6">Upload your Porfile Picture</span>
+                  <span className="text-l font-bold text-gray-300 text-center mt-6">
+                    Upload your Porfile Picture
+                  </span>
                 </div>
 
                 {/* RIGHT: fields */}
                 <div className="flex mt-8 flex-col h-full">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-base font-semibold mb-1 text-gray-300">First name</label>
-                      <input placeholder="First name" value={form.firstName} onChange={(e) => update("firstName", e.target.value)} className={FIELD_CLS} />
+                      <label className="block text-base font-semibold mb-1 text-gray-300">
+                        First name
+                      </label>
+                      <input
+                        placeholder="First name"
+                        value={form.firstName}
+                        onChange={(e) => update("firstName", e.target.value)}
+                        className={FIELD_CLS}
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-base font-semibold mb-1 text-gray-300">Last name</label>
-                      <input placeholder="Last name" value={form.lastName} onChange={(e) => update("lastName", e.target.value)} className={FIELD_CLS} />
+                      <label className="block text-base font-semibold mb-1 text-gray-300">
+                        Last name
+                      </label>
+                      <input
+                        placeholder="Last name"
+                        value={form.lastName}
+                        onChange={(e) => update("lastName", e.target.value)}
+                        className={FIELD_CLS}
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-base font-semibold mb-1 text-gray-300">Bio</label>
-                      <textarea rows={3} placeholder="Tell us about you" value={form.bio} onChange={(e) => update("bio", e.target.value)} className={FIELD_CLS} />
+                      <label className="block text-base font-semibold mb-1 text-gray-300">
+                        Bio
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Tell us about you"
+                        value={form.bio}
+                        onChange={(e) => update("bio", e.target.value)}
+                        className={FIELD_CLS}
+                      />
                     </div>
 
-                    <span className="block text-xl font-semibold text-gray-300 mb-2">Social Media Links</span>
+                    <span className="block text-xl font-semibold text-gray-300 mb-2">
+                      Social Media Links
+                    </span>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                      <SocialField iconSrc="/twitchIcon.svg" label="Twitch" placeholder="Twitch Link" value={form.socials.twitch} onChange={(v) => update("socials.twitch", v)} error={errors.twitch} />
-                      <SocialField iconSrc="/youtube.svg" label="YouTube" placeholder="YouTube Link" value={form.socials.youtube} onChange={(v) => update("socials.youtube", v)} error={errors.youtube} />
-                      <SocialField iconSrc="/x.svg" label="X" placeholder="X Link" value={form.socials.x} onChange={(v) => update("socials.x", v)} error={errors.x} />
-                      <SocialField iconSrc="/discord.svg" label="Discord" placeholder="Discord Link" value={form.socials.discord} onChange={(v) => update("socials.discord", v)} error={errors.discord} />
+                      <SocialField
+                        iconSrc="/twitchIcon.svg"
+                        label="Twitch"
+                        placeholder="Twitch Link"
+                        value={form.socials.twitch}
+                        onChange={(v) => update("socials.twitch", v)}
+                        error={errors.twitch}
+                      />
+                      <SocialField
+                        iconSrc="/youtube.svg"
+                        label="YouTube"
+                        placeholder="YouTube Link"
+                        value={form.socials.youtube}
+                        onChange={(v) => update("socials.youtube", v)}
+                        error={errors.youtube}
+                      />
+                      <SocialField
+                        iconSrc="/x.svg"
+                        label="X"
+                        placeholder="X Link"
+                        value={form.socials.x}
+                        onChange={(v) => update("socials.x", v)}
+                        error={errors.x}
+                      />
+                      <SocialField
+                        iconSrc="/discord.svg"
+                        label="Discord"
+                        placeholder="Discord Link"
+                        value={form.socials.discord}
+                        onChange={(v) => update("socials.discord", v)}
+                        error={errors.discord}
+                      />
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <label className="block text-base font-semibold text-gray-300">Nationality</label>
-                          {errors.nationality && <span className="text-red-400 text-xs">Nationality is required</span>}
+                          <label className="block text-base font-semibold text-gray-300">
+                            Nationality
+                          </label>
+                          {errors.nationality && (
+                            <span className="text-red-400 text-xs">Nationality is required</span>
+                          )}
                         </div>
-                        <span role="button" tabIndex={0} onClick={() => setIsCountryEditing(true)} className="cursor-pointer text-gray-300 hover:text-[#FCCC22] focus:text-[#FCCC22]" title="Edit nationality" aria-label="Edit nationality">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setIsCountryEditing(true)}
+                          className="cursor-pointer text-gray-300 hover:text-[#FCCC22] focus:text-[#FCCC22]"
+                          title="Edit nationality"
+                          aria-label="Edit nationality"
+                        >
                           ✎
                         </span>
                       </div>
-                      <select value={form.nationality} onChange={(e) => update("nationality", e.target.value)} disabled={!isCountryEditing} className={`${FIELD_CLS} ${!isCountryEditing ? DISABLED_FIELD : ""}`}>
+                      <select
+                        value={form.nationality}
+                        onChange={(e) => update("nationality", e.target.value)}
+                        disabled={!isCountryEditing}
+                        className={`${FIELD_CLS} ${!isCountryEditing ? DISABLED_FIELD : ""}`}
+                      >
                         <option value="">Select nationality</option>
                         {NATIONALITY_OPTIONS.map((o) => (
                           <option key={o.key} value={o.label}>
@@ -405,11 +468,20 @@ export default function GamerPage() {
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setShowDiscardConfirm(true)} className={GOLD_BTN}>
+                    <button
+                      type="button"
+                      onClick={() => setShowDiscardConfirm(true)}
+                      className={GOLD_BTN}
+                    >
                       Cancel
                     </button>
                     <div className="flex-1" />
-                    <button type="button" disabled={saving} onClick={() => setShowSaveConfirm(true)} className={GOLD_BTN}>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => setShowSaveConfirm(true)}
+                      className={GOLD_BTN}
+                    >
                       {saving ? "Saving…" : "Save"}
                     </button>
                   </div>
@@ -428,10 +500,7 @@ export default function GamerPage() {
             <div className="flex w-full space-x-2">
               <button
                 onClick={() => {
-                  setForm(originalForm);
-                  setErrors({});
-                  setIsCountryEditing(false);
-                  setPhotoFile(null);
+                  onCancel();
                   setShowDiscardConfirm(false);
                   router.push(VIEW_PROFILE_URL);
                 }}
@@ -439,7 +508,10 @@ export default function GamerPage() {
               >
                 Yes
               </button>
-              <button onClick={() => setShowDiscardConfirm(false)} className="w-1/2 bg-gray-500 hover:neon-btn-gray px-4 py-2 rounded text-sm">
+              <button
+                onClick={() => setShowDiscardConfirm(false)}
+                className="w-1/2 bg-gray-500 hover:neon-btn-gray px-4 py-2 rounded text-sm"
+              >
                 No
               </button>
             </div>
@@ -453,10 +525,19 @@ export default function GamerPage() {
           <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[350px] text-center">
             <p className="text-lg font-bold mb-4">Are you sure you want to save your changes?</p>
             <div className="flex w-full space-x-2">
-              <button onClick={doSave} className="w-1/2 bg-[#4682B4] hover:neon-btn-blue px-3 py-1 rounded text-sm" disabled={saving}>
+              <button
+                onClick={async () => {
+                  await doSave();
+                }}
+                className="w-1/2 bg-[#4682B4] hover:neon-btn-blue px-3 py-1 rounded text-sm"
+                disabled={saving}
+              >
                 Yes
               </button>
-              <button onClick={() => setShowSaveConfirm(false)} className="w-1/2 bg-gray-500 hover:neon-btn-gray px-4 py-2 rounded text-sm">
+              <button
+                onClick={() => setShowSaveConfirm(false)}
+                className="w-1/2 bg-gray-500 hover:neon-btn-gray px-4 py-2 rounded text-sm"
+              >
                 No
               </button>
             </div>
