@@ -6,9 +6,8 @@ import LeftSidebar, { SIDEBAR_WIDTH } from "../../Components/LeftSidebar";
 import CenteredSearch from "../../Components/CenteredSearch";
 
 export default function SearchPage() {
-    // highlight the Search tab in your sidebar
     const [leftTab, setLeftTab] = useState("search");
-    const [q, setQ] = useState("");   // also rename set0 -> setQ (zero → Q)
+    const [q, setQ] = useState("");   
 
 
     return (
@@ -27,17 +26,15 @@ export default function SearchPage() {
             {/* left sidebar */}
             <LeftSidebar active={leftTab} onChange={setLeftTab} />
 
-            {/* MAIN (same layout margins as follow list page) */}
+            {/* MAIN  */}
             <main
                 className="relative z-10 pt-8"
                 style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
             >
                 <div className="mx-auto max-w-6xl">
-                    {/* Card wrapper — same look & feel as FollowListsPage */}
                     <div className="bg-[#2b2142b3] rounded-xl p-6 md:p-8">
                     
 
-                        {/* Your existing CenteredSearch logic/UI */}
                         <CenteredSearch
                             value={q}
                             onChange={setQ}

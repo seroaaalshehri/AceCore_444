@@ -13,15 +13,15 @@ const badRequest = (msg) => { const e = new Error(msg); e.status = 400; return e
 const conflict   = (msg) => { const e = new Error(msg); e.status = 409; return e; };
 const USER_GAMES = db.collection("userGames");
 
-/** Allocate next sequential id inside the transaction (READ then WRITE) */
+/** Allocate next sequential id inside the transaction */
 async function allocateSequentialId(tx) {
-  const snap = await tx.get(COUNTER_REF); // READ
+  const snap = await tx.get(COUNTER_REF); 
   if (!snap.exists) {
-    tx.set(COUNTER_REF, { next: 2 });     // WRITE #1
+    tx.set(COUNTER_REF, { next: 2 });     
     return "user1";
   }
   const next = snap.get("next") || 1;
-  tx.update(COUNTER_REF, { next: next + 1 }); // WRITE #1
+  tx.update(COUNTER_REF, { next: next + 1 }); 
   return `user${next}`;
 }
 function toGameIds(raw = []) {
@@ -66,7 +66,6 @@ async function verifyCompleteService(payload = {}) {
 
   const userId = await db.runTransaction(async (tx) => {
     // ---------------- ALL READS FIRST ----------------
-    // Email uniqueness (check legacy/new fields)
     const qNorm   = usersCol.where("normalizedEmail", "==", normalizedEmail).limit(1);
     const qEmail  = usersCol.where("email",          "==", rawEmail).limit(1);
     const qGamer  = usersCol.where("gamerEmail",     "==", rawEmail).limit(1);
@@ -89,18 +88,18 @@ async function verifyCompleteService(payload = {}) {
       throw conflict("Username already in use.");
     }
 
-    // Auth UID uniqueness (READ ONLY here)
+    // Auth UID uniqueness 
     if (authUid) {
       const linkSnap = await tx.get(AUTH_LINKS.doc(authUid));
       if (linkSnap.exists) throw conflict("Auth user already linked.");
     }
 
-    // Counter read happens inside this helper (still a READ)
-    const docId = await allocateSequentialId(tx); // (WRITE #1 happens inside)
+
+    const docId = await allocateSequentialId(tx); 
 
 
     // ---------------- WRITES ONLY AFTER THIS POINT ----------------
-    // User profile (WRITE #2)
+    // User profile 
     const userRef = usersCol.doc(docId);
     const nowData = {
       id: docId,
@@ -131,7 +130,7 @@ async function verifyCompleteService(payload = {}) {
     };
     tx.set(userRef, nowData, { merge: true });
 
-    // Auth link (WRITE #3) — NO READ HERE
+    // Auth link 
     if (authUid) {
       tx.set(AUTH_LINKS.doc(authUid), {
         userId: docId,
@@ -146,85 +145,6 @@ try { await writeUserGames(userId, payload.games); } catch (e) { console.error("
   return { id: userId };
 }
 
-/**First ver of the logic
-async function createUserService(payload = {}) {
-  const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
-  const username = payload.username || "";
-  const role     = payload.role || "";
-  const authUid  = typeof payload.authUid === "string" ? payload.authUid.trim() : "";
-
-  if (!rawEmail) throw badRequest("Email required.");
-  if (!username) throw badRequest("Username required.");
-
-  const normalizedEmail = normalizeEmail(rawEmail);
-  const usernameLower   = lower(username);
-  const usersCol        = db.collection("users");
-
-  const newId = await db.runTransaction(async (tx) => {
-    // READS
-    const qNorm   = usersCol.where("normalizedEmail", "==", normalizedEmail).limit(1);
-    const qEmail  = usersCol.where("email",          "==", rawEmail).limit(1);
-    const qGamer  = usersCol.where("gamerEmail",     "==", rawEmail).limit(1);
-    const qClub   = usersCol.where("clubEmail",      "==", rawEmail).limit(1);
-
-    const [sNorm, sEmail, sGamer, sClub] = await Promise.all([
-      tx.get(qNorm), tx.get(qEmail), tx.get(qGamer), tx.get(qClub),
-    ]);
-    if (!sNorm.empty || !sEmail.empty || !sGamer.empty || !sClub.empty) {
-      throw conflict("Email already in use.");
-    }
-
-    const qUserLower = usersCol.where("username_lower", "==", usernameLower).limit(1);
-    const qUserExact = usersCol.where("username",       "==", username).limit(1);
-    const [sUserLower, sUserExact] = await Promise.all([
-      tx.get(qUserLower), tx.get(qUserExact)
-    ]);
-    if (!sUserLower.empty || !sUserExact.empty) throw conflict("Username already in use.");
-
-    if (authUid) {
-      const linkSnap = await tx.get(AUTH_LINKS.doc(authUid));
-      if (linkSnap.exists) throw conflict("Auth user already linked.");
-    }
-
-    const docId = await allocateSequentialId(tx); // write #1 inside
-
-    // WRITES only
-    tx.set(usersCol.doc(docId), {
-      id: docId,
-      role: role || null,
-      username,
-      username_lower: usernameLower,
-
-      email: rawEmail,
-      normalizedEmail,
-      gamerEmail: role === "gamer" ? rawEmail : "",
-      clubEmail:  role === "club"  ? rawEmail : "",
-      authUid,
-
-      password:    payload.password || "",
-      birthdate:   payload.birthdate || null,
-      nationality: payload.nationality || "",
-      gender:      payload.gender || "",
-      games:       Array.isArray(payload.games) ? payload.games : [],
-
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    if (authUid) {
-      tx.set(AUTH_LINKS.doc(authUid), {
-        userId: docId,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    }
-
-    return docId;
-  });
- try { await writeUserGames(newId, payload.games); } catch (e) { console.error("userGames fanout failed:", e); }
-  return { id: newId };
-}
-*/
 async function getAllUsersService() {
   const snap = await db.collection("users").orderBy("__name__").get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -263,7 +183,6 @@ async function deleteUserService(id) {
 
 module.exports = {
   verifyCompleteService,
- // createUserService,
   getAllUsersService,
   getUserService,
   getUserByAuthUidService,

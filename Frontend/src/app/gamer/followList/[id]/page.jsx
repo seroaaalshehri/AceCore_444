@@ -1,36 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { User as UserIcon } from "lucide-react";
-import {
-  collection, getDocs, getDoc, doc, orderBy, limit, query, startAfter,
-} from "firebase/firestore";
-import { db, storage } from "../../../../../lib/firebaseClient";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getApp } from "firebase/app";
 
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
+import { authedFetch } from "../../../../../lib/authedFetch";
 
-/** The user whose lists we’re showing */
-const USER_ID = "user123";
 
-/* ---- shared styles ---- */
+const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
+const API_ROOT = String(RAW_BASE).replace(/\/+$/, "");
+
+
+function api(path) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (API_ROOT.endsWith("/api")) return `${API_ROOT}${p.replace(/^\/api/, "")}`;
+  return `${API_ROOT}${p}`;
+}
+
+/* -------------------- UI classes -------------------- */
 const GOLD_BTN =
   "bg-[#FCCC22] text-[#2b2142b3] font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 const GOLD_BTN_GHOST =
   "border border-[#FCCC22] text-[#FCCC22] font-bold px-3 py-1 rounded text-l hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
-
-/** ZenofBar-like tab styles (hover -> gold text + gold underline) */
 const ZEN_TAB =
   "px-3 py-1 text-l font-bold border-b-2 border-transparent text-[#dee1e6] hover:text-[#FCCC22] hover:border-[#FCCC22] transition-colors";
 const ZEN_TAB_ACTIVE =
   "px-3 py-1 text-l font-bold border-b-2 border-[#FCCC22] text-[#FCCC22]";
 
-/** Hide “dangling” links if profile doc missing */
-const HIDE_MISSING_PROFILES = false;
-
-/* ---- list row ---- */
+/* -------------------- helper components -------------------- */
 function PersonRow({ u }) {
   const username = u?.username || "unknown";
   const firstName = u?.firstName || "";
@@ -51,7 +50,6 @@ function PersonRow({ u }) {
           </div>
         )}
       </div>
-
       <div className="min-w-0">
         <div className="text-white text-sm truncate">{display}</div>
         <div className="text-xs text-gray-300 truncate">
@@ -62,49 +60,19 @@ function PersonRow({ u }) {
   );
 }
 
-/* ---- helpers ---- */
-async function loadIdsFromSubcollection(userId, sub, useStartAfter) {
-  const colRef = collection(db, "users", userId, sub);
-  const baseQ = query(colRef, orderBy("__name__"), limit(20));
-  const q2 = useStartAfter ? query(baseQ, startAfter(useStartAfter)) : baseQ;
-  const snap = await getDocs(q2);
-  const ids = snap.docs.map((d) => d.id);
-  const next = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
-  return { ids, next };
-}
-
-async function loadProfilesByIds(ids) {
-  const out = [];
-  for (const id of ids) {
-    const pd = await getDoc(doc(db, "users", id));
-    if (pd.exists()) {
-      out.push({ id, ...pd.data() });
-    } else if (!HIDE_MISSING_PROFILES) {
-      out.push({ id, username: "unknown" });
-    }
-  }
-  return out;
-}
-
-function dedupeById(arr) {
-  const seen = new Set();
-  const out = [];
-  for (const x of arr) {
-    if (seen.has(x.id)) continue;
-    seen.add(x.id);
-    out.push(x);
-  }
-  return out;
-}
-
-/* ---- main page ---- */
+/* -------------------- page -------------------- */
 export default function FollowListsPage() {
-  const [tab, setTab] = useState("following");          // "following" | "followers"
-  const [roleFilter, setRoleFilter] = useState("all");  // "all" | "gamer" | "club"
+  const params = useParams();
+  const router = useRouter();
+  const USER_ID = Array.isArray(params?.id) ? params.id[0] : params?.id;
+
+  const [tab, setTab] = useState("following"); 
+  const [roleFilter, setRoleFilter] = useState("all"); 
 
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
-  const [lastDoc, setLastDoc] = useState({ following: null, followers: null });
+  const [nextCursor, setNextCursor] = useState({ following: null, followers: null });
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
@@ -112,81 +80,128 @@ export default function FollowListsPage() {
   const scrollRef = useRef(null);
   const sentinelRef = useRef(null);
 
-  // NEW: sidebar & search UI state
-  const [leftTab, setLeftTab] = useState("home");
-  const [q, setQ] = useState("");
-
   const activeListRaw = tab === "following" ? following : followers;
-  const activeLast = tab === "following" ? lastDoc.following : lastDoc.followers;
+  const activeCursor = tab === "following" ? nextCursor.following : nextCursor.followers;
 
-  // Apply role filter (client-side)
   const activeList = useMemo(() => {
     if (roleFilter === "all") return activeListRaw;
-    return activeListRaw.filter(
-      (u) => (u?.role || "").toLowerCase() === roleFilter
-    );
+    return activeListRaw.filter((u) => (u?.role || "").toLowerCase() === roleFilter);
   }, [activeListRaw, roleFilter]);
 
-  const hasMore = useMemo(() => !!activeLast, [activeLast]);
+  const hasMore = !!activeCursor;
 
-  async function fetchPage(which, useStartAfter) {
-    setLoading(true);
-    setError("");
-    try {
-      if (which === "following") {
-        const { ids, next } = await loadIdsFromSubcollection(USER_ID, "following", useStartAfter);
-        const profiles = await loadProfilesByIds(ids);
-        setFollowing((prev) => (useStartAfter ? dedupeById([...prev, ...profiles]) : profiles));
-        setLastDoc((p) => ({ ...p, following: next }));
-        console.debug("[DEBUG] following:", profiles);
-      } else {
-        const { ids, next } = await loadIdsFromSubcollection(USER_ID, "followers", useStartAfter);
-        const profiles = await loadProfilesByIds(ids);
-        setFollowers((prev) => (useStartAfter ? dedupeById([...prev, ...profiles]) : profiles));
-        setLastDoc((p) => ({ ...p, followers: next }));
-        console.debug("[DEBUG] followers:", profiles);
-      }
-    } catch (e) {
-      console.error(e);
-      setError(e?.message || "Failed to load from Firestore");
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
+  const dedupeById = (arr) => {
+    const seen = new Set();
+    const out = [];
+    for (const x of arr) {
+      if (!x?.id) continue;
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      out.push(x);
     }
-  }
+    return out;
+  };
 
+  // ---- fetch page from backend API ----
+  const fetchPage = useCallback(
+    async (which, cursor = null) => {
+      if (!USER_ID) return;
+      setLoading(true);
+      setError("");
+
+      try {
+        const url = new URL(api(`/gamer/${USER_ID}/${which}`));
+        url.searchParams.set("limit", "20");
+        if (cursor) url.searchParams.set("cursor", cursor);
+
+        const res = await authedFetch(url.toString(), {
+          headers: { Accept: "application/json" },
+          allowAnonymous: true, 
+        });
+
+        const ct = res.headers.get("content-type") || "";
+
+        // Non-2xx: read text for diagnostics
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status} on ${url}: ${txt.slice(0, 300)}`);
+        }
+
+        // Not JSON -> print snippet (likely HTML)
+        if (!ct.includes("application/json")) {
+          const txt = await res.text();
+          throw new Error(
+            `Expected JSON from ${url}, got content-type "${ct}". Body: ${txt.slice(0, 300)}`
+          );
+        }
+
+        const data = await res.json();
+        if (!data?.success) throw new Error(data?.message || "Failed to load");
+
+        const users = Array.isArray(data.users) ? data.users : [];
+        const next = data.next || null;
+
+        if (which === "following") {
+          setFollowing((prev) => (cursor ? dedupeById([...prev, ...users]) : users));
+          setNextCursor((p) => ({ ...p, following: next }));
+        } else {
+          setFollowers((prev) => (cursor ? dedupeById([...prev, ...users]) : users));
+          setNextCursor((p) => ({ ...p, followers: next }));
+        }
+      } catch (e) {
+        console.error(e);
+        setError(e?.message || "Failed to load");
+      } finally {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    },
+    [USER_ID]
+  );
+
+  
   useEffect(() => {
-    fetchPage("following", null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    console.log("API_ROOT:", API_ROOT);
+    if (USER_ID) fetchPage("following", null);
+  }, [USER_ID, fetchPage]);
 
+  
   useEffect(() => {
     if (tab === "followers" && followers.length === 0 && !initialLoading) {
       fetchPage("followers", null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, followers.length, initialLoading, fetchPage]);
 
-  // infinite scroll
+
   useEffect(() => {
-    if (!sentinelRef.current) return;
+    const rootElem = scrollRef.current;
+    const sentinel = sentinelRef.current;
+    if (!rootElem || !sentinel) return;
+
     const ob = new IntersectionObserver(
       (entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && hasMore && !loading) {
-          const startAfterDoc = tab === "following" ? lastDoc.following : lastDoc.followers;
-          fetchPage(tab, startAfterDoc || null);
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          const cursor = tab === "following" ? nextCursor.following : nextCursor.followers;
+          fetchPage(tab, cursor || null);
         }
       },
-      { root: scrollRef.current, threshold: 0.1 }
+      { root: rootElem, threshold: 0.1 }
     );
-    ob.observe(sentinelRef.current);
+
+    ob.observe(sentinel);
     return () => ob.disconnect();
-  }, [tab, hasMore, loading, lastDoc.followers, lastDoc.following]);
+  }, [tab, hasMore, loading, nextCursor.followers, nextCursor.following, fetchPage]);
+
+  if (!USER_ID) {
+    return (
+      <main className="p-6 text-red-300">
+        Missing user id in route.
+      </main>
+    );
+  }
 
   return (
     <>
-      {/* bg particles */}
       <div className="absolute inset-2 z-0">
         <Particles
           particleColors={["#ffffff"]}
@@ -197,16 +212,12 @@ export default function FollowListsPage() {
         />
       </div>
 
-      {/* LEFT: Sidebar */}
-      <LeftSidebar active={leftTab} onChange={setLeftTab} />
+      <LeftSidebar role="gamer" active="profile" userId={USER_ID} />
 
-      {/* RIGHT: push main card to the remaining space */}
       <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
       >
-
-
         <div className="mx-auto max-w-6xl">
           <div className="bg-[#2b2142b3] rounded-xl p-6 md:p-8">
             {/* Tabs + Role Filter */}
@@ -228,13 +239,11 @@ export default function FollowListsPage() {
                 </button>
               </div>
 
-              {/* Role filter: All | Gamers | Clubs — ZenofBar style */}
               <div className="flex gap-2">
                 <button
                   className={roleFilter === "all" ? ZEN_TAB_ACTIVE : ZEN_TAB}
                   onClick={() => setRoleFilter("all")}
                   type="button"
-                  title="Show all roles"
                 >
                   All
                 </button>
@@ -242,7 +251,6 @@ export default function FollowListsPage() {
                   className={roleFilter === "gamer" ? ZEN_TAB_ACTIVE : ZEN_TAB}
                   onClick={() => setRoleFilter("gamer")}
                   type="button"
-                  title="Only gamers"
                 >
                   Gamers
                 </button>
@@ -250,7 +258,6 @@ export default function FollowListsPage() {
                   className={roleFilter === "club" ? ZEN_TAB_ACTIVE : ZEN_TAB}
                   onClick={() => setRoleFilter("club")}
                   type="button"
-                  title="Only clubs"
                 >
                   Clubs
                 </button>
@@ -263,13 +270,14 @@ export default function FollowListsPage() {
               className="rounded-lg border border-[#3b2d5e] bg-[#1C1633]/40"
               style={{ maxHeight: "36rem", overflowY: "auto" }}
             >
-
               {initialLoading ? (
                 <div className="p-6 text-gray-300">Loading…</div>
               ) : error ? (
-                <div className="p-6 text-red-300">Error: {error}</div>
+                <div className="p-6 text-red-300 break-words">
+                  {error}
+                </div>
               ) : activeList.length === 0 ? (
-                <div className="p-6 text-gray-300">
+                <div className="p-6  text-gray-300">
                   {tab === "following"
                     ? roleFilter === "all"
                       ? "Not following anyone yet."
@@ -279,7 +287,7 @@ export default function FollowListsPage() {
                       : `No ${roleFilter}s in followers.`}
                 </div>
               ) : (
-                <ul className="divide-y divide-[#3b2d5e]">
+                <ul className="divide-y divide-[#3b2d5e] text-l">
                   {activeList.map((u) => (
                     <li key={`${tab}-${u.id}`}>
                       <PersonRow u={u} />
@@ -288,11 +296,9 @@ export default function FollowListsPage() {
                 </ul>
               )}
 
-              {/* sentinel */}
+              {/* sentinel for infinite scroll */}
               <div ref={sentinelRef} />
-
-              {/* footer state */}
-              <div className="p-3 text-center text-xs text-gray-400">
+              <div className="p-3 text-center text-sm text-gray-400">
                 {loading
                   ? "Loading more…"
                   : hasMore
@@ -307,14 +313,13 @@ export default function FollowListsPage() {
               <button
                 type="button"
                 className="text-red-400 font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:bg-[#3b2d5e] transition-shadow"
-                onClick={() => history.back()}
+                onClick={() => router.back()} 
               >
                 Back
               </button>
             </div>
           </div>
         </div>
-
       </main>
     </>
   );

@@ -11,7 +11,7 @@ export default function LogoutPage() {
     useEffect(() => {
         (async () => {
             try { await signOut(auth); } catch (e) { console.error(e); }
-            router.replace("/Home");           // ✅ always land on Home after sign-out
+            router.replace("/Home");          
         })();
     }, [router]);
 

@@ -113,10 +113,9 @@ export default function GamerHomePage() {
       </div>
 
       <LeftSidebar role="gamer" active="home" userId={id} />
-      <main style={{ marginLeft: SIDEBAR_WIDTH }} className="p-4"
-
-        className="relative z-10 pt-8"
-        style={{ marginLeft: SIDEBAR_WIDTH + 100, marginRight: 30 }}
+      <main  
+       className="relative z-10 pt-8 p-4"
+      style={{ marginLeft: SIDEBAR_WIDTH + 100, marginRight: 30 }}
       >
 
 

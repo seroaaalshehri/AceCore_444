@@ -1,7 +1,53 @@
 const fs = require("fs");
-const admin = require("firebase-admin");
-const { db } = require("../../Firebase/firebaseBackend");
+const { db ,admin } = require("../../Firebase/firebaseBackend");
+const { v4: uuidv4 } = require("uuid");
 
+async function uploadToFirebaseStorage(userId, fileInput) {
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || "acecore-7aa99.appspot.com";
+  const bucket = admin.storage().bucket(bucketName);
+
+  const safeName = `${Date.now()}-${fileInput.originalname.replace(/\s+/g, "_")}`;
+  const objectPath = `profileImages/${userId}/${safeName}`;
+  const gcsFile = bucket.file(objectPath);
+  const token = uuidv4();
+
+  await gcsFile.save(fileInput.buffer, {
+    metadata: {
+      contentType: fileInput.mimetype,
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+    resumable: false,
+  });
+
+  const url = `https://firebasestorage.googleapis.com/v0/b/${
+    bucket.name
+  }/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+
+  return { url, objectPath };
+}
+
+
+async function updateUserProfileService(userid, fields, { fileInput } = {}) {
+  const ref = db.collection("users").doc(userid);
+
+  const updates = {
+    firstName: fields.firstName,
+    lastName:  fields.lastName,
+    bio:       fields.bio,
+    nationality: fields.nationality,
+    socials:   fields.socials,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (fileInput) {
+    const { url, objectPath } = await uploadToFirebaseStorage(userid, fileInput);
+    updates.profilePhoto = url;            
+    updates.profilePhotoPath = objectPath;
+  }
+
+  await ref.set(updates, { merge: true });
+  return (await ref.get()).data();
+}
 
 async function addUserAchievement(userid, name, association, game, date, reqFile, baseUrl) {
   let fileUrl = null;
@@ -116,4 +162,5 @@ module.exports = {
   addUserGame,
   getUserGames,
   getGames,
+  updateUserProfileService
 };

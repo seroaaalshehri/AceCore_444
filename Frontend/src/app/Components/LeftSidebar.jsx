@@ -11,20 +11,20 @@ import {
   Search,
 } from "lucide-react";
 
-export const SIDEBAR_WIDTH = 300; // keep in sync with layout spacing
+export const SIDEBAR_WIDTH = 300; 
 const PANEL = "bg-[#2b2142b3] border border-[#3b2d5e]";
 
-/* ---------------- Gamer: ID at the end (/gamer/.../[id]) ---------------- */
+/* ---------------- Gamer: ID at the end ---------------- */
 const GAMER_ROUTES = {
   home: ({ userId }) => `/gamer/HomePage/${userId}`,
-  scrims: "/gamer/scrims", // change to a function if you later need /gamer/scrims/[id]
+  scrims: "/gamer/scrims", // change to a function later /gamer/scrims/[id]
   profile: ({ userId }) => `/gamer/profile/${userId}`,
   search: ({ userId }) => `/gamer/Search/${userId}`,
-  notifications: "/gamer/notifications", // make dynamic later if needed
+  notifications: "/gamer/notifications", 
   logout: "/Logout",
 };
 
-/* --------- Club: static now, optional dynamic later (toggle prop) -------- */
+/* --------- Club: static now, -------- */
 const CLUB_ROUTES_STATIC = {
   home: "/club/HomePage",
   scrims: "/club/scrims",
@@ -43,7 +43,6 @@ const CLUB_ROUTES_DYNAMIC = {
   logout: "/logout",
 };
 
-/** Resolve a route entry; if a function needs userId but it's missing, return null so we can disable the link */
 function resolveRoute(entry, params) {
   if (typeof entry === "function") {
     return params?.userId ? entry(params) : null;
@@ -69,11 +68,11 @@ function LeftNavItem({ icon: Icon, label, active, href, disabled = false }) {
 }
 
 export default function LeftSidebar({
-  role = "gamer",            // "gamer" | "club"
-  active = "home",           // "home" | "scrims" | "profile" | "search" | "notifications" | "logout"
+  role = "gamer",           
+  active = "home",        
   fixed = true,
-  userId,                    // gamer needs this; club only if you enable dynamic
-  clubDynamic = false,       // <-- keep club static by default; set true to use /club/.../[id]
+  userId,                
+  clubDynamic = false,       
 }) {
   const routes =
     role === "gamer"
@@ -113,7 +112,7 @@ export default function LeftSidebar({
           label="Home"
           active={active === "home"}
           href={homeHref}
-          disabled={!homeHref}  // gamer requires userId; club static is always enabled
+          disabled={!homeHref}  
         />
         <LeftNavItem
           icon={CalendarClock}

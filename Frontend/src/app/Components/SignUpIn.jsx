@@ -30,6 +30,12 @@ const GAME_OPTIONS = [
   { id: "code", label: "Call of Duty",  image: "/Call_of_Duty_Modern_Warfare_II_Key_Art.jpg" },
   { id: "ow",  label: "Overwatch",     image: "/Overwatch_cover_art.jpg" },
 ];
+const USERNAME_RE = /^(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{2,13}[A-Za-z0-9])$/;
+const PASSWORD_RE = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^\w\s])[^\s]{8,64}$/;
+
+const isValidUsername = v => USERNAME_RE.test(String(v || "").trim());
+const isStrongPassword = v => PASSWORD_RE.test(String(v || ""));
+
 
 export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [isActive, setIsActive] = useState(false);
@@ -45,6 +51,13 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [authBusy, setAuthBusy] = useState(false);
   const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
   const usernameValid = USERNAME_RE.test((formData.gamerUsername || "").trim());
+  const [gamerUsernameMsg, setGamerUsernameMsg] = useState("");
+  const [gamerPasswordMsg, setGamerPasswordMsg] = useState("");
+  const [clubUsernameMsg, setClubUsernameMsg] = useState("");
+  const [clubPasswordMsg, setClubPasswordMsg] = useState("");
+  const [genderError, setGenderError] = useState("");
+  const [gamesError, setGamesError] = useState("");
+
 
 React.useEffect(() => {
   if (errorMsg || okMsg) {
@@ -56,12 +69,6 @@ React.useEffect(() => {
   }
 }, [errorMsg, okMsg]);
 
-
-
-
-
-  const [genderError, setGenderError] = useState("");
-  const [gamesError, setGamesError] = useState("");
 
   const SOCIALS = [
     { key: "twitch", label: "Twitch", icon: "/twitchIcon.svg" },
@@ -107,7 +114,8 @@ const isValidSocialUrl = (platform, url) => {
     .map((c) => ({ key: c.cca2, label: getNationality(c) }))
     .filter((o) => !!o.label)
     .sort((a, b) => a.label.localeCompare(b.label));
-  React.useEffect(() => {
+  
+    React.useEffect(() => {
     handleChange({
       target: { name: "role", value: isActive ? "club" : "gamer" },
     });
@@ -116,7 +124,6 @@ const isValidSocialUrl = (platform, url) => {
   const switchToGamer = () => {
     setIsActive(false);
 
-    // Only call onRoleChange if it exists
     if (typeof onRoleChange === "function") {
       onRoleChange("gamer");
     }
@@ -131,7 +138,7 @@ const isValidSocialUrl = (platform, url) => {
   const switchToClub = () => {
     setIsActive(true);
 
-    // Only call onRoleChange if it exists
+
     if (typeof onRoleChange === "function") {
       onRoleChange("club");
     }
@@ -203,11 +210,11 @@ const handleGoogleSignIn = async () => {
     const email = result?.user?.email || "";
     if (!email) throw new Error("No email from Google");
 
-    // only reflect in the form; DO NOT finalize here
+   
     handleChange({ target: { name: "gamerEmail", value: email } });
     handleChange({ target: { name: "signupMethod", value: "oauth" } });
     setEmailLockedGamer(true);
-    // no fetch here
+  
   } catch (err) {
     console.error("Google popup error:", err);
     setErrorMsg("Google sign-up failed.");
@@ -248,31 +255,106 @@ const handleGameToggle = handleGameSelect;
 };
 
 
-const validateGamerForm = () => {
-  if (!formData?.gamerUsername || formData.gamerUsername.trim() === "") {
-    setErrorMsg("Please enter a username.");
-    return false;
-  }
-  if (!formData?.gender) {
-    setErrorMsg("Please select your gender.");
-    return false;
-  }
-  if (selectedGameIds.length === 0) {
-   setErrorMsg("Please select at least one game.");
-    return false;
-  }
-  setErrorMsg(""); // clear previous error
-  return true;
-};
+  const validateGamerForm = () => {
+    const uname = String(formData?.gamerUsername || "").trim();
+    const pass = String(formData?.gamerPassword || "");
 
-const validateClubForm = () => {
- 
-  if (selectedGameIds.length === 0) {
-   setErrorMsg("Please select at least one game.");
-    return false;
-  }
-  return true;
-};
+    if (!uname) {
+      setErrorMsg("Please enter a username.");
+      return false;
+    }
+    if (!isValidUsername(uname)) {
+      setErrorMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
+      return false;
+    }
+{/*COULD BE DELETED*/}
+    if (formData.signupMethod !== "oauth") {
+      if (!pass) {
+        setErrorMsg("Please enter a password.");
+        return false;
+      }
+      if (!isStrongPassword(pass)) {
+        setErrorMsg("Password must be 8 to 16 characters with upper, lower, number, special, no spaces.");
+        return false;
+      }
+    }
+
+    if (!formData?.gender) {
+      setErrorMsg("Please select your gender.");
+      return false;
+    }
+    if (selectedGameIds.length === 0) {
+      setErrorMsg("Please select at least one game.");
+      return false;
+    }
+    setErrorMsg("");
+    return true;
+  };
+
+
+  const validateClubForm = () => {
+    const uname = String(formData?.clubUsername || "").trim();
+    const pass = String(formData?.clubPassword || "");
+
+    if (!uname) {
+      setErrorMsg("Please enter a username.");
+      return false;
+    }
+    if (!isValidUsername(uname)) {
+      setErrorMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
+      return false;
+    }
+
+    if (!pass) {
+      setErrorMsg("Please enter a password.");
+      return false;
+    }
+    if (!isStrongPassword(pass)) {
+      setErrorMsg("Password must be  8 to 16 characters with upper, lower, number, special, no spaces.");
+      return false;
+    }
+
+    if (selectedGameIds.length === 0) {
+      setErrorMsg("Please select at least one game.");
+      return false;
+    }
+    return true;
+  };
+
+  const onInputChange = e => {
+    const name = e?.target?.name;
+    const value = e?.target?.value;
+    handleChange(e);
+
+    if (name === "gamerUsername") {
+      const v = String(value || "");
+      if (!v) setGamerUsernameMsg("Username is required.");
+      else if (/^[0-9]/.test(v)) setGamerUsernameMsg("Username cannot start with a number.");
+      else if (!isValidUsername(v)) setGamerUsernameMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
+      else setGamerUsernameMsg("");
+    }
+
+    if (name === "gamerPassword") {
+      const v = String(value || "");
+      if (!v) setGamerPasswordMsg("Password is required.");
+      else if (!isStrongPassword(v)) setGamerPasswordMsg("Password must be 8 to 16 characters with upper, lower, number, special, no spaces.");
+      else setGamerPasswordMsg("");
+    }
+
+    if (name === "clubUsername") {
+      const v = String(value || "");
+      if (!v) setClubUsernameMsg("Username is required.");
+      else if (!isValidUsername(v)) setClubUsernameMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
+      else setClubUsernameMsg("");
+    }
+
+    if (name === "clubPassword") {
+      const v = String(value || "");
+      if (!v) setClubPasswordMsg("Password is required.");
+      else if (!isStrongPassword(v)) setClubPasswordMsg("Password must be 8 to 16 characters with upper, lower, number, special, no spaces.");
+      else setClubPasswordMsg("");
+    }
+  };
 
   const onSubmitGamer = (e) => {
     e.preventDefault();
@@ -313,9 +395,6 @@ const validateClubLogo = () => {
 
   return (
     <div className={`container ${isActive ? "active" : ""}`} id="container">
-      
-
-      
 
       <div className="flex md:hidden justify-center gap-10 w-full pt-4 pb-2 border-b border-gray-700 ">
         <span
@@ -433,7 +512,7 @@ const validateClubLogo = () => {
                 onChange={handleChange}
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
-              //add verfication for club email((roaa))
+            
               />
 
 
@@ -448,10 +527,15 @@ const validateClubLogo = () => {
                 type="password"
                 placeholder="Enter password"
                 value={formData.clubPassword || ""}   
-                onChange={handleChange}
+                onChange={onInputChange}
                 required
+                minLength={8}
+                maxLength={16}
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
+                {clubPasswordMsg && (
+                <p className="mt-1 text-xs text-red-400">{clubPasswordMsg}</p>
+              )}
             </div>
           </div>
 
@@ -469,8 +553,14 @@ const validateClubLogo = () => {
                 value={formData.clubUsername || ""}
                 onChange={handleChange}
                 required
+                 minLength={4}
+                maxLength={15}
+                pattern="(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{2,13}[A-Za-z0-9])"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
+               {clubUsernameMsg && (
+                <p className="mt-1 text-xs text-red-400">{clubUsernameMsg}</p>
+              )}
             </div>
             <div className="w-1/2">
               <label htmlFor="club-name" className="block text-base mb-1">
@@ -482,10 +572,15 @@ const validateClubLogo = () => {
                 type="text"
                 placeholder="Name of the club"
                 value={formData.clubName || ""}
-                onChange={handleChange}
+                onChange={onInputChange}
+                 minLength={4}
+                maxLength={15}
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
+                {clubUsernameMsg && (
+                <p className="mt-1 text-xs text-red-400">{clubUsernameMsg}</p>
+              )}
             </div>
           </div>
           <div className="flex gap-3 w-full mt-3 items-start">
@@ -603,8 +698,6 @@ const validateClubLogo = () => {
     })}
   </div>
 
-
-  {/* HTML required guard (if you use it) */}
   <input
     type="text"
     name="games_required_check"
@@ -628,14 +721,14 @@ const validateClubLogo = () => {
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
-            <a href="/login" className="text-[#FCCC22] hover:underline">
+            <a href="http://localhost:3000/Signin" className="text-[#FCCC22] hover:underline">
               Sign in
             </a>
           </p>
         </form>
       </div>
 
-      {/* Gamer Sign Up Form (kept) */}
+      {/* Gamer Sign Up Form*/}
       <div className="form-container gamer-form font-bold">
         <form
           className="flex flex-col items-center w-full max-w-6xl md:max-w-7xl px-4"
@@ -646,7 +739,7 @@ const validateClubLogo = () => {
 
           <h1 className="text-2xl font-bold mb-3 text-center">Sign Up as a Gamer</h1>
 
-          {/* Social icons (Google sign in kept) */}
+          {/* Social icons */}
           <div className="w-full flex justify-center mb-3">
 
 
@@ -668,15 +761,6 @@ const validateClubLogo = () => {
             or use your email & password
           </span>
 
-           {/* for testing */}
-          {!isActive && (okMsg || errorMsg) && (
-            <p
-              className={`mt-2 mb-2 text-sm text-center ${errorMsg ? "text-red-400" : "text-green-400"
-                }`}
-            >
-              {errorMsg || okMsg}
-            </p>
-          )} 
          
           {/* Inputs */}
           <div className="flex flex-col gap-2 items-start w-full">
@@ -690,11 +774,17 @@ const validateClubLogo = () => {
                 type="text"
                 value={formData.gamerUsername || ""}
                 placeholder="Enter your Username"
-                onChange={handleChange}
+                onChange={onInputChange}
                 autoComplete="off"
+                required
+                 minLength={4}
+                maxLength={15}
+                pattern="(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{2,13}[A-Za-z0-9])"
                 className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
-
+             {gamerUsernameMsg && (
+                <p className="mt-1 text-xs text-red-400">{gamerUsernameMsg}</p>
+              )}
             </div>
 
             {/* Email + Password */}
@@ -729,10 +819,15 @@ const validateClubLogo = () => {
                   type="password"
                   placeholder="Enter your password"
                   value={formData.gamerPassword || ""}   
-                  onChange={handleChange}
-                  required
+                  onChange={onInputChange}
+                   required
+                  minLength={8}
+                  maxLength={16}
                   className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
                 />
+                  {gamerPasswordMsg && (
+                  <p className="mt-1 text-xs text-red-400">{gamerPasswordMsg}</p>
+                )}
               </div>
             </div>
 
@@ -947,9 +1042,6 @@ const validateClubLogo = () => {
       );
     })}
   </div>
-
-
-  {/* HTML required guard (if you use it) */}
   <input
     type="text"
     name="games_required_check"
@@ -973,12 +1065,13 @@ const validateClubLogo = () => {
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
-            <a href="/Signin" className="text-[#FCCC22] hover:underline">
+            <a href="http://localhost:3000/Signin" className="text-[#FCCC22] hover:underline">
               Sign in
             </a>
           </p>
         </form>
       </div >
+
       {/* Toggle Panels */}
       <div className="toggle-container" >
         <div className="toggle">

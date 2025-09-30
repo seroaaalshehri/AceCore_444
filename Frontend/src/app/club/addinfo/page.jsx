@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { User } from "lucide-react";
 import countries from "world-countries";
 
-/* ✅ Same testing path as Gamer: client → Firestore/Storage */
 import { db, storage } from "../../../../lib/firebaseClient";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -13,34 +12,29 @@ import Particles from "../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../Components/LeftSidebar";
 import { useRouter } from "next/navigation";
 
-/** -------- CONFIG -------- */
 const USER_ID = "user123";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/+$/, "") || "http://localhost:4000";
 const VIEW_PROFILE_URL = `/club/${USER_ID}`;
 
-/** -------- styles -------- */
-/* SIZE-ONLY: match Gamer AdInfo (bigger field padding, font, placeholder) */
+
 const FIELD_CLS =
   "w-full p-4 rounded-md bg-[#eee] text-[#1C1633] text-lg placeholder:text-lg " +
   "border border-[#3b2d5e] hover:shadow-[0_0_12px_#5f4a87] focus:outline-none " +
   "focus:ring-2 focus:ring-[#5f4a87] focus:border-[#5f4a87] focus:shadow-[0_0_12px_#5f4a87]";
 const DISABLED_FIELD = "opacity-60 cursor-not-allowed";
-/* SIZE-ONLY: slightly larger buttons */
 const GOLD_BTN =
   "bg-[#FCCC22] text-[#2b2142b3] font-bold px-4 py-2 rounded text-base " +
   "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 
 const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
-/* helpers */
 const withHttps = (v) => {
   const s = (v || "").trim();
   if (!s) return "";
   return /^https?:\/\//i.test(s) ? s : `https://${s}`;
 };
 
-// --- Social URL rules ---
 const SOCIAL_PATTERNS = {
   twitch: [/^https?:\/\/(www\.)?twitch\.tv\/[A-Za-z0-9_]+\/?$/i],
   x: [/^https?:\/\/(www\.)?(x\.com|twitter\.com)\/[A-Za-z0-9_]{1,15}(\/.*)?$/i],
@@ -69,7 +63,6 @@ const isValidSocialUrlByPlatform = (platform, url) => {
   return rules.some((re) => re.test(candidate));
 };
 
-/* SIZE-ONLY SocialField to match Gamer */
 function SocialField({ iconSrc, placeholder, value, onChange, disabled, error }) {
   const cls =
     `${FIELD_CLS} ${disabled ? DISABLED_FIELD : ""}` +
@@ -123,12 +116,10 @@ export default function ClubPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
-  /* edit toggles (pen-only editing) */
   const [editClubName, setEditClubName] = useState(false);
   const [editUsername, setEditUsername] = useState(false);
   const [editCountry, setEditCountry] = useState(false);
 
-  // Pens only for Twitch & X; YouTube/Discord are editable without a pen
   const [editSocials, setEditSocials] = useState({
     twitch: false,
     x: false,
@@ -136,15 +127,12 @@ export default function ClubPage() {
     discord: true,
   });
 
-  // sidebar/search UI state
   const [leftTab, setLeftTab] = useState("home");
   const [q, setQ] = useState("");
 
-  // modals
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
-  // logo picker (pen-only trigger)
   const logoFileRef = useRef(null);
   const [logoFile, setLogoFile] = useState(null);
   const onPickLogo = () => logoFileRef.current?.click();
@@ -166,7 +154,6 @@ export default function ClubPage() {
     setForm((p) => ({ ...p, [group]: { ...p[group], [key]: value } }));
   };
 
-  /** LOAD — Firestore */
   useEffect(() => {
     (async () => {
       try {
@@ -195,7 +182,6 @@ export default function ClubPage() {
     })();
   }, []);
 
-  /** Required-field validation (incl. URLs + logo) */
   const validate = () => {
     const errs = {};
 
@@ -213,7 +199,7 @@ export default function ClubPage() {
       }
     });
 
-    // Optional: YouTube and Discord — validate only if provided
+    // Optional: YouTube and Discord 
     ["youtube", "discord"].forEach((k) => {
       const v = (form.socials?.[k] || "").trim();
       if (v && !isValidSocialUrlByPlatform(k, v)) {
@@ -229,7 +215,6 @@ export default function ClubPage() {
     return Object.keys(errs).length === 0;
   };
 
-  /** Core save (used by Save modal's Yes) */
   const doSave = async () => {
     if (!validate()) {
       setShowSaveConfirm(false);
@@ -291,7 +276,6 @@ export default function ClubPage() {
 
   return (
     <>
-      {/* bg */}
       <div className="absolute inset-2 z-0">
         <Particles
           particleColors={["#ffffff"]}
@@ -305,7 +289,6 @@ export default function ClubPage() {
       {/* LEFT: Sidebar */}
       <LeftSidebar active={leftTab} onChange={setLeftTab} />
 
-      {/* RIGHT: Editable card area */}
       <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
@@ -316,9 +299,7 @@ export default function ClubPage() {
               <p className="text-gray-300">Loading club profile…</p>
             ) : (
               <form onSubmit={onSubmit} className="h-full grid gap-6 md:grid-cols-[320px,1fr]">
-                {/* LEFT: logo column */}
                 <div className="flex flex-col items-center justify-center">
-                  {/* SIZE-ONLY: larger avatar to match Gamer */}
                   <div className="w-72 h-72 mx-auto rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.6)] flex items-center justify-center">
                     {photoPreview ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -353,14 +334,12 @@ export default function ClubPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: fields column */}
                 <div className="flex mt-6 flex-col h-full">
                   <div className="space-y-5">
                     {/* club name */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          {/* SIZE-ONLY: bigger, bold label */}
                           <label className="block text-base font-semibold text-gray-300">Club name</label>
                           {errors.clubName && (
                             <span className="text-red-400 text-xs">This field is required</span>
@@ -429,7 +408,6 @@ export default function ClubPage() {
 
                     {/* socials */}
                     <div>
-                      {/* SIZE-ONLY: section heading bigger/bolder */}
                       <span className="block text-xl font-semibold text-gray-300 mb-2">
                         Social Media Links
                       </span>
@@ -578,7 +556,6 @@ export default function ClubPage() {
                     </div>
                   </div>
 
-                  {/* actions pinned inside the card */}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button type="button" onClick={handleCancelClick} className={GOLD_BTN}>
                       Cancel

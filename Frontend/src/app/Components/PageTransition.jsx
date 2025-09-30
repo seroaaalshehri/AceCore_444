@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 
 const TOTAL_STARS = 150;
-const ANIMATION_DURATION = 2; // seconds
+const ANIMATION_DURATION = 2; 
 
 export default function PageTransition({ children }) {
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -13,7 +13,6 @@ export default function PageTransition({ children }) {
   const pathname = usePathname();
   const lastPath = useRef(pathname);
 
-  // Trigger animation on ANY route change (forward/back)
   useEffect(() => {
     if (lastPath.current !== pathname) {
       setIsTransitioning(true);
@@ -25,7 +24,6 @@ export default function PageTransition({ children }) {
     }
   }, [pathname]);
 
-  // Handle manual navigation (SignIn, SignUp, Get Started)
   const handleNavigate = (route) => {
     setIsTransitioning(true);
     setNextRoute(route);

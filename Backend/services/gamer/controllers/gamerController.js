@@ -1,14 +1,54 @@
-const { 
-  addUserAchievement, 
-  getUserAchievements, 
+const { admin, db } = require('../../../Firebase/firebaseBackend');
+const { FieldPath } = admin.firestore;
+
+const {
+  addUserAchievement,
+  getUserAchievements,
   getUserById,
   getFollowNum,
   addUserGame,
   getUserGames,
   getGames,
+  updateUserProfileService,
+
 } = require("../gamerService");
 
 
+//addInfo
+async function UpdateUserProfile(req, res) {
+  try {
+    const { userid } = req.params;
+
+    const payload = typeof req.body?.profile === "string"
+      ? JSON.parse(req.body.profile)
+      : (req.body || {});
+
+    const safe = {
+      firstName: payload.firstName ?? "",
+      lastName: payload.lastName ?? "",
+      bio: payload.bio ?? "",
+      nationality: payload.nationality ?? "",
+      socials: {
+        twitch: payload?.socials?.twitch ?? "",
+        youtube: payload?.socials?.youtube ?? "",
+        x: payload?.socials?.x ?? "",
+        discord: payload?.socials?.discord ?? "",
+      },
+    };
+
+    const fileInput = req.file ? {
+      buffer: req.file.buffer,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+    } : null;
+
+    const updated = await updateUserProfileService(userid, safe, { fileInput });
+    return res.json({ success: true, profile: updated });
+  } catch (err) {
+    console.error("❌ UpdateUserProfile error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
 
 // Add achievement
 async function addAchievement(req, res) {
@@ -58,10 +98,12 @@ async function getUserProfile(req, res) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (data.profilePhoto && !data.profilePhoto.startsWith("http")) {
-      const baseUrl =` ${req.protocol}://${req.get("host")}`.replace("3000", "4000");
-      data.profilePhoto = `${baseUrl}/${data.profilePhoto}`;
+    if (data.profilePhoto && !/^https?:\/\//i.test(data.profilePhoto)) {
+      const baseUrl = `${req.protocol}://${req.get("host")}`.replace("3000", "4000");
+      const rel = String(data.profilePhoto).replace(/^\/+/, ""); // e.g. "storage/profileImages/.."
+      data.profilePhoto = `${baseUrl}/${rel}`;
     }
+
 
     res.json({ success: true, profile: data });
   } catch (err) {
@@ -84,7 +126,7 @@ async function getFollowNums(req, res) {
 async function addGame(req, res) {
   try {
     const { userid } = req.params;
-    const {gameid, username, rank } = req.body;
+    const { gameid, username, rank } = req.body;
 
     if (!userid || !gameid) {
       return res.status(400).json({
@@ -94,11 +136,11 @@ async function addGame(req, res) {
     }
 
     const result = await addUserGame(
-       gameid,
-       rank ?? 0,
-       userid,
+      gameid,
+      rank ?? 0,
+      userid,
       username ?? "—",
-  
+
     );
 
     res.json({ success: true, ...result });
@@ -110,7 +152,7 @@ async function addGame(req, res) {
 async function listGames(req, res) {
   try {
     const { userid } = req.params;
-  
+
     const games = await getUserGames(userid);
     res.json({ success: true, games });
   } catch (err) {
@@ -129,6 +171,83 @@ async function getAllGames(req, res) {
 }
 
 
+async function getFollowing(req, res) {
+  try {
+    const userId = req.params.userid;
+    const pageSize = Math.min(parseInt(req.query.limit || '20', 10), 50);
+    const cursor = req.query.cursor || null;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "Missing userid" });
+    }
+
+    let q = db
+      .collection('users')
+      .doc(userId)
+      .collection('following')
+      .orderBy(FieldPath.documentId())
+      .limit(pageSize);
+
+    if (cursor) q = q.startAfter(cursor);
+
+    const snap = await q.get();
+    const ids = snap.docs.map(d => d.id);
+
+    // Hydrate basic profiles
+    const users = await Promise.all(
+      ids.map(async (id) => {
+        const docSnap = await db.collection('users').doc(id).get();
+        return docSnap.exists ? { id, ...docSnap.data() } : { id };
+      })
+    );
+
+    const next = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null;
+    return res.json({ success: true, users, next });
+  } catch (e) {
+    console.error("getFollowing error:", e);
+    return res.status(500).json({ success: false, message: "Internal error" });
+  }
+}
+
+
+async function getFollowers(req, res) {
+  try {
+    const userId = req.params.userid;
+    const pageSize = Math.min(parseInt(req.query.limit || '20', 10), 50);
+    const cursor = req.query.cursor || null;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "Missing userid" });
+    }
+
+    let q = db
+      .collection('users')
+      .doc(userId)
+      .collection('followers')
+      .orderBy(FieldPath.documentId())
+      .limit(pageSize);
+
+    if (cursor) q = q.startAfter(cursor);
+
+    const snap = await q.get();
+    const ids = snap.docs.map(d => d.id);
+
+    const users = await Promise.all(
+      ids.map(async (id) => {
+        const docSnap = await db.collection('users').doc(id).get();
+        return docSnap.exists ? { id, ...docSnap.data() } : { id };
+      })
+    );
+
+    const next = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null;
+    return res.json({ success: true, users, next });
+  } catch (e) {
+    console.error("getFollowers error:", e);
+    return res.status(500).json({ success: false, message: "Internal error" });
+  }
+}
+
+
 module.exports = {
   addAchievement,
   listAchievements,
@@ -137,5 +256,12 @@ module.exports = {
   addGame,
   listGames,
   getAllGames,
-  
+  UpdateUserProfile,
+  getFollowing,
+  getFollowers,
+
 };
+
+
+
+

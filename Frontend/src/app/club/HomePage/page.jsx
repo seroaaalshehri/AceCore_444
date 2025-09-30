@@ -16,7 +16,6 @@ const seedPosts = [
   { id: "p5", title: "Call Of Duty — Game starts 26 Oct · 3pm", team: "Falcons" },
 ];
 
-/* expand seed data so load-more is visible during dev (replace with API later) */
 const ALL_POSTS = Array.from({ length: 48 }, (_, i) => {
   const base = seedPosts[i % seedPosts.length];
   return { id: `p-${i + 1}`, title: base.title, team: base.team };
@@ -26,12 +25,10 @@ export default function ClubHomePage() {
   const [leftTab, setLeftTab] = useState("home");
   const [q, setQ] = useState("");
 
-  /* ---- Load-more for POSTS ---- */
   const PAGE_SIZE = 6;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  /* filter posts by search (matches title or team) */
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return ALL_POSTS;
@@ -44,13 +41,11 @@ export default function ClubHomePage() {
 
   const canLoadMore = visibleCount < filtered.length;
 
-  /* reset when search changes */
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
     setLoadingMore(false);
   }, [q]);
 
-  /* click handler for "Load more" */
   const handleLoadMore = async () => {
     if (!canLoadMore || loadingMore) return;
     try {
@@ -64,14 +59,12 @@ export default function ClubHomePage() {
 
   /* add post */
   const onAddPost = () => {
-    // TODO: open modal or navigate to your "create post" page
-    // e.g. router.push("/club/posts/new")
+    
     console.log("Add Post clicked");
   };
 
   return (
     <>
-      {/* background */}
       <div className="absolute inset-2 z-0">
         <Particles
           particleColors={["#ffffff"]}
@@ -91,7 +84,7 @@ export default function ClubHomePage() {
         style={{ marginLeft: SIDEBAR_WIDTH + 100, marginRight: 24 }}
       >
 
-        {/* POSTS (vertical grid + load-more) */}
+        {/* POSTS */}
         <section >
           <div className=" flex items-center justify-between">
             <h2 className="font-semibold text-xl text-[#FCCC22]">Posts</h2>
@@ -108,7 +101,6 @@ export default function ClubHomePage() {
           </div>
 
           <div className="mt-3">
-            {/* 3 columns on large, 2 on md, 1 on small */}
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
               {filtered.slice(0, visibleCount).map((p) => (
                 <article
@@ -129,7 +121,7 @@ export default function ClubHomePage() {
               ))}
             </div>
 
-            {/* Load more control */}
+            {/* Load more  */}
             <div className="mt-6 flex items-center justify-center">
               {canLoadMore ? (
                 <button

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Lottie from "lottie-react";
 import clubSignUp from "../../../public/ClubSignUpIcon.json";
 import gamerSignUp from "../../../public/GamerSignup.json";
+import Link from "next/link";
 
 import { auth } from "../../../lib/firebaseClient";
 import { OAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
@@ -31,9 +32,18 @@ export default function SignIn({
   const [cEmail, setCEmail] = useState("");
   const [cPw, setCPw] = useState("");
 
+  // Gmail guard (added)
+  const [gGmailMsg, setGGmailMsg] = useState("");
+
   // Added: Twitch local state
   const [tLoading, setTLoading] = useState(false);
   const [tError, setTError] = useState("");
+
+  // Gmail domain checker (added)
+  const isGmailAddress = (email) => {
+    const domain = String(email || "").split("@")[1]?.toLowerCase() || "";
+    return domain === "gmail.com" || domain === "googlemail.com";
+  };
 
   // Added: Twitch login handler (embedded)
   const handleTwitchLogin = async () => {
@@ -60,6 +70,9 @@ export default function SignIn({
       setTLoading(false);
     }
   };
+
+  // Derived: should block gamer password flow if Gmail (added)
+  const gmailBlock = isGmailAddress(gEmail);
 
   return (
     <div className={`container ${isClub ? "active" : ""}`} id="container">
@@ -106,7 +119,7 @@ export default function SignIn({
                 type="email"
                 value={cEmail}
                 onChange={(e) => setCEmail(e.target.value)}
-                placeholder="you@club.com"
+                placeholder="Enter your Email"
                 required
                 disabled={cLoading || tLoading}
                 autoComplete="email"
@@ -122,7 +135,7 @@ export default function SignIn({
                 type="password"
                 value={cPw}
                 onChange={(e) => setCPw(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter your password "
                 required
                 disabled={cLoading || tLoading}
                 autoComplete="current-password"
@@ -154,6 +167,13 @@ export default function SignIn({
               <span>{tLoading ? " Connecting to Twitch..." : " Continue with Twitch"}</span>
             </button>
           </div>
+          <p className="mt-3 text-sm text-gray-400 text-center">
+            Don&apos;t have an account?{" "}
+            <Link href="/SignUp" className="text-[#FCCC22] hover:underline">
+              Sign up
+            </Link>
+          </p>
+
         </form>
       </div>
 
@@ -163,6 +183,11 @@ export default function SignIn({
           className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
           onSubmit={(e) => {
             e.preventDefault();
+            if (gmailBlock) {
+              // hard stop if Gmail
+              setGGmailMsg("This looks like a Gmail address. Please click “Continue with Google”.");
+              return;
+            }
             if (!gLoading) onGamerEmailLogin?.(gEmail, gPw);
           }}
         >
@@ -177,10 +202,25 @@ export default function SignIn({
                 id="g-email"
                 type="email"
                 value={gEmail}
-                onChange={(e) => setGEmail(e.target.value)}
-                placeholder="you@gamer.com"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setGEmail(v);
+                  // live hint
+                  if (isGmailAddress(v)) {
+                    setGGmailMsg("This looks like a Gmail address. Please click “Continue with Google”.");
+                  } else {
+                    setGGmailMsg("");
+                  }
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value;
+                  if (isGmailAddress(v)) {
+                    setGGmailMsg("This looks like a Gmail address. Please click “Continue with Google”.");
+                  }
+                }}
+                placeholder="Enter your Email"
                 required
-                disabled={gLoading}
+                disabled={gLoading /* keep email editable even when Gmail */}
                 autoComplete="email"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -194,19 +234,22 @@ export default function SignIn({
                 type="password"
                 value={gPw}
                 onChange={(e) => setGPw(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter your password "
                 required
-                disabled={gLoading}
+                disabled={gLoading || gmailBlock /* lock when Gmail */}
                 autoComplete="current-password"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
+          {/* Gmail guard message */}
+          {gGmailMsg && <p className="text-red-400 text-sm mt-2">{gGmailMsg}</p>}
+
           {gError && <p className="text-red-400 text-sm mt-2">{gError}</p>}
 
           <button
-            disabled={gLoading}
+            disabled={gLoading || gmailBlock /* lock submit when Gmail */}
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_12px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
@@ -224,6 +267,12 @@ export default function SignIn({
               <span> Continue with Google</span>
             </button>
           </div>
+          <p className="mt-3 text-sm text-gray-400 text-center">
+            Don&apos;t have an account?{" "}
+            <Link href="/SignUp" className="text-[#FCCC22] hover:underline">
+              Sign up
+            </Link>
+          </p>
         </form>
       </div>
 

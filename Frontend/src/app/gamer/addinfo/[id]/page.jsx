@@ -5,16 +5,14 @@ import Image from "next/image";
 import countries from "world-countries";
 import { User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
 
-/* -------------------- ABSOLUTE BACKEND URL (NO DOUBLE /api) -------------------- */
-const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
-const API_BASE = RAW_BASE.replace(/\/+$/, "");                // no trailing slash
-const profileUrl = (id) => `${API_BASE}/api/gamer/${encodeURIComponent(id)}/profile`;
+const API_BASE =process.env.NEXT_PUBLIC_API_BASE;
 
-/* -------------------- styles -------------------- */
+/** -------- styles -------- */
 const FIELD_CLS =
   "w-full p-4 rounded-md bg-[#eee] text-[#1C1633] text-lg placeholder:text-lg " +
   "border border-[#3b2d5e] hover:shadow-[0_0_12px_#5f4a87] focus:outline-none " +
@@ -24,7 +22,7 @@ const GOLD_BTN =
   "bg-[#FCCC22] text-[#2b2142b3] font-bold px-4 py-2 rounded text-base " +
   "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 
-/* -------------------- helpers -------------------- */
+/** -------- helpers  -------- */
 function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
   const base =
     "w-full p-4 rounded-md bg-[#eee] text-[#1C1633] text-lg placeholder:text-lg " +
@@ -35,17 +33,28 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
     (error
       ? " border-red-500 focus:ring-red-400 focus:border-red-400 focus:shadow-[0_0_12px_#f87171]"
       : "");
+
   return (
     <div>
       {label && (
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <label className="block text-base font-semibold text-gray-300">{label}</label>
-            {error && <span className="text-red-400 text-xs" title={error}>{error}</span>}
+            <label className="block text-base font-semibold text-gray-300">
+              {label}
+            </label>
+            {error && (
+              <span
+                className="text-red-400 text-xs whitespace-nowrap truncate max-w-[260px] md:max-w-[420px]"
+                title={error}
+              >
+                {error}
+              </span>
+            )}
           </div>
           <span className="opacity-0 select-none">✎</span>
         </div>
       )}
+
       <div className="relative">
         <button
           type="button"
@@ -92,12 +101,14 @@ const SOCIAL_PATTERNS = {
     /^https?:\/\/(www\.)?discord\.com\/invite\/[A-Za-z0-9-]+\/?$/i,
   ],
 };
+
 const SOCIAL_ERROR_MSG = {
   twitch: "Invalid Twitch link. Ex: https://twitch.tv/yourname",
   x: "Invalid X link. Ex: https://x.com/yourhandle",
   youtube: "Invalid YouTube link. Ex: youtube.com/@name",
   discord: "Invalid Discord invite. Ex: discord.gg/abc123",
 };
+
 const isValidSocialUrlByPlatform = (platform, url) => {
   const v = (url || "").trim();
   if (!v) return false;
@@ -106,31 +117,31 @@ const isValidSocialUrlByPlatform = (platform, url) => {
   return rules.some((re) => re.test(candidate));
 };
 
-/* ---- nationality options ---- */
+
 const getNationality = (c) =>
   c?.demonyms?.eng?.m || c?.demonym || c?.nationality || c?.name?.common;
+
 const NATIONALITY_OPTIONS = countries
   .filter((c) => c.cca2 !== "IL")
   .map((c) => ({ key: c.cca2, label: getNationality(c) }))
   .filter((o) => !!o.label)
   .sort((a, b) => a.label.localeCompare(b.label));
 
-/** Guard: throw if HTML (e.g. 404 page from Next dev server) */
+
 async function readApiJson(res) {
   if (res.status === 204) return { success: true };
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) return await res.json();
   const text = await res.text();
-  throw new Error(`Non-JSON response ${res.status} ${res.statusText}: ${text.slice(0, 200)}`);
+  throw new Error(
+    `Non-JSON response ${res.status} ${res.statusText}: ${text.slice(0, 200)}`
+  );
 }
 
-/* ===================================================================== */
-
-export default function GamerPage() {
+export default function AddInfoPage() {
   const router = useRouter();
   const { id } = useParams();
   const USER_ID = Array.isArray(id) ? id[0] : id;
-  const PROFILE_URL = profileUrl(USER_ID);
   const VIEW_PROFILE_URL = `/gamer/profile/${USER_ID}`;
 
   const [form, setForm] = useState({
@@ -160,109 +171,124 @@ export default function GamerPage() {
     setForm((p) => ({ ...p, [group]: { ...p[group], [key]: value } }));
   };
 
-  /** READ profile FROM BACKEND (4000) */
-  useEffect(() => {
-    (async () => {
-      try {
-        // absolute URL → hit 4000 directly (avoid /api on 3000)
-        const res = await authedFetch(PROFILE_URL, { headers: { Accept: "application/json" } });
-        const data = await readApiJson(res);
-        if (data?.success) {
-          const d = data.profile || {};
-          const next = {
-            firstName: d.firstName || "",
-            lastName: d.lastName || "",
-            bio: d.bio || "",
-            nationality: d.nationality || "",
-            socials: {
-              twitch: d.socials?.twitch || "",
-              youtube: d.socials?.youtube || "",
-              x: d.socials?.x || "",
-              discord: d.socials?.discord || "",
-            },
-          };
-          setForm(next);
-          setOriginalForm(next);
-          setPhotoPreview(d.profilePhoto || d.photoUrl || "");
-        }
-      } catch (e) {
-        console.warn("[Load profile] failed:", e);
-      } finally {
-        setLoading(false);
+
+  //Read from getProfile
+useEffect(() => {
+  (async () => {
+    try {
+      const res = await authedFetch(
+        `${API_BASE}/gamer/${encodeURIComponent(USER_ID)}/profile`,
+        { headers: { Accept: "application/json" } }
+      );
+      const data = await readApiJson(res);
+      if (data?.success) {
+        const d = data.profile || {};
+        const next = {
+          firstName: d.firstName || "",
+          lastName:  d.lastName  || "",
+          bio:       d.bio       || "",
+          nationality: d.nationality || "",
+          socials: {
+            twitch:  d.socials?.twitch  || "",
+            youtube: d.socials?.youtube || "",
+            x:       d.socials?.x       || "",
+            discord: d.socials?.discord || "",
+          },
+        };
+        setForm(next);
+        setOriginalForm(next);
+        setPhotoPreview(d.profilePhoto || d.photoUrl || "");
       }
-    })();
-  }, [PROFILE_URL]);
+    } catch (e) {
+      console.warn("[Load profile] failed:", e);
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, [USER_ID]);
+
 
   const validate = () => {
     const errs = {};
     if (!form.nationality.trim()) errs.nationality = "Nationality is required";
     ["twitch", "x", "youtube", "discord"].forEach((k) => {
       const v = (form.socials?.[k] || "").trim();
-      if (v && !isValidSocialUrlByPlatform(k, v)) errs[k] = SOCIAL_ERROR_MSG[k];
+      if (v && !isValidSocialUrlByPlatform(k, v)) {
+        errs[k] = SOCIAL_ERROR_MSG[k];
+      }
     });
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  /** PUT profile (4000). No POST fallback unless your server supports it. */
-  const putProfile = async (body, headers) => {
-    console.log("[PUT]", PROFILE_URL, photoFile ? "multipart" : "json"); // see it's :4000
-    const res = await authedFetch(PROFILE_URL, { method: "PUT", body, headers });
+
+  const sendUpdate = async (method, body, headers) => {
+    const res = await authedFetch(
+      `${API_BASE}/gamer/${encodeURIComponent(USER_ID)}/profile`,
+      { method, body, headers }
+    );
     if (res.redirected || res.url.includes("/Signin") || res.status === 401) {
       window.location.href = `/Signin?next=${encodeURIComponent(window.location.pathname)}`;
       return { success: false };
     }
     const data = await readApiJson(res);
-    if (!res.ok || !data?.success) throw new Error(data?.error || `Save failed with ${res.status}`);
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.error || `Save failed with ${res.status}`);
+    }
     return data;
   };
 
+  /** WRITE (identical logic): multipart when file, JSON otherwise, PUT→POST fallback */
   const doSave = async () => {
-    if (!validate()) {
-      setShowSaveConfirm(false);
-      return;
-    }
+  if (!validate()) { setShowSaveConfirm(false); return; }
 
-    const payload = {
-      firstName: form.firstName || "",
-      lastName: form.lastName || "",
-      bio: form.bio || "",
-      nationality: form.nationality || "",
-      socials: {
-        twitch: withHttps(form.socials?.twitch || ""),
-        youtube: withHttps(form.socials?.youtube || ""),
-        x: withHttps(form.socials?.x || ""),
-        discord: withHttps(form.socials?.discord || ""),
-      },
-    };
-
-    setSaving(true);
-    try {
-      let data;
-      if (photoFile) {
-        const fd = new FormData();
-        fd.append("profile", JSON.stringify(payload));
-        fd.append("file", photoFile);
-        data = await putProfile(fd /* multipart: no headers */);
-      } else {
-        const headers = { "Content-Type": "application/json", Accept: "application/json" };
-        const body = JSON.stringify(payload);
-        data = await putProfile(body, headers);
-      }
-
-      if (!data?.success) return;
-
-      setOriginalForm(form);
-      setIsCountryEditing(false);
-      setShowSaveConfirm(false);
-      router.push(VIEW_PROFILE_URL);
-    } catch (err) {
-      console.error("Save error:", err);
-      alert(err?.message || "Failed to save profile");
-    } finally {
-      setSaving(false);
-    }
+  const payload = {
+    firstName: form.firstName || "",
+    lastName:  form.lastName  || "",
+    bio:       form.bio       || "",
+    nationality: form.nationality || "",
+    socials: {
+      twitch:  withHttps(form.socials?.twitch  || ""),
+      youtube: withHttps(form.socials?.youtube || ""),
+      x:       withHttps(form.socials?.x       || ""),
+      discord: withHttps(form.socials?.discord || ""),
+    },
   };
+
+  setSaving(true);
+  try {
+    let res, data;
+
+    if (photoFile) {
+      const fd = new FormData();
+      fd.append("file", photoFile);
+      fd.append("profile", JSON.stringify(payload));
+      res = await authedFetch(`${API_BASE}/gamer/${encodeURIComponent(USER_ID)}/profile`, {
+        method: "POST",
+        body: fd,
+      });
+    } else {
+      res = await authedFetch(`${API_BASE}/gamer/${encodeURIComponent(USER_ID)}/profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    data = await readApiJson(res);
+    if (!res.ok || !data?.success) throw new Error(data?.error || `Save failed ${res.status}`);
+
+    setOriginalForm(form);
+    setIsCountryEditing(false);
+    setShowSaveConfirm(false);
+    router.push(VIEW_PROFILE_URL);
+  } catch (err) {
+    console.error("Save error:", err);
+    alert(err?.message || "Failed to save profile");
+  } finally {
+    setSaving(false);
+  }
+};
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -291,7 +317,6 @@ export default function GamerPage() {
 
   return (
     <>
-      {/* bg particles */}
       <div className="absolute inset-2 z-0">
         <Particles
           particleColors={["#ffffff"]}
@@ -304,7 +329,6 @@ export default function GamerPage() {
 
       <LeftSidebar role="gamer" active="profile" userId={USER_ID} />
 
-      {/* RIGHT: Editable card area */}
       <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
@@ -330,8 +354,11 @@ export default function GamerPage() {
                   >
                     <div className="w-72 h-72 mx-auto rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)] flex items-center justify-center cursor-pointer">
                       {photoPreview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
+                        <img
+                          src={photoPreview}
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <User className="w-32 h-32 text-gray-400" />
                       )}
@@ -351,7 +378,6 @@ export default function GamerPage() {
                   </span>
                 </div>
 
-                {/* RIGHT: fields */}
                 <div className="flex mt-8 flex-col h-full">
                   <div className="space-y-4">
                     <div>
@@ -361,7 +387,8 @@ export default function GamerPage() {
                       <input
                         placeholder="First name"
                         value={form.firstName}
-                        onChange={(e) => update("firstName", e.target.value)}
+                        onChange={(e) => update("firstName", e.target.value.slice(0, 20))}
+                          maxLength={20}
                         className={FIELD_CLS}
                       />
                     </div>
@@ -373,7 +400,8 @@ export default function GamerPage() {
                       <input
                         placeholder="Last name"
                         value={form.lastName}
-                        onChange={(e) => update("lastName", e.target.value)}
+                        onChange={(e) => update("lastName", e.target.value.slice(0,20))}
+                        maxLength={20}
                         className={FIELD_CLS}
                       />
                     </div>
@@ -386,7 +414,8 @@ export default function GamerPage() {
                         rows={3}
                         placeholder="Tell us about you"
                         value={form.bio}
-                        onChange={(e) => update("bio", e.target.value)}
+                        onChange={(e) => update("bio", e.target.value.slice(0,180))}
+                        maxLength={180}
                         className={FIELD_CLS}
                       />
                     </div>
@@ -437,7 +466,9 @@ export default function GamerPage() {
                             Nationality
                           </label>
                           {errors.nationality && (
-                            <span className="text-red-400 text-xs">Nationality is required</span>
+                            <span className="text-red-400 text-xs">
+                              Nationality is required
+                            </span>
                           )}
                         </div>
                         <span

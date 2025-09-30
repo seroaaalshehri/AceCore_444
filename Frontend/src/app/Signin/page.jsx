@@ -5,6 +5,8 @@ import Particles from "../Components/Particles";
 import SignIn from "../Components/SignIn";
 import "../SignUpIn.css";
 import { auth } from "../../../lib/firebaseClient";
+import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
@@ -15,24 +17,21 @@ import {
 } from "firebase/auth";
 import { authedFetch } from "../../../lib/authedFetch";
 
-/* ---------- CHANGED: load the signed-in user via token (no UID in URL) ---------- */
 async function loadMe() {
   const res = await authedFetch("http://localhost:4000/api/users/me");
   if (res.status === 404) throw new Error("Profile not found. Complete signup first.");
   if (res.status === 401) throw new Error("Please sign in again.");
   if (!res.ok) throw new Error("Failed to load profile.");
   const { user } = await res.json();
-  return user; // { id, role, username, ... }
+  return user; 
 }
 
-/* ---------- where to send user based on role (unchanged) ---------- */
 function routeFor(user) {
   if (user?.role === "club") return `/club/HomePage`;
   if (user?.role === "gamer") return `/gamer/profile/${user.id}`;
   return `/`;
 }
 
-/* ---------- redirect after successful login (uses /users/me) ---------- */
 async function redirectAfterLogin(router, setOk, setErr) {
   try {
     const user = await loadMe();
@@ -57,7 +56,7 @@ export default function SignInPage() {
   const [cError, setCError] = useState("");
   const [cOk, setCOk] = useState("");
 
-  // ——— Email+Password (Gamer) ———
+   /* ——— Email+Password (Gamer) ———*/
   const onGamerEmailLogin = async (email, password) => {
     setGError(""); setGOk(""); setGLoading(true);
     try {
@@ -144,7 +143,16 @@ export default function SignInPage() {
 
   return (
     <main className="relative min-h-screen font-barlow overflow-x-hidden flex items-center justify-center">
-      {/* Background Particles */}
+       <Link href="http://localhost:3000/Home" aria-label="Go to home" className="absolute top-6 left-0 z-20">
+        <Image
+          src="/AC-glow.png"   
+          alt="AC logo"
+          width={140}        
+          height={150}
+          className="object-contain"
+          priority
+        />
+      </Link>
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Particles
           particleColors={["#ffffff", "#ffffff"]}

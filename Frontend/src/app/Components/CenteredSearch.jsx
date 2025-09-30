@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import {
   collection, getDocs, query, where, limit, orderBy, startAfter
 } from "firebase/firestore";
-import { db } from "../../../lib/firebaseClient"; // ← adjust if needed
+import { db } from "../../../lib/firebaseClient"; 
 
 /* ---------- tiny helpers (JS version) ---------- */
 function useDebounced(value, delay = 300) {

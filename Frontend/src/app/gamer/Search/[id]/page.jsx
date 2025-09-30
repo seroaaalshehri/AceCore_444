@@ -9,9 +9,8 @@ import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import CenteredSearch from "../../../Components/CenteredSearch";
 
 export default function SearchPage() {
-    // highlight the Search tab in your sidebar
     const [leftTab, setLeftTab] = useState("search");
-    const [q, setQ] = useState("");   // also rename set0 -> setQ (zero → Q)
+    const [q, setQ] = useState("");   
     const { id } = useParams();
     const userId = Array.isArray(id) ? id[0] : id;
 
@@ -39,7 +38,6 @@ export default function SearchPage() {
                     <div className="bg-[#2b2142b3] rounded-xl p-6 md:p-8">
 
 
-                        {/* Your existing CenteredSearch logic/UI */}
                         <CenteredSearch
                             value={q}
                             onChange={setQ}

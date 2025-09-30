@@ -7,7 +7,6 @@ module.exports = async function authenticate(req, res, next) {
     if (!token) return res.status(401).json({ success: false, message: "Missing token" });
 
     const decoded = await admin.auth().verifyIdToken(token);
-    // Attach the authenticated Firebase user to the request:
     req.user = { uid: decoded.uid, email: decoded.email || null };
     next();
   } catch (e) {

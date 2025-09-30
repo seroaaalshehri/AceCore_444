@@ -233,9 +233,9 @@ export function AddAchievement({ userid }) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 mr-12">
+              <div className="flex items-center gap-2">
                 <button
-                  className="text-gray-400 hover:text-[#FCCC22] font-bold text-[17px]"
+                  className="text-gray-400 hover:text-[#FCCC22] font-bold text-[20px]"
                 >
                   <span className="inline-block transform -scale-x-100">✎</span>
                 </button>
@@ -243,7 +243,7 @@ export function AddAchievement({ userid }) {
                 <button
                   className="text-gray-400 hover:text-[#FCCC22]"
                 >
-                  <FaTrash size={13} />
+                  <FaTrash size={15} />
                 </button>
               </div> </div>
           ))}
@@ -254,13 +254,13 @@ export function AddAchievement({ userid }) {
           <div className="bg-[#1d1530]  rounded-xl p-6 w-96 relative">
             <button
               onClick={() => setOpen(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white text-21xl"
+              className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
             >
               ×
             </button>
 
             <form onSubmit={handleSave} className="flex flex-col">
-
+              <p className="text-white text-lg font-semibold mb-2">Enter achievement name</p>
               <input
                 type="text"
                 placeholder="Achievement"
@@ -379,8 +379,8 @@ export default function GamerProfile() {
   const [followingCount, setFollowingCount] = useState(0);
   const [error, setError] = useState("");
   const ready = useOwnerGuard();
- const { id } = useParams();
-    const userId = Array.isArray(id) ? id[0] : id;
+  const { id } = useParams();
+  const userId = Array.isArray(id) ? id[0] : id;
 
 
 
@@ -402,7 +402,7 @@ export default function GamerProfile() {
     })();
   }, [uid, ready]);
 
-  // all available games (doesn't need uid but fine to keep separate)
+  // all available games 
   useEffect(() => {
     if (!ready) return;
     (async () => {
@@ -432,7 +432,7 @@ export default function GamerProfile() {
 
   async function handleAdd() {
     if (!selectedGame) {
-      setError("⚠️ Please select a game");
+      setError(" Please select a game");
       return;
     }
     setError("");
@@ -490,8 +490,8 @@ export default function GamerProfile() {
 
     <div className="flex min-h-screen">
       <div className="w-[250px]">
- <LeftSidebar role="gamer" active="profile" userId={id} />      </div>
- 
+        <LeftSidebar role="gamer" active="profile" userId={id} />      </div>
+
       <div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
 
 
@@ -517,11 +517,11 @@ export default function GamerProfile() {
             {/* Gamer Info  #1d1338*/}
             <section className="relative z-10 rounded-xl p-20 shadow-lg bg-[#2b2142b3]">
               <button
-  onClick={() => router.push(`/gamer/addinfo/${uid}`)}
-  className="absolute top-4 right-4 text-[#fff] hover:text-[#FCCC22] font-bold text-[20px] z-30"
->
-  <span className="inline-block transform -scale-x-100">✎</span>
-</button>
+                onClick={() => router.push(`/gamer/addinfo/${uid}`)}
+                className="absolute top-4 right-4 text-[#fff] hover:text-[#FCCC22] font-bold text-[20px] z-30"
+              >
+                <span className="inline-block transform -scale-x-100">✎</span>
+              </button>
 
               <div className="flex relative top-2 ml-4 items-start gap-6">
 
@@ -556,14 +556,14 @@ export default function GamerProfile() {
 
               <div className="absolute left-1/2 top-8 md:top-10  transform z-40">
                 <div className="flex gap-4 bg-transparent ml-20 relative top-20 items-center">
-                  <Link href="/gamer/profile/followers" className="cursor-pointer text-center">
+                  <Link href={`/gamer/followList/${uid}`} className="cursor-pointer text-center">
                     <div className="text-4xl font-bold text-white">
                       {followersCount}
                     </div>
                     <div className="text-2xl text-gray-400">Followers</div>
                   </Link>
 
-                  <Link href="/gamer/profile/following" className="cursor-pointer text-center">
+                  <Link href={`/gamer/followList/${uid}`} className="cursor-pointer text-center">
                     <div className="text-4xl font-bold text-white">
                       {followingCount}
                     </div>
@@ -572,24 +572,31 @@ export default function GamerProfile() {
                 </div>
               </div>
 
-              <div className="-mt-5 flex justify-between relative top-7 items-start">
-                <div className="max-w-[650px] text-white mt-8 md:mt-8 pl-[140px]">
-                  <p className="text-xl mb-5">{profile.bio}</p>
+              {/* Bio + right info row */}
+              <div className="-mt-5 flex justify-between   relative top-10 items-start gap-8">
+                {/* Bio */}
+                <div className="flex flex-col mb-8  ml-48 text-white-400 text-xl">
+                  <p className="mb-8 max-w-[48ch] whitespace-pre-line break-words leading-relaxed">
+                    {profile.bio}
+                  </p>
                 </div>
 
 
                 <div className="flex flex-col items-end">
-                  <div className="text-white-400 text-xl text-right -mt-4 md:-mt-6">
+              
+                  <div className="text-white-400 text-xl text-right">
                     <div className="mt-3 flex items-center gap-2">
                       <Flag className="size-5 text-fuchsia-300 relative top-1" />
                       {profile.nationality}
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       <Cake className="size-5 text-fuchsia-300" />
-                      <p>Born</p>{formatDate(profile.birthdate)}</div>
+                      <p>Born</p>{formatDate(profile.birthdate)}
+                    </div>
+
+
+
                   </div>
-
-
                   <div className="flex space-x-2 relative top-10 mt-8">
                     {profile.socials?.twitch && (
                       <a href={profile.socials.twitch} target="_blank" rel="noopener noreferrer">
@@ -631,8 +638,8 @@ export default function GamerProfile() {
               </div>
 
               <div className="mt-0 grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative z-[20]">
-               
-               
+
+
                 {games.map((g) => (
                   <div
                     key={g.id}
@@ -657,10 +664,10 @@ export default function GamerProfile() {
                         </div>
 
                         <div className="flex gap-2 relative -top-9">
-                          <button className="hover:text-[#fccc22]">
-                            <span className="inline-block transform -scale-x-100 text-lg">✎</span>
+                          <button className="hover:text-[#fccc22] text-gray-400">
+                            <span className="inline-block transform -scale-x-100 text-xl">✎</span>
                           </button>
-                          <button className="hover:text-[#fccc22] text-sm">
+                          <button className="hover:text-[#fccc22] text-gray-400 text-sm">
                             <FaTrash />
                           </button>
                         </div>
@@ -721,7 +728,7 @@ export default function GamerProfile() {
 
                     <button
                       onClick={handleAdd}
-                      className="px-9 py-1 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200">
+                      className="px-9 py-1 mt-3 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200">
                       Add
                     </button>
 
@@ -737,10 +744,7 @@ export default function GamerProfile() {
             </section>
           </div>
         </div>
-      </div>
-    </div>
-
-
+      </div >
+    </div >
   );
-
 }

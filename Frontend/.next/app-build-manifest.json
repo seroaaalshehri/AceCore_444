@@ -6,16 +6,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/SignUp/page": [
+    "/gamer/followList/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/SignUp/page.css",
-      "static/chunks/app/SignUp/page.js"
-    ],
-    "/Home/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Home/page.js"
+      "static/chunks/app/gamer/followList/[id]/page.js"
     ],
     "/Signin/page": [
       "static/chunks/webpack.js",
@@ -23,31 +17,42 @@
       "static/css/app/Signin/page.css",
       "static/chunks/app/Signin/page.js"
     ],
+    "/Home/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Home/page.js"
+    ],
     "/gamer/profile/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/gamer/profile/[id]/page.css",
       "static/chunks/app/gamer/profile/[id]/page.js"
     ],
-    "/Logout/page": [
+    "/SignUp/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/Logout/page.js"
+      "static/css/app/SignUp/page.css",
+      "static/chunks/app/SignUp/page.js"
     ],
     "/gamer/addinfo/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/gamer/addinfo/[id]/page.js"
     ],
+    "/Logout/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Logout/page.js"
+    ],
     "/gamer/HomePage/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/gamer/HomePage/[id]/page.js"
     ],
-    "/_not-found/page": [
+    "/gamer/Search/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/gamer/Search/[id]/page.js"
     ]
   }
 }

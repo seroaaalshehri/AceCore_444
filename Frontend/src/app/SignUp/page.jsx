@@ -1,6 +1,8 @@
 "use client";
 
 import { SignUpIn } from "../Components/SignUpIn";
+import Image from "next/image"; 
+import Link from "next/link";
 import Particles from "../Components/Particles";
 import React, { useEffect, useState } from "react";
 import "../SignUpIn.css";
@@ -37,20 +39,18 @@ export default function SignUpPage() {
     youtube: "",
     discord: "",
     // Shared
-    role: "", // "gamer" | "club" (set by SignUpIn toggle)
+    role: "", 
     birthdate: null,
     games: [],
     gender: "",
     nationality: "",
-    // Set by the Google button in SignUpIn
-    signupMethod: "", // "oauth" after clicking Google
+    signupMethod: "", 
   });
 
   const [okMsg, setOkMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Track a Google OAuth session (but DO NOT auto-finalize)
   const [googleUser, setGoogleUser] = useState(null);
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -69,7 +69,6 @@ export default function SignUpPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ---- payload mappers ----
   const mapGamerPayload = (overrides = {}) => {
     const email = overrides.email ?? formData.gamerEmail ?? "";
     return {
@@ -105,9 +104,7 @@ export default function SignUpPage() {
     },
   });
 
-  // ========================
-  // SUBMIT (user pressed Sign Up)
-  // ========================
+  // SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
     setOkMsg("");
@@ -116,9 +113,8 @@ export default function SignUpPage() {
     try {
       setLoading(true);
 
-      // ---------------- Gamer ----------------
+      // Gamer
       if (formData.role === "gamer") {
-        // A) Google OAuth path — finalize NOW (only on button press)
         if (formData.signupMethod === "oauth" && googleUser) {
           const email = googleUser.email;
           const uid = googleUser.uid;
@@ -128,7 +124,7 @@ export default function SignUpPage() {
             emailVerified: true,
             provider: "google.com",
             authUid: uid,
-            password: "", // not needed for Google
+            password: "", 
           });
 
           const res = await fetch(`${API_BASE}/verify-complete`, {
@@ -146,7 +142,6 @@ export default function SignUpPage() {
           return;
         }
 
-        // B) Email + Password path — create Auth user and send verification email
         const email = String(formData.gamerEmail || "").trim();
         const password = String(formData.gamerPassword || "").trim();
         if (!email || !password) {
@@ -154,7 +149,6 @@ export default function SignUpPage() {
           return;
         }
 
-        // Avoid provider collisions
         const methods = await fetchSignInMethodsForEmail(auth, email);
         if (methods.includes("google.com")) {
           setErrorMsg("Sign-up failed. Please try again.");
@@ -165,7 +159,6 @@ export default function SignUpPage() {
           return;
         }
 
-        // Create Auth user, store payload for verify-complete, send verification
         const cred = await createUserWithEmailAndPassword(auth, email, password);
 
         const payloadForBackend = mapGamerPayload({
@@ -181,7 +174,6 @@ export default function SignUpPage() {
         return;
       }
 
-      // ---------------- Club ----------------
       if (formData.role === "club") {
         const clubPayload = mapClubPayload();
         const res = await fetch(`${API_BASE}`, {
@@ -193,7 +185,7 @@ export default function SignUpPage() {
           const body = await res.json().catch(() => ({}));
           throw new Error(body?.message || "Sign-up failed. Please try again.");
         }
-        setOkMsg("Verification email sent."); // keep minimal; adjust if you prefer a different text for club
+        setOkMsg("Verification email sent."); 
       }
     } catch (err) {
       setErrorMsg("Sign-up failed. Please try again.");
@@ -202,9 +194,7 @@ export default function SignUpPage() {
     }
   };
 
-  // ========================
-  // FINALIZE EMAIL FLOW (after clicking the link)
-  // ========================
+  
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("postVerify") !== "1") return;
@@ -255,7 +245,18 @@ export default function SignUpPage() {
         />
       </div>
 
-      {/* Minimal banner */}
+   <div className="absolute top-6 left-0 z-20">
+     <a href="http://localhost:3000/Home">
+        <Image
+         src="/AC-glow.png"   
+          alt="AC Logo"
+         width={140}
+         height={150}
+         className="object-contain"
+          priority
+       />
+      </a>
+    </div>
       <div className="absolute top-4 w-full flex justify-center z-10">
         {errorMsg ? (
           <div className="px-4 py-2 rounded bg-red-600/90 text-white text-sm shadow">{errorMsg}</div>

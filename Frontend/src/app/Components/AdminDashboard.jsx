@@ -17,7 +17,7 @@ const reports = [
 export function AdminDashboard() {
   const [accepted, setAccepted] = useState([]);
   const [openDropdown, setOpenDropdown] = useState(null);
-  const [confirmationMessage, setConfirmationMessage] = useState(null);
+  const [confirmationMessage, setConfirmationMessage] = useState(null); 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
 
