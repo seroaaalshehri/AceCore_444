@@ -2,16 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { User as UserIcon } from "lucide-react";
-import {
-  collection, getDocs, getDoc, doc, orderBy, limit, query, startAfter,
-} from "firebase/firestore";
-import { db, storage } from "../../../../lib/firebaseClient";
+import { collection, getDocs, getDoc, doc, orderBy, limit, query, startAfter,} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getApp } from "firebase/app";
-
 import Particles from "../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../Components/LeftSidebar";
+import { authedFetch } from "../../../../../lib/authedFetch";
 
+
+const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
+const API_ROOT = String(RAW_BASE).replace(/\/+$/, "");
+
+function api(path) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (API_ROOT.endsWith("/api")) return `${API_ROOT}${p.replace(/^\/api/, "")}`;
+  return `${API_ROOT}${p}`;
+}
 
 const GOLD_BTN =
   "bg-[#FCCC22] text-[#2b2142b3] font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
@@ -56,47 +62,19 @@ function PersonRow({ u }) {
   );
 }
 
-async function loadIdsFromSubcollection(userId, sub, useStartAfter) {
-  const colRef = collection(db, "users", userId, sub);
-  const baseQ = query(colRef, orderBy("__name__"), limit(20));
-  const q2 = useStartAfter ? query(baseQ, startAfter(useStartAfter)) : baseQ;
-  const snap = await getDocs(q2);
-  const ids = snap.docs.map((d) => d.id);
-  const next = snap.docs.length === 20 ? snap.docs[snap.docs.length - 1] : null;
-  return { ids, next };
-}
 
-async function loadProfilesByIds(ids) {
-  const out = [];
-  for (const id of ids) {
-    const pd = await getDoc(doc(db, "users", id));
-    if (pd.exists()) {
-      out.push({ id, ...pd.data() });
-    } else if (!HIDE_MISSING_PROFILES) {
-      out.push({ id, username: "unknown" });
-    }
-  }
-  return out;
-}
-
-function dedupeById(arr) {
-  const seen = new Set();
-  const out = [];
-  for (const x of arr) {
-    if (seen.has(x.id)) continue;
-    seen.add(x.id);
-    out.push(x);
-  }
-  return out;
-}
 
 export default function FollowListsPage() {
+const params = useParams();
+  const router = useRouter();
+  const USER_ID = Array.isArray(params?.id) ? params.id[0] : params?.id;
+
   const [tab, setTab] = useState("following");          
   const [roleFilter, setRoleFilter] = useState("all");  
 
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
-  const [lastDoc, setLastDoc] = useState({ following: null, followers: null });
+  const [nextCursor, setNextCursor] = useState({ following: null, followers: null });
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
@@ -104,74 +82,125 @@ export default function FollowListsPage() {
   const scrollRef = useRef(null);
   const sentinelRef = useRef(null);
 
-  const [leftTab, setLeftTab] = useState("home");
-  const [q, setQ] = useState("");
 
   const activeListRaw = tab === "following" ? following : followers;
   const activeLast = tab === "following" ? lastDoc.following : lastDoc.followers;
 
   const activeList = useMemo(() => {
     if (roleFilter === "all") return activeListRaw;
-    return activeListRaw.filter(
-      (u) => (u?.role || "").toLowerCase() === roleFilter
+    return activeListRaw.filter( (u) => (u?.role || "").toLowerCase() === roleFilter
     );
   }, [activeListRaw, roleFilter]);
 
-  const hasMore = useMemo(() => !!activeLast, [activeLast]);
-
-  async function fetchPage(which, useStartAfter) {
-    setLoading(true);
-    setError("");
-    try {
-      if (which === "following") {
-        const { ids, next } = await loadIdsFromSubcollection(USER_ID, "following", useStartAfter);
-        const profiles = await loadProfilesByIds(ids);
-        setFollowing((prev) => (useStartAfter ? dedupeById([...prev, ...profiles]) : profiles));
-        setLastDoc((p) => ({ ...p, following: next }));
-        console.debug("[DEBUG] following:", profiles);
-      } else {
-        const { ids, next } = await loadIdsFromSubcollection(USER_ID, "followers", useStartAfter);
-        const profiles = await loadProfilesByIds(ids);
-        setFollowers((prev) => (useStartAfter ? dedupeById([...prev, ...profiles]) : profiles));
-        setLastDoc((p) => ({ ...p, followers: next }));
-        console.debug("[DEBUG] followers:", profiles);
-      }
-    } catch (e) {
-      console.error(e);
-      setError(e?.message || "Failed to load from Firestore");
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
+   const hasMore = !!activeCursor;
+ const dedupeById = (arr) => {
+    const seen = new Set();
+    const out = [];
+    for (const x of arr) {
+      if (!x?.id) continue;
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      out.push(x);
     }
-  }
+    return out;
+  };
+ 
+// ---- fetch page from backend API ----
+  const fetchPage = useCallback(
+    async (which, cursor = null) => {
+      if (!USER_ID) return;
+      setLoading(true);
+      setError("");
 
-  useEffect(() => {
-    fetchPage("following", null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      try {
+        const url = new URL(api(`/club/${USER_ID}/${which}`));
+        url.searchParams.set("limit", "20");
+        if (cursor) url.searchParams.set("cursor", cursor);
 
+        const res = await authedFetch(url.toString(), {
+          headers: { Accept: "application/json" },
+          allowAnonymous: true, 
+        });
+
+        const ct = res.headers.get("content-type") || "";
+
+        // Non-2xx: read text for diagnostics
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status} on ${url}: ${txt.slice(0, 300)}`);
+        }
+
+        // Not JSON -> print snippet (likely HTML)
+        if (!ct.includes("application/json")) {
+          const txt = await res.text();
+          throw new Error(
+            `Expected JSON from ${url}, got content-type "${ct}". Body: ${txt.slice(0, 300)}`
+          );
+        }
+
+        const data = await res.json();
+        if (!data?.success) throw new Error(data?.message || "Failed to load");
+
+        const users = Array.isArray(data.users) ? data.users : [];
+        const next = data.next || null;
+
+        if (which === "following") {
+          setFollowing((prev) => (cursor ? dedupeById([...prev, ...users]) : users));
+          setNextCursor((p) => ({ ...p, following: next }));
+        } else {
+          setFollowers((prev) => (cursor ? dedupeById([...prev, ...users]) : users));
+          setNextCursor((p) => ({ ...p, followers: next }));
+        }
+      } catch (e) {
+        console.error(e);
+        setError(e?.message || "Failed to load");
+      } finally {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    },
+    [USER_ID]
+  );
+
+   useEffect(() => {
+    console.log("API_ROOT:", API_ROOT);
+    if (USER_ID) fetchPage("following", null);
+  }, [USER_ID, fetchPage]);
+
+  
   useEffect(() => {
     if (tab === "followers" && followers.length === 0 && !initialLoading) {
       fetchPage("followers", null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, followers.length, initialLoading, fetchPage]);
+
 
   useEffect(() => {
-    if (!sentinelRef.current) return;
+    const rootElem = scrollRef.current;
+    const sentinel = sentinelRef.current;
+    if (!rootElem || !sentinel) return;
+
     const ob = new IntersectionObserver(
       (entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && hasMore && !loading) {
-          const startAfterDoc = tab === "following" ? lastDoc.following : lastDoc.followers;
-          fetchPage(tab, startAfterDoc || null);
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          const cursor = tab === "following" ? nextCursor.following : nextCursor.followers;
+          fetchPage(tab, cursor || null);
         }
       },
-      { root: scrollRef.current, threshold: 0.1 }
+      { root: rootElem, threshold: 0.1 }
     );
-    ob.observe(sentinelRef.current);
+
+    ob.observe(sentinel);
     return () => ob.disconnect();
-  }, [tab, hasMore, loading, lastDoc.followers, lastDoc.following]);
+  }, [tab, hasMore, loading, nextCursor.followers, nextCursor.following, fetchPage]);
+
+  if (!USER_ID) {
+    return (
+      <main className="p-6 text-red-300">
+        Missing user id in route.
+      </main>
+    );
+  }
 
   return (
     <>
@@ -185,15 +214,13 @@ export default function FollowListsPage() {
         />
       </div>
 
-      {/* LEFT: Sidebar */}
-      <LeftSidebar active={leftTab} onChange={setLeftTab} />
+   
+       <LeftSidebar role="club" active="profile" userId={USER_ID} />
 
       <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
       >
-
-
         <div className="mx-auto max-w-6xl">
           <div className="bg-[#2b2142b3] rounded-xl p-6 md:p-8">
             {/* Tabs + Role Filter */}
@@ -275,7 +302,7 @@ export default function FollowListsPage() {
 
               <div ref={sentinelRef} />
 
-              {/* footer */}
+            
               <div className="p-3 text-center text-xs text-gray-400">
                 {loading
                   ? "Loading more…"

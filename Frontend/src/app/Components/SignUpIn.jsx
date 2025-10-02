@@ -36,6 +36,14 @@ const PASSWORD_RE = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^\w\s])[^\s]{8,64}$/;
 const isValidUsername = v => USERNAME_RE.test(String(v || "").trim());
 const isStrongPassword = v => PASSWORD_RE.test(String(v || ""));
 
+function debounce(fn, ms = 400) {
+   let t;
+  return (...args) => {
+   clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+   };
+  }
+
 
 export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [isActive, setIsActive] = useState(false);
@@ -49,9 +57,8 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [clubEmailLocal, setClubEmailLocal] = useState("");
   const [emailLockedGamer, setEmailLockedGamer] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
-  const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
-  const usernameValid = USERNAME_RE.test((formData.gamerUsername || "").trim());
-  const [gamerUsernameMsg, setGamerUsernameMsg] = useState("");
+  const [gamerUStatus, setGamerUStatus] = useState("idle"); // idle, invalid, checking, available, taken, error
+  const [clubUStatus, setClubUStatus] = useState("idle");  const [gamerUsernameMsg, setGamerUsernameMsg] = useState("");
   const [gamerPasswordMsg, setGamerPasswordMsg] = useState("");
   const [clubUsernameMsg, setClubUsernameMsg] = useState("");
   const [clubPasswordMsg, setClubPasswordMsg] = useState("");
@@ -133,6 +140,10 @@ const isValidSocialUrl = (platform, url) => {
     });
 
     setEmailLockedGamer(Boolean(formData?.gamerEmail));
+
+   setGamerUStatus("idle");
+   setGamerUsernameMsg("");
+
   };
 
   const switchToClub = () => {
@@ -145,6 +156,10 @@ const isValidSocialUrl = (platform, url) => {
 
     setOkMsg("");
     setErrorMsg("");
+
+    //reset club username state
+   setClubUStatus("idle");
+  setClubUsernameMsg("");
   };
 
 
@@ -152,6 +167,13 @@ const isValidSocialUrl = (platform, url) => {
     setAlertMessage(msg);
     setAlertOpen(true);
   };
+
+
+
+
+
+
+  
   const closeAlert = () => setAlertOpen(false);
 
   const isUnderage = formData?.birthdate ? isAfter(formData.birthdate, cutoffDate) : false;
@@ -182,6 +204,35 @@ const isValidSocialUrl = (platform, url) => {
     }
   };
 
+
+//handle twitch
+const handleTwitchSignIn = async () => {
+  if (authBusy) return;
+  setAuthBusy(true);
+  setErrorMsg("");
+  setOkMsg("");
+
+  try {
+    const popup = window.open(
+      "http://localhost:4000/api/users/auth/twitch/popup", 
+      "Twitch Login",
+      "width=500,height=600"
+    );
+
+    if (!popup) throw new Error("Popup blocked. Please allow popups.");
+
+   
+
+  } catch (err) {
+    console.error("Twitch error:", err);
+    setErrorMsg("Twitch sign-up failed.");
+  } finally {
+    setAuthBusy(false);
+  }
+};
+
+
+
   const handleBirthDate = (date) => {
     if (!date) return;
     if (isAfter(date, cutoffDate)) {
@@ -193,7 +244,6 @@ const isValidSocialUrl = (platform, url) => {
   };
 
 
-// inside SignUpIn.jsx
 const handleGoogleSignIn = async () => {
   if (authBusy) return;
   setAuthBusy(true);
@@ -267,7 +317,6 @@ const handleGameToggle = handleGameSelect;
       setErrorMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
       return false;
     }
-{/*COULD BE DELETED*/}
     if (formData.signupMethod !== "oauth") {
       if (!pass) {
         setErrorMsg("Please enter a password.");
@@ -321,6 +370,78 @@ const handleGameToggle = handleGameSelect;
     return true;
   };
 
+
+const doCheck = async (u) => {
+  const q = String(u || "").trim();
+  const url = `http://localhost:4000/api/users/check-username?username=${encodeURIComponent(q)}`;
+  const res = await fetch(url, { method: "GET" });
+  if (!res.ok) throw new Error("availability failed");
+  const data = await res.json();
+  return Boolean(data && data.available === true);
+};
+
+const checkGamerAvailabilityDebounced = debounce(async (u) => {
+  const s = String(u || "").trim();
+  if (!isValidUsername(s)) {
+    setGamerUStatus("invalid");
+    setGamerUsernameMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
+    return;
+  }
+  setGamerUStatus("checking");
+  setGamerUsernameMsg("Checking availability...");
+  try {
+    const ok = await doCheck(s);
+    if (ok) {
+      setGamerUStatus("available");
+      setGamerUsernameMsg("Username is available.");
+    } else {
+      setGamerUStatus("taken");
+      setGamerUsernameMsg("Username is taken.");
+    }
+  } catch {
+    setGamerUStatus("error");
+    setGamerUsernameMsg("Could not verify username now.");
+  }
+}, 500);
+
+
+  React.useEffect(() => {
+      const v = String(formData?.gamerUsername || "").trim();
+      if (v) checkGamerAvailabilityDebounced(v);
+    }, [formData?.gamerUsername]);
+  
+    React.useEffect(() => {
+      const v = String(formData?.clubUsername || "").trim();
+      if (v) checkClubAvailabilityDebounced(v);
+    }, [formData?.clubUsername]);
+
+
+
+const checkClubAvailabilityDebounced = debounce(async (u) => {
+  const s = String(u || "").trim();
+  if (!isValidUsername(s)) {
+    setClubUStatus("invalid");
+    setClubUsernameMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
+    return;
+  }
+  setClubUStatus("checking");
+  setClubUsernameMsg("Checking availability...");
+  try {
+    const ok = await doCheck(s);
+    if (ok) {
+      setClubUStatus("available");
+      setClubUsernameMsg("Username is available.");
+    } else {
+      setClubUStatus("taken");
+      setClubUsernameMsg("Username is taken.");
+    }
+  } catch {
+    setClubUStatus("error");
+    setClubUsernameMsg("Could not verify username now.");
+  }
+}, 500);
+
+  
   const onInputChange = e => {
     const name = e?.target?.name;
     const value = e?.target?.value;
@@ -332,6 +453,7 @@ const handleGameToggle = handleGameSelect;
       else if (/^[0-9]/.test(v)) setGamerUsernameMsg("Username cannot start with a number.");
       else if (!isValidUsername(v)) setGamerUsernameMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
       else setGamerUsernameMsg("");
+      checkGamerAvailabilityDebounced(value);
     }
 
     if (name === "gamerPassword") {
@@ -346,6 +468,7 @@ const handleGameToggle = handleGameSelect;
       if (!v) setClubUsernameMsg("Username is required.");
       else if (!isValidUsername(v)) setClubUsernameMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
       else setClubUsernameMsg("");
+      checkClubAvailabilityDebounced(value);
     }
 
     if (name === "clubPassword") {
@@ -478,21 +601,16 @@ const validateClubLogo = () => {
           )}
         </div>
 
-        {/* Social icons header button (kept visual) */}
+        {/* Social icons header button  */}
 
         <div className="w-full flex justify-center mb-3">
-          <button type="button" className="button-custom">
-            <Image
-              src="/twitchIcon.svg"
-              alt="Twitch"
-              width={20}
-              height={20}
-              className="inline-block"
-            />
-            <span>SignUp with Twitch</span>
-          </button>
-        </div>
+       <button type="button" onClick={handleTwitchSignIn} className="button-custom">
+  <Image src="/twitchIcon.svg" alt="Twitch" width={20} height={20} />
+  <span>SignUp with Twitch</span>
+</button>
 
+        </div>
+        
         <form
           className="flex flex-col items-center w-full max-w-md"
           onSubmit={onSubmitClub}
@@ -511,6 +629,7 @@ const validateClubLogo = () => {
                 value={formData.clubEmail || ""}
                 onChange={handleChange}
                 required
+                 disabled
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
             
               />
@@ -535,6 +654,7 @@ const validateClubLogo = () => {
               />
                 {clubPasswordMsg && (
                 <p className="mt-1 text-xs text-red-400">{clubPasswordMsg}</p>
+              
               )}
             </div>
           </div>
@@ -551,11 +671,11 @@ const validateClubLogo = () => {
                 type="text"
                 placeholder="Unique username"
                 value={formData.clubUsername || ""}
-                onChange={handleChange}
-                required
+                onChange={onInputChange}                required
                  minLength={4}
                 maxLength={15}
-                pattern="(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{2,13}[A-Za-z0-9])"
+                 pattern="[A-Za-z0-9][A-Za-z0-9-]{2,13}[A-Za-z0-9]"
+
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
                {clubUsernameMsg && (
@@ -635,7 +755,7 @@ const validateClubLogo = () => {
     ))}
   </div>
 
- {/* Inline validation messages for bad syntax */}
+ {/* validation messages */}
   {formData?.twitch && !isValidSocialUrl("twitch", formData.twitch) && (
     <p className="mt-1 text-xs text-red-400">
       Invalid Twitch link. Example: https://twitch.tv/yourname
@@ -713,11 +833,19 @@ const validateClubLogo = () => {
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading}
-            className="bg-[#161630] mt-6 w-1/2 mx-auto"
+disabled={
+              loading ||
+            clubUStatus === "checking" ||
+            clubUStatus === "taken" ||
+             clubUStatus === "invalid"
+           }             
+                    className="bg-[#161630] mt-6 w-1/2 mx-auto"
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
+          <p className="mt-2 text-xs text-gray-400 text-center">
+  Clubs must sign up using Twitch only
+</p>
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
@@ -779,7 +907,7 @@ const validateClubLogo = () => {
                 required
                  minLength={4}
                 maxLength={15}
-                pattern="(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{2,13}[A-Za-z0-9])"
+                 pattern="[A-Za-z0-9][A-Za-z0-9-]{2,13}[A-Za-z0-9]"
                 className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
              {gamerUsernameMsg && (
@@ -1056,8 +1184,12 @@ const validateClubLogo = () => {
 
           <button
             type="submit"
-            disabled={loading}
-            className="bg-[#161630] mt-6 w-1/2 mx-auto"
+            disabled={
+              loading ||
+            clubUStatus === "checking" ||
+            clubUStatus === "taken" ||
+             clubUStatus === "invalid"
+           }                                     className="bg-[#161630] mt-6 w-1/2 mx-auto"
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>

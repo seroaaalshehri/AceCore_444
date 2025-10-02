@@ -729,6 +729,9 @@ video {
 .top-5 {
   top: 1.25rem;
 }
+.top-6 {
+  top: 1.5rem;
+}
 .top-7 {
   top: 1.75rem;
 }
@@ -746,9 +749,6 @@ video {
 }
 .top-full {
   top: 100%;
-}
-.top-6 {
-  top: 1.5rem;
 }
 .z-0 {
   z-index: 0;
@@ -989,9 +989,6 @@ video {
 .inline-block {
   display: inline-block;
 }
-.inline {
-  display: inline;
-}
 .flex {
   display: flex;
 }
@@ -1215,6 +1212,9 @@ video {
 }
 .w-6 {
   width: 1.5rem;
+}
+.w-60 {
+  width: 15rem;
 }
 .w-64 {
   width: 16rem;
@@ -2777,9 +2777,6 @@ video {
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem;
-}
-.text-\[1px\] {
-  font-size: 1px;
 }
 .font-bold {
   font-weight: 700;

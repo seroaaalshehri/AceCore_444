@@ -14,19 +14,19 @@ export default function SignIn({
   isClub,
   setIsClub,
 
-  // handlers from parent (page.jsx)
+  // handlers from parent 
   onGamerEmailLogin,
   onClubEmailLogin,
   onGoogleLogin,
-  onTwitchLogin, // kept for compatibility, but not required
+  onTwitchLogin, 
 
-  // status from parent (page.jsx)
+  // status from parent 
   gLoading = false,
   gError = "",
   cLoading = false,
   cError = "",
 }) {
-  // local UI-only input state
+
   const [gEmail, setGEmail] = useState("");
   const [gPw, setGPw] = useState("");
   const [cEmail, setCEmail] = useState("");
@@ -35,7 +35,7 @@ export default function SignIn({
   // Gmail guard (added)
   const [gGmailMsg, setGGmailMsg] = useState("");
 
-  // Added: Twitch local state
+  // Twitch local state
   const [tLoading, setTLoading] = useState(false);
   const [tError, setTError] = useState("");
 
@@ -45,13 +45,12 @@ export default function SignIn({
     return domain === "gmail.com" || domain === "googlemail.com";
   };
 
-  // Added: Twitch login handler (embedded)
+  // Twitch login handler 
   const handleTwitchLogin = async () => {
     try {
       setTError("");
       setTLoading(true);
 
-      // If you prefer redirect (iOS/Safari), set useRedirect = true
       const useRedirect = false;
 
       const provider = new OAuthProvider("oidc.twitch");
@@ -71,8 +70,8 @@ export default function SignIn({
     }
   };
 
-  // Derived: should block gamer password flow if Gmail (added)
-  const gmailBlock = isGmailAddress(gEmail);
+
+
 
   return (
     <div className={`container ${isClub ? "active" : ""}`} id="container">
@@ -183,11 +182,7 @@ export default function SignIn({
           className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
           onSubmit={(e) => {
             e.preventDefault();
-            if (gmailBlock) {
-              // hard stop if Gmail
-              setGGmailMsg("This looks like a Gmail address. Please click “Continue with Google”.");
-              return;
-            }
+            
             if (!gLoading) onGamerEmailLogin?.(gEmail, gPw);
           }}
         >
@@ -207,7 +202,7 @@ export default function SignIn({
                   setGEmail(v);
                   // live hint
                   if (isGmailAddress(v)) {
-                    setGGmailMsg("This looks like a Gmail address. Please click “Continue with Google”.");
+                    setGGmailMsg("");
                   } else {
                     setGGmailMsg("");
                   }
@@ -215,12 +210,12 @@ export default function SignIn({
                 onBlur={(e) => {
                   const v = e.target.value;
                   if (isGmailAddress(v)) {
-                    setGGmailMsg("This looks like a Gmail address. Please click “Continue with Google”.");
+                    setGGmailMsg("");
                   }
                 }}
                 placeholder="Enter your Email"
                 required
-                disabled={gLoading /* keep email editable even when Gmail */}
+                disabled={gLoading }
                 autoComplete="email"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -236,7 +231,7 @@ export default function SignIn({
                 onChange={(e) => setGPw(e.target.value)}
                 placeholder="Enter your password "
                 required
-                disabled={gLoading || gmailBlock /* lock when Gmail */}
+                disabled={gLoading }
                 autoComplete="current-password"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
@@ -249,7 +244,7 @@ export default function SignIn({
           {gError && <p className="text-red-400 text-sm mt-2">{gError}</p>}
 
           <button
-            disabled={gLoading || gmailBlock /* lock submit when Gmail */}
+            disabled={gLoading}
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_12px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >

@@ -10,9 +10,9 @@ import { useParams } from "next/navigation";
 const CARD = "bg-[#1C1633]/60 border border-[#3b2d5e] rounded-xl";
 // demo posts (will change in coming sprints)
 const seedPosts = [
-  { id: "p1", title: "Valorant-Game start 4 Oct-3pm", team: "Falcons" },
+  { id: "p1", title: "Overwatch-Game start 4 Oct-3pm", team: "Falcons" },
   { id: "p2", title: "Call Of Duty-Game start 12 Oct-4pm", team: "Twisted Minds" },
-  { id: "p3", title: "Valorant start 20 Oct-2pm", team: "Vitality" },
+  { id: "p3", title: "Overwatch start 20 Oct-2pm", team: "Vitality" },
   { id: "p4", title: "Rocker League start 22 Oct-12pm", team: "liquid" },
   { id: "p5", title: "Call Of Duty-Game start 26 Oct-3pm", team: "Falcons" },
 ];
@@ -28,7 +28,7 @@ const ALL_POSTS = Array.from({ length: 48 }, (_, i) => {
 const liveNow = [
   {
     id: "lv1",//usefule in loading/updating the cards in later sprints
-    game: "Valorant",
+    game: "Overwatch",
     channel: "AceCore",
     team: "Team Falcons",
     avatarUrl: "/falcons-esports-csgo.png",
@@ -42,14 +42,14 @@ const liveNow = [
   },
   {
     id: "lv3",
-    game: "Valorant",
+    game: "Overwatch",
     channel: "AceCore",
     team: "Team Vitality",
     avatarUrl: "/OIP.webp",
   },
   {
     id: "lv4",
-    game: "Rocker League",
+    game: "Call Of Duty",
     channel: "AceCore",
     team: "Team liquid",
     avatarUrl: "/R.png",
@@ -89,7 +89,6 @@ export default function GamerHomePage() {
     try {
       setLoadingMore(true);
 
-      // If you’re calling an API, do it here and append results instead.
       // This timeout just simulates network latency.
       await new Promise((r) => setTimeout(r, 800));
 

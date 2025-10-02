@@ -1,5 +1,7 @@
 const { admin, db } = require('../../../Firebase/firebaseBackend');
 const { FieldPath } = admin.firestore;
+const { getStorage } = require("firebase-admin/storage");
+const { v4: uuidv4 } = require("uuid");
 
 const {
   addUserAchievement,
@@ -12,7 +14,6 @@ const {
   updateUserProfileService,
 
 } = require("../gamerService");
-
 
 //addInfo
 async function UpdateUserProfile(req, res) {
@@ -36,7 +37,80 @@ async function UpdateUserProfile(req, res) {
       },
     };
 
-    const fileInput = req.file ? {
+
+if (req.file && req.file.buffer) {
+      const bucket = getStorage().bucket(); // uses your initialized admin app
+      const filePath = `profileImages/${uuidv4()}.${req.file.originalname}`;
+      const token = uuidv4();
+
+      await bucket.file(filePath).save(req.file.buffer, {
+        resumable: false,
+        metadata: {
+          contentType: req.file.mimetype || "application/octet-stream",
+          metadata: { firebaseStorageDownloadTokens: token },
+        },
+      });
+
+const downloadUrl =
+        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+safe.profilePhoto = downloadUrl; 
+    }
+
+
+
+
+
+const updated = await updateUserProfileService(userid, safe);
+
+    return res.json({ success: true, profile: updated });
+  } catch (err) {
+    console.error("❌ UpdateUserProfile error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   /* const fileInput = req.file ? {
       buffer: req.file.buffer,
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
@@ -48,7 +122,7 @@ async function UpdateUserProfile(req, res) {
     console.error("❌ UpdateUserProfile error:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
-}
+}*/
 
 // Add achievement
 async function addAchievement(req, res) {

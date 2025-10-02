@@ -1,3 +1,8 @@
+const { admin, db } = require('../../../Firebase/firebaseBackend');
+const { FieldPath } = admin.firestore;
+const { getStorage } = require("firebase-admin/storage");
+const { v4: uuidv4 } = require("uuid");
+
 const { 
   addUserAchievement, 
   getUserAchievements, 
@@ -5,10 +10,86 @@ const {
   getFollowNum,
   addUserGame,
   getUserGames,
-  getGames
+  getGames,
+   updateUserProfileService,
 } = require("../clubServices/clubServices");
 
-// Add achievement
+//addInfo
+async function UpdateUserProfile(req, res) {
+  try {
+    const { userid } = req.params;
+
+    const payload = typeof req.body?.profile === "string"
+      ? JSON.parse(req.body.profile)
+      : (req.body || {});
+
+    const safe = {
+      firstName: payload.firstName ?? "",
+      lastName: payload.lastName ?? "",
+      bio: payload.bio ?? "",
+      nationality: payload.nationality ?? "",
+      socials: {
+        twitch: payload?.socials?.twitch ?? "",
+        youtube: payload?.socials?.youtube ?? "",
+        x: payload?.socials?.x ?? "",
+        discord: payload?.socials?.discord ?? "",
+      },
+    };
+
+    /*const fileInput = req.file ? {
+      buffer: req.file.buffer,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+    } : null;
+
+    const updated = await updateUserProfileService(userid, safe, { fileInput });
+    return res.json({ success: true, profile: updated });
+  } catch (err) {
+    console.error("❌ UpdateUserProfile error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+*/
+
+
+
+if (req.file && req.file.buffer) {
+      const bucket = getStorage().bucket(); // uses your initialized admin app
+      const ext = (req.file.originalname || "").split(".").pop() || "bin";
+      const filePath = `profileImages/${uuidv4()}.${ext}`;
+      const token = uuidv4();
+
+      await bucket.file(filePath).save(req.file.buffer, {
+        resumable: false,
+        metadata: {
+          contentType: req.file.mimetype || "application/octet-stream",
+          metadata: { firebaseStorageDownloadTokens: token },
+        },
+      });
+
+const downloadUrl =
+        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+
+safe.profilePhoto = downloadUrl; // or safe.avatarUrl — just be consistent front/back
+    }
+
+
+
+
+
+const updated = await updateUserProfileService(userid, safe);
+
+    return res.json({ success: true, profile: updated });
+  } catch (err) {
+    console.error("❌ UpdateUserProfile error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+
+
+
+
 async function addAchievement(req, res) {
   try {
     const { userid } = req.params;
@@ -121,6 +202,83 @@ async function getAllGames(req, res) {
   }
 }
 
+async function getFollowing(req, res) {
+  try {
+    const userId = req.params.userid;
+    const pageSize = Math.min(parseInt(req.query.limit || '20', 10), 50);
+    const cursor = req.query.cursor || null;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "Missing userid" });
+    }
+
+    let q = db
+      .collection('users')
+      .doc(userId)
+      .collection('following')
+      .orderBy(FieldPath.documentId())
+      .limit(pageSize);
+
+    if (cursor) q = q.startAfter(cursor);
+
+    const snap = await q.get();
+    const ids = snap.docs.map(d => d.id);
+
+    // Hydrate basic profiles
+    const users = await Promise.all(
+      ids.map(async (id) => {
+        const docSnap = await db.collection('users').doc(id).get();
+        return docSnap.exists ? { id, ...docSnap.data() } : { id };
+      })
+    );
+
+    const next = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null;
+    return res.json({ success: true, users, next });
+  } catch (e) {
+    console.error("getFollowing error:", e);
+    return res.status(500).json({ success: false, message: "Internal error" });
+  }
+}
+
+
+async function getFollowers(req, res) {
+  try {
+    const userId = req.params.userid;
+    const pageSize = Math.min(parseInt(req.query.limit || '20', 10), 50);
+    const cursor = req.query.cursor || null;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "Missing userid" });
+    }
+
+    let q = db
+      .collection('users')
+      .doc(userId)
+      .collection('followers')
+      .orderBy(FieldPath.documentId())
+      .limit(pageSize);
+
+    if (cursor) q = q.startAfter(cursor);
+
+    const snap = await q.get();
+    const ids = snap.docs.map(d => d.id);
+
+    const users = await Promise.all(
+      ids.map(async (id) => {
+        const docSnap = await db.collection('users').doc(id).get();
+        return docSnap.exists ? { id, ...docSnap.data() } : { id };
+      })
+    );
+
+    const next = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1].id : null;
+    return res.json({ success: true, users, next });
+  } catch (e) {
+    console.error("getFollowers error:", e);
+    return res.status(500).json({ success: false, message: "Internal error" });
+  }
+}
+
+
 module.exports = {
   addAchievement,
   listAchievements,
@@ -129,4 +287,7 @@ module.exports = {
   addGame,
   listGames,
   getAllGames,
+   UpdateUserProfile,
+  getFollowing,
+  getFollowers,
 };

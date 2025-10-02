@@ -21,6 +21,7 @@ const actionCodeSettings = {
   handleCodeInApp: false,
 };
 
+
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
     // Gamer
@@ -50,6 +51,32 @@ export default function SignUpPage() {
   const [okMsg, setOkMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+  const handleTwitchOAuth = (event) => {
+    const userData = event.data;
+
+    if (userData.provider === "twitch") {
+      setFormData((prev) => ({
+        ...prev,
+        clubEmail: userData.email,
+        clubUsername: userData.username,
+        signupMethod: "oauth",
+        provider: "twitch",
+        authUid: userData.authUid,
+      }));
+    }
+  };
+
+  window.addEventListener("message", handleTwitchOAuth);
+
+  return () => {
+    window.removeEventListener("message", handleTwitchOAuth);
+  };
+}, []);
+
+
+
 
   const [googleUser, setGoogleUser] = useState(null);
   useEffect(() => {
@@ -102,10 +129,30 @@ export default function SignUpPage() {
       youtube: formData.youtube || "",
       discord: formData.discord || "",
     },
+      authUid: formData.authUid || "",
   });
+
+// username availability helper
+const checkUsernameAvailable = async (username) => {
+    const u = String(username || "").trim();
+    if (!u) return false;
+    try {
+     const res = await fetch(`${API_BASE}/check-username?username=${encodeURIComponent(u)}`);
+     if (!res.ok) return false;
+      const data = await res.json();
+       return data?.available === true;
+     } catch {
+      return false;
+     }
+  };
+  
+
+
 
   // SUBMIT
   const handleSubmit = async (e) => {
+ 
+
     e.preventDefault();
     setOkMsg("");
     setErrorMsg("");
@@ -115,6 +162,11 @@ export default function SignUpPage() {
 
       // Gamer
       if (formData.role === "gamer") {
+    const available = await checkUsernameAvailable(formData.gamerUsername);
+       if (!available) {
+         setErrorMsg("Username is taken. Choose another one.");
+         return;
+       }
         if (formData.signupMethod === "oauth" && googleUser) {
           const email = googleUser.email;
           const uid = googleUser.uid;
@@ -173,20 +225,53 @@ export default function SignUpPage() {
         setOkMsg("Verification email sent.");
         return;
       }
+if (formData.role === "club") {
 
-      if (formData.role === "club") {
-        const clubPayload = mapClubPayload();
-        const res = await fetch(`${API_BASE}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(clubPayload),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body?.message || "Sign-up failed. Please try again.");
+        const available = await checkUsernameAvailable(formData.clubUsername);
+        if (!available) {
+          setErrorMsg("Username is taken. Choose another one.");
+          return;
         }
-        setOkMsg("Verification email sent."); 
-      }
+  const form = new FormData();
+  form.append("role", "club");
+  form.append("username", formData.clubUsername);
+  form.append("email", formData.clubEmail);
+  form.append("clubEmail", formData.clubEmail);
+  form.append("password", formData.clubPassword);
+  form.append("country", formData.country || "");
+  form.append("clubName", formData.clubName || "");
+
+  // Array needs to be stringified
+  form.append("games", JSON.stringify(formData.games || []));
+
+  // Socials
+  form.append("twitch", formData.twitch || "");
+  form.append("x", formData.x || "");
+  form.append("youtube", formData.youtube || "");
+  form.append("discord", formData.discord || "");
+form.append("authUid",formData.authUid || "");
+  // Avatar
+  if (formData.clubAvatar) {
+    form.append("clubAvatar", formData.clubAvatar);
+  }
+ 
+  console.log("🟣 Submitting club form data:", formData);
+
+  const res = await fetch("http://localhost:4000/api/users/verify-complete", {
+    method: "POST",
+    body: form, 
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result?.message || "Sign-up failed");
+  }
+
+  setOkMsg("Club registered successfully!");
+  return;
+}
+
     } catch (err) {
       setErrorMsg("Sign-up failed. Please try again.");
     } finally {

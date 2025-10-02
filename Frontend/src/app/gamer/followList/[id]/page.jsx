@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { User as UserIcon } from "lucide-react";
-
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
@@ -29,7 +29,7 @@ const ZEN_TAB =
 const ZEN_TAB_ACTIVE =
   "px-3 py-1 text-l font-bold border-b-2 border-[#FCCC22] text-[#FCCC22]";
 
-/* -------------------- helper components -------------------- */
+
 function PersonRow({ u }) {
   const username = u?.username || "unknown";
   const firstName = u?.firstName || "";
@@ -60,7 +60,7 @@ function PersonRow({ u }) {
   );
 }
 
-/* -------------------- page -------------------- */
+
 export default function FollowListsPage() {
   const params = useParams();
   const router = useRouter();
@@ -264,7 +264,7 @@ export default function FollowListsPage() {
               </div>
             </div>
 
-            {/* Scrollable list */}
+        
             <div
               ref={scrollRef}
               className="rounded-lg border border-[#3b2d5e] bg-[#1C1633]/40"
@@ -296,7 +296,7 @@ export default function FollowListsPage() {
                 </ul>
               )}
 
-              {/* sentinel for infinite scroll */}
+             
               <div ref={sentinelRef} />
               <div className="p-3 text-center text-sm text-gray-400">
                 {loading

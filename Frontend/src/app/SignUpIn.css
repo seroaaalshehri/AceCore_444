@@ -27,12 +27,11 @@
   padding: 40px 20px;
   background-color: rgba(43, 33, 66, 0.9);
 
-  /* ✅ Scroll fix */
-  overflow-y: auto; /* allow vertical scroll if needed */
-  scrollbar-width: none; /* Firefox hides scrollbar */
+  overflow-y: auto; 
+  scrollbar-width: none; 
 }
 .form-container::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Edge hides scrollbar */
+  display: none; 
 }
 
 /* Ensure button stays visible and spaced */
@@ -237,7 +236,7 @@ form button {
     display: none;
   }
   .mobile-switch {
-  display: none; /* hidden by default */
+  display: none; 
 }
 }
  .mobile-switch span {
@@ -261,3 +260,19 @@ form button {
   .mobile-switch span.active::after {
     width: 100%;
   }
+.password-toggle {
+  background: transparent !important; /* remove purple background */
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+  line-height: 0;
+  color: #666; 
+  position: absolute;
+  right: 100px; 
+  top: 5%;   
+  transform: translateY(-10%); 
+}
+.password-toggle:hover {
+  color: #111; 
+}

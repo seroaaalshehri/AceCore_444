@@ -5,7 +5,7 @@ import Image from "next/image";
 import countries from "world-countries";
 import { User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-
+//import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
@@ -172,6 +172,20 @@ export default function AddInfoPage() {
   };
 
 
+  const logoFileRef = useRef(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const onPickLogo = () => logoFileRef.current?.click();
+  const onLogoSelected = (e) => {
+    const f = e.target.files?.[0] || null;
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+    setLogoFile(f);
+    const url = URL.createObjectURL(f);
+    setPhotoPreview(url); // preview only
+  };// this
   //Read from getProfile
 useEffect(() => {
   (async () => {
@@ -238,7 +252,6 @@ useEffect(() => {
     return data;
   };
 
-  /** WRITE (identical logic): multipart when file, JSON otherwise, PUT→POST fallback */
   const doSave = async () => {
   if (!validate()) { setShowSaveConfirm(false); return; }
 

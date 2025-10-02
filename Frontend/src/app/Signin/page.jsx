@@ -27,7 +27,7 @@ async function loadMe() {
 }
 
 function routeFor(user) {
-  if (user?.role === "club") return `/club/HomePage`;
+  if (user?.role === "club") return `/club/profile/${user.id}`;
   if (user?.role === "gamer") return `/gamer/profile/${user.id}`;
   return `/`;
 }
@@ -56,7 +56,6 @@ export default function SignInPage() {
   const [cError, setCError] = useState("");
   const [cOk, setCOk] = useState("");
 
-   /* ——— Email+Password (Gamer) ———*/
   const onGamerEmailLogin = async (email, password) => {
     setGError(""); setGOk(""); setGLoading(true);
     try {
@@ -65,7 +64,7 @@ export default function SignInPage() {
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      /* redirect after login */
+    
       await redirectAfterLogin(router, setGOk, setGError);
     } catch (err) {
       const msg =
@@ -80,7 +79,7 @@ export default function SignInPage() {
     }
   };
 
-  // ——— Email+Password (Club) ———
+  
   const onClubEmailLogin = async (email, password) => {
     setCError(""); setCOk(""); setCLoading(true);
     try {
@@ -89,7 +88,7 @@ export default function SignInPage() {
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      /* redirect after login */
+      
       await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
       const msg =
@@ -104,7 +103,7 @@ export default function SignInPage() {
     }
   };
 
-  // ——— Google (Gamer) ———
+  
   const onGoogleLogin = async () => {
     setGError(""); setGOk(""); setGLoading(true);
     try {
@@ -122,7 +121,7 @@ export default function SignInPage() {
     }
   };
 
-  // ——— Twitch (Club via OIDC) ———
+  // Twitch (Club via OIDC)
   const onTwitchLogin = async () => {
     setCError(""); setCOk(""); setCLoading(true);
     try {
@@ -132,7 +131,7 @@ export default function SignInPage() {
       provider.addScope("user:read:email");
       await signInWithPopup(auth, provider);
 
-      /* redirect after login */
+  
       await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
       setCError(err?.message || "Twitch sign-in failed. Please try again.");
@@ -166,7 +165,7 @@ export default function SignInPage() {
         />
       </div>
 
-      {/* Sign In content + inline banners */}
+     
       <div className="relative z-10 w-full">
         {(gError || gOk || cError || cOk) && (
           <div className="flex justify-center my-4">

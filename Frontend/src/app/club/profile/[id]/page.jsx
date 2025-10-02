@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import "../../globals.css";
-import Particles from "../../Components/Particles";
+import "../../../globals.css";
+import Particles from "../../../Components/Particles";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { getYear, getMonth } from "date-fns";
 
@@ -25,7 +25,6 @@ const ALLOWED_MIME = new Set([
   "image/svg+xml",
   "application/pdf",
 ]);
-
 
 function useOwnerGuard() {
   const router = useRouter();
@@ -62,6 +61,7 @@ function useOwnerGuard() {
 
   return ready;
 }
+
 function formatDate(date) {
   if (!date) return "";
   const options = { day: "numeric", month: "short", year: "numeric" };
@@ -446,7 +446,6 @@ export default function ClubProfile() {
     (g) => !games.some((ug) => ug.gameid === g.id)
   );
 
-  const [profile, setProfile] = useState(null);
   useEffect(() => {
     if (!ready || !uid) return;
 
@@ -508,13 +507,13 @@ export default function ClubProfile() {
 
               <div className="flex relative top-2 ml-4 items-start gap-6">
                                 {profile.profilePhoto ? (
-                  <div className="w-72 h-72 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                  <div className="w-60 h-60 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
                     <Image
                       src={profile.profilePhoto}
                       alt="Profile Avatar"
                       width={105}           
                       height={105}
-                      className="w-40 h-40 object-cover"
+                      className="w-full h-full object-cover rounded-full"
                     />
                   </div>
                 ) : (

@@ -1,7 +1,7 @@
 {
-  "/SignUp/page": "app/SignUp/page.js",
-  "/gamer/followList/[id]/page": "app/gamer/followList/[id]/page.js",
-  "/gamer/addinfo/[id]/page": "app/gamer/addinfo/[id]/page.js",
+  "/Signin/page": "app/Signin/page.js",
   "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js",
-  "/Signin/page": "app/Signin/page.js"
+  "/gamer/HomePage/[id]/page": "app/gamer/HomePage/[id]/page.js",
+  "/gamer/addinfo/[id]/page": "app/gamer/addinfo/[id]/page.js",
+  "/gamer/followList/[id]/page": "app/gamer/followList/[id]/page.js"
 }

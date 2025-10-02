@@ -11,7 +11,7 @@ export async function authedFetch(url, options = {}) {
     const headers = {
       ...(options.headers || {}),
       Authorization: `Bearer ${token}`,
-      // Only set JSON when caller didn't set it AND it's not FormData
+      
       ...(!isFormData && !("Content-Type" in (options.headers || {}))
         ? { "Content-Type": "application/json" }
         : {}),

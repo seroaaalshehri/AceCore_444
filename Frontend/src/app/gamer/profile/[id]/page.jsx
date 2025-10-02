@@ -526,13 +526,13 @@ export default function GamerProfile() {
               <div className="flex relative top-2 ml-4 items-start gap-6">
 
                 {profile.profilePhoto ? (
-                  <div className="w-72 h-72 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                  <div className="w-60 h-60 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
                     <Image
                       src={profile.profilePhoto}
                       alt="Profile Avatar"
                       width={105}           // match w-72 (18rem = 288px)
                       height={105}
-                      className="w-40 h-40 object-cover"
+                      className="w-full h-full object-cover rounded-full"
                     />
                   </div>
                 ) : (

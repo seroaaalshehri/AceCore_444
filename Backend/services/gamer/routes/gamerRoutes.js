@@ -10,14 +10,17 @@ const { getUserByAuthUidService } = require("../../user/userServices/userService
 const requireOwner = buildRequireOwner(getUserByAuthUidService);
 const uploadPath = path.join(__dirname, "../../../storage/achievements");
 
+const upload = multer({ storage: multer.memoryStorage() }); // <— important
 
-const uploadProfile = multer({
+
+
+/*const uploadProfile = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) =>
     file.mimetype.startsWith("image/") ? cb(null, true) : cb(new Error("Images only")),
 });
-
+*/
 
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
@@ -32,15 +35,16 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload2 = multer({ storage });
+
 
 router.get("/:userid/profile", authenticate, requireOwner, gamerController.getUserProfile);
 router.post("/:userid/profile",
   authenticate,
   requireOwner,
-  uploadProfile.single("file"),
+  upload.single("file"),
   gamerController.UpdateUserProfile
-);
+); 
 
 
 router.get("/:userid/following", authenticate, gamerController.getFollowing);
@@ -49,8 +53,9 @@ router.get("/:userid/achievements", authenticate, requireOwner, gamerController.
 router.get("/:userid/games", authenticate, requireOwner, gamerController.listGames);
 router.get("/:userid/followNums", authenticate, requireOwner, gamerController.getFollowNums);
 router.post("/:userid/add/games", authenticate, requireOwner, gamerController.addGame);
-router.post("/:userid/add", authenticate, requireOwner, upload.single("file"), gamerController.addAchievement);
+router.post("/:userid/add", authenticate, requireOwner, upload2.single("file"), gamerController.addAchievement);
 router.get("/games/all", gamerController.getAllGames);
+router.put("/gamer/:userid/profile", upload.single("avatar"), gamerController.UpdateUserProfile);
 
 
 module.exports = router;

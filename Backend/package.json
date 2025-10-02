@@ -14,11 +14,16 @@
   "type": "commonjs",
   "dependencies": {
     "agora-access-token": "^2.0.4",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "firebase-admin": "^13.5.0",
+    "formidable-serverless": "^1.1.1",
     "multer": "^2.0.2",
+    "passport": "^0.7.0",
+    "passport-twitch-new": "^0.0.3",
     "uuid": "^13.0.0"
   }
 }

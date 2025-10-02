@@ -7,7 +7,78 @@ const {
   updateUserService,
   deleteUserService,
 } = require("../userServices/userService");
+const { db } = require("../../../Firebase/firebaseBackend");
+const { getStorage } = require("firebase-admin/storage");
+const { v4: uuidv4 } = require("uuid");
+const USERS = db.collection("users");
 
+// NEW: check if a username is available
+exports.checkUsername = async (req, res) => {
+  try {
+    const raw = (req.query.username || "").trim();
+    if (!raw) {
+      return res.status(400).json({ success: false, message: "Missing username" });
+    }
+
+  
+    const usernameLower = raw.toLowerCase();
+
+    // You’ll implement this in the service (see step 2)
+    const { usernameExistsByLower } = require("../userServices/userService");
+    const exists = await usernameExistsByLower(usernameLower);
+
+    return res.json({ success: true, available: !exists });
+  } catch (e) {
+    console.error("checkUsername error:", e);
+    return res.status(500).json({ success: false, message: "Internal error" });
+  }
+};
+
+{/*
+For sprint2
+
+  exports.loginWithUsername = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password required" });
+    }
+
+    const userSnap = await USERS.where("username", "==", username).limit(1).get();
+    if (userSnap.empty) {
+      return res.status(404).json({ message: "Username not found" });
+    }
+
+    const user = userSnap.docs[0].data();
+    const userId = userSnap.docs[0].id;
+
+    if (user.password !== password) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+
+    return res.json({
+      user: {
+        id: userId,
+        username: user.username,
+        role: user.role,
+        avatarUrl: user.avatarUrl || "",
+        email: user.email,
+        provider: user.provider,
+        authUid: user.authUid,
+        clubName: user.clubName,
+        gamerEmail: user.gamerEmail,
+        clubEmail: user.clubEmail,
+        country: user.country,
+      },
+    });
+
+  } catch (e) {
+    console.error("loginWithUsername error:", e);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+*/}
 
 exports.getMe = async (req, res) => {
   try {
@@ -24,7 +95,6 @@ exports.getMe = async (req, res) => {
   }
 }; 
 
-//Maybe will be removed-Roaa-:
 exports.getByAuthUid = async (req, res) => {
   try {
     const uid = req.params.uid;
@@ -44,14 +114,16 @@ exports.getByAuthUid = async (req, res) => {
 
 
 
-
 exports.verifyComplete = async (req, res) => {
   try {
+   
+    const file = req.file;
+
+   
     let { payload, email } = req.body || {};
-    if (!payload) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing payload" });
+
+    if (!payload && req.body.role) {
+      payload = req.body;
     }
 
     if (email && !payload.email && !payload.gamerEmail && !payload.clubEmail) {
@@ -62,9 +134,33 @@ exports.verifyComplete = async (req, res) => {
       payload = { ...payload, authUid: req.user.uid };
     }
 
+    if (file) {
+      const bucket = getStorage().bucket(); 
+      const fileName = `profileImages/${uuidv4()}_${file.originalname}`;
+      const blob = bucket.file(fileName);
+
+      const blobStream = blob.createWriteStream({
+        metadata: {
+          contentType: file.mimetype,
+        },
+      });
+
+      await new Promise((resolve, reject) => {
+        blobStream.on("error", reject);
+        blobStream.on("finish", resolve);
+        blobStream.end(file.buffer);
+      });
+
+      await blob.makePublic();
+      const avatarUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+      payload = { ...payload, avatarUrl };
+    }
+
     const out = await verifyCompleteService(payload);
     return res.status(200).json({ success: true, id: out.id });
   } catch (e) {
+    console.error("verifyComplete error:", e);
     const status = e.status || 500;
     return res.status(status).json({
       success: false,
@@ -72,6 +168,7 @@ exports.verifyComplete = async (req, res) => {
     });
   }
 };
+
 
 
 exports.getAllUsers = async (_req, res) => {
@@ -130,5 +227,11 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+exports.twitchAuthCallback = async (req, res) => {
+  const user = req.user;
 
+  res.redirect(
+    `http://localhost:3000/twitch-success?user=${encodeURIComponent(JSON.stringify(user))}`
+  );
+};
 
