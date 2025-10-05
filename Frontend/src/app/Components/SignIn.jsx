@@ -111,14 +111,14 @@ export default function SignIn({
           <div className="w-full flex flex-col gap-3">
             <div className="w-full">
               <label htmlFor="club-email" className="block text-base font-semibold mb-1 text-gray-200">
-                Email
+                Username/Email
               </label>
               <input
                 id="club-email"
-                type="email"
+                type="text"
                 value={cEmail}
                 onChange={(e) => setCEmail(e.target.value)}
-                placeholder="Enter your Email"
+                placeholder="Enter your Username or Email"
                 required
                 disabled={cLoading || tLoading}
                 autoComplete="email"
@@ -191,11 +191,11 @@ export default function SignIn({
           <div className="w-full flex flex-col gap-3">
             <div className="w-full">
               <label htmlFor="g-email" className="block text-base font-semibold mb-1 text-gray-200">
-                Email
+                 Username/Email
               </label>
               <input
                 id="g-email"
-                type="email"
+                type="text"
                 value={gEmail}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -213,7 +213,7 @@ export default function SignIn({
                     setGGmailMsg("");
                   }
                 }}
-                placeholder="Enter your Email"
+                placeholder="Enter your Username or Email"
                 required
                 disabled={gLoading }
                 autoComplete="email"

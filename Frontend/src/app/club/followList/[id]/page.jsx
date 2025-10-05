@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { User as UserIcon } from "lucide-react";
-import { collection, getDocs, getDoc, doc, orderBy, limit, query, startAfter,} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getApp } from "firebase/app";
-import Particles from "../../Components/Particles";
-import LeftSidebar, { SIDEBAR_WIDTH } from "../../Components/LeftSidebar";
+import Particles from "../../../Components/Particles";
+import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
 
 
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 const API_ROOT = String(RAW_BASE).replace(/\/+$/, "");
+
 
 function api(path) {
   const p = path.startsWith("/") ? path : `/${path}`;
@@ -19,17 +19,16 @@ function api(path) {
   return `${API_ROOT}${p}`;
 }
 
+/* -------------------- UI classes -------------------- */
 const GOLD_BTN =
   "bg-[#FCCC22] text-[#2b2142b3] font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 const GOLD_BTN_GHOST =
   "border border-[#FCCC22] text-[#FCCC22] font-bold px-3 py-1 rounded text-l hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
-
 const ZEN_TAB =
   "px-3 py-1 text-l font-bold border-b-2 border-transparent text-[#dee1e6] hover:text-[#FCCC22] hover:border-[#FCCC22] transition-colors";
 const ZEN_TAB_ACTIVE =
   "px-3 py-1 text-l font-bold border-b-2 border-[#FCCC22] text-[#FCCC22]";
 
-const HIDE_MISSING_PROFILES = false;
 
 function PersonRow({ u }) {
   const username = u?.username || "unknown";
@@ -51,7 +50,6 @@ function PersonRow({ u }) {
           </div>
         )}
       </div>
-
       <div className="min-w-0">
         <div className="text-white text-sm truncate">{display}</div>
         <div className="text-xs text-gray-300 truncate">
@@ -63,18 +61,18 @@ function PersonRow({ u }) {
 }
 
 
-
 export default function FollowListsPage() {
-const params = useParams();
+  const params = useParams();
   const router = useRouter();
   const USER_ID = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
-  const [tab, setTab] = useState("following");          
-  const [roleFilter, setRoleFilter] = useState("all");  
+  const [tab, setTab] = useState("following"); 
+  const [roleFilter, setRoleFilter] = useState("all"); 
 
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [nextCursor, setNextCursor] = useState({ following: null, followers: null });
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState("");
@@ -82,18 +80,17 @@ const params = useParams();
   const scrollRef = useRef(null);
   const sentinelRef = useRef(null);
 
-
   const activeListRaw = tab === "following" ? following : followers;
-  const activeLast = tab === "following" ? lastDoc.following : lastDoc.followers;
+  const activeCursor = tab === "following" ? nextCursor.following : nextCursor.followers;
 
   const activeList = useMemo(() => {
     if (roleFilter === "all") return activeListRaw;
-    return activeListRaw.filter( (u) => (u?.role || "").toLowerCase() === roleFilter
-    );
+    return activeListRaw.filter((u) => (u?.role || "").toLowerCase() === roleFilter);
   }, [activeListRaw, roleFilter]);
 
-   const hasMore = !!activeCursor;
- const dedupeById = (arr) => {
+  const hasMore = !!activeCursor;
+
+  const dedupeById = (arr) => {
     const seen = new Set();
     const out = [];
     for (const x of arr) {
@@ -104,8 +101,8 @@ const params = useParams();
     }
     return out;
   };
- 
-// ---- fetch page from backend API ----
+
+  // ---- fetch page from backend API ----
   const fetchPage = useCallback(
     async (which, cursor = null) => {
       if (!USER_ID) return;
@@ -162,7 +159,8 @@ const params = useParams();
     [USER_ID]
   );
 
-   useEffect(() => {
+  
+  useEffect(() => {
     console.log("API_ROOT:", API_ROOT);
     if (USER_ID) fetchPage("following", null);
   }, [USER_ID, fetchPage]);
@@ -214,8 +212,7 @@ const params = useParams();
         />
       </div>
 
-   
-       <LeftSidebar role="club" active="profile" userId={USER_ID} />
+      <LeftSidebar role="gamer" active="profile" userId={USER_ID} />
 
       <main
         className="relative z-10 pt-8"
@@ -247,7 +244,6 @@ const params = useParams();
                   className={roleFilter === "all" ? ZEN_TAB_ACTIVE : ZEN_TAB}
                   onClick={() => setRoleFilter("all")}
                   type="button"
-                  title="Show all roles"
                 >
                   All
                 </button>
@@ -255,7 +251,6 @@ const params = useParams();
                   className={roleFilter === "gamer" ? ZEN_TAB_ACTIVE : ZEN_TAB}
                   onClick={() => setRoleFilter("gamer")}
                   type="button"
-                  title="Only gamers"
                 >
                   Gamers
                 </button>
@@ -263,25 +258,26 @@ const params = useParams();
                   className={roleFilter === "club" ? ZEN_TAB_ACTIVE : ZEN_TAB}
                   onClick={() => setRoleFilter("club")}
                   type="button"
-                  title="Only clubs"
                 >
                   Clubs
                 </button>
               </div>
             </div>
 
+        
             <div
               ref={scrollRef}
               className="rounded-lg border border-[#3b2d5e] bg-[#1C1633]/40"
               style={{ maxHeight: "36rem", overflowY: "auto" }}
             >
-
               {initialLoading ? (
                 <div className="p-6 text-gray-300">Loading…</div>
               ) : error ? (
-                <div className="p-6 text-red-300">Error: {error}</div>
+                <div className="p-6 text-red-300 break-words">
+                  {error}
+                </div>
               ) : activeList.length === 0 ? (
-                <div className="p-6 text-gray-300">
+                <div className="p-6  text-gray-300">
                   {tab === "following"
                     ? roleFilter === "all"
                       ? "Not following anyone yet."
@@ -291,7 +287,7 @@ const params = useParams();
                       : `No ${roleFilter}s in followers.`}
                 </div>
               ) : (
-                <ul className="divide-y divide-[#3b2d5e]">
+                <ul className="divide-y divide-[#3b2d5e] text-l">
                   {activeList.map((u) => (
                     <li key={`${tab}-${u.id}`}>
                       <PersonRow u={u} />
@@ -300,10 +296,9 @@ const params = useParams();
                 </ul>
               )}
 
+             
               <div ref={sentinelRef} />
-
-            
-              <div className="p-3 text-center text-xs text-gray-400">
+              <div className="p-3 text-center text-sm text-gray-400">
                 {loading
                   ? "Loading more…"
                   : hasMore
@@ -318,14 +313,13 @@ const params = useParams();
               <button
                 type="button"
                 className="text-red-400 font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:bg-[#3b2d5e] transition-shadow"
-                onClick={() => history.back()}
+                onClick={() => router.back()} 
               >
                 Back
               </button>
             </div>
           </div>
         </div>
-
       </main>
     </>
   );

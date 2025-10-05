@@ -44,7 +44,7 @@ router.get(
 
 
 router.get("/me", authenticate, userController.getMe);
-//router.post("/login",authenticate,userController.loginWithUsername);
+router.post("/login", userController.loginWithUsername);
 router.post("/verify-complete", optionalAuth,upload.single("clubAvatar"), userController.verifyComplete);
 router.get("/by-auth/:uid",    optionalAuth, userController.getByAuthUid); 
 router.get("/check-username", optionalAuth, userController.checkUsername); 

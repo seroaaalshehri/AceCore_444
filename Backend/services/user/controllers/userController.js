@@ -7,7 +7,7 @@ const {
   updateUserService,
   deleteUserService,
 } = require("../userServices/userService");
-const { db } = require("../../../Firebase/firebaseBackend");
+const { admin ,db } = require("../../../Firebase/firebaseBackend");
 const { getStorage } = require("firebase-admin/storage");
 const { v4: uuidv4 } = require("uuid");
 const USERS = db.collection("users");
@@ -34,51 +34,57 @@ exports.checkUsername = async (req, res) => {
   }
 };
 
-{/*
-For sprint2
-
-  exports.loginWithUsername = async (req, res) => {
+//AUTH SPRINT2
+exports.loginWithUsername = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    let { username, password } = req.body || {};
+    username = String(username || "").trim();
+    password = String(password || "");
+
     if (!username || !password) {
-      return res.status(400).json({ message: "Username and password required" });
+      return res.status(400).json({ success: false, message: "Username and password required" });
     }
 
-    const userSnap = await USERS.where("username", "==", username).limit(1).get();
-    if (userSnap.empty) {
-      return res.status(404).json({ message: "Username not found" });
+    // 1) Find profile
+    const snap = await USERS.where("username_lower", "==", username.toLowerCase()).limit(1).get();
+    if (snap.empty) return res.status(404).json({ success: false, message: "Username not found" });
+
+    const doc = snap.docs[0];
+    const user = doc.data();
+
+    // 2) Plaintext password check (dev only)
+    const ok = typeof user.password === "string" && user.password === password;
+    if (!ok) return res.status(401).json({ success: false, message: "Incorrect password" });
+
+    // 3) Require the auth link to already exist (signup should have created it)
+    const uid = user.authUid;
+    if (!uid) {
+      return res.status(409).json({
+        success: false,
+        message: "Account not fully provisioned (missing auth link). Please contact support or re-complete signup.",
+      });
     }
 
-    const user = userSnap.docs[0].data();
-    const userId = userSnap.docs[0].id;
-
-    if (user.password !== password) {
-      return res.status(401).json({ message: "Incorrect password" });
-    }
-
+    // 4) Mint a custom token for this existing Auth user
+    const customToken = await admin.auth().createCustomToken(uid, { role: user.role });
 
     return res.json({
+      success: true,
+      customToken,
       user: {
-        id: userId,
-        username: user.username,
+        id: doc.id,
         role: user.role,
-        avatarUrl: user.avatarUrl || "",
+        username: user.username,
         email: user.email,
-        provider: user.provider,
-        authUid: user.authUid,
-        clubName: user.clubName,
-        gamerEmail: user.gamerEmail,
-        clubEmail: user.clubEmail,
-        country: user.country,
+        avatarUrl: user.avatarUrl || "",
+        provider: user.provider || "password",
       },
     });
-
   } catch (e) {
     console.error("loginWithUsername error:", e);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-*/}
 
 exports.getMe = async (req, res) => {
   try {

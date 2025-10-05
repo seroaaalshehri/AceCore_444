@@ -48,7 +48,7 @@ function useOwnerGuard() {
         const meId = data?.user?.id;
         const currentId = decodeURIComponent(routeId || "");
         if (!meId || meId !== currentId) {
-          router.replace(`/gamer/profile/${meId || ""}`);
+          router.replace(`/club/profile/${meId || ""}`);
           return;
         }
         setReady(true);
@@ -93,6 +93,7 @@ const todayStr = (() => {
 
 export function AddAchievement({ userid }) {
   const [open, setOpen] = useState(false);
+  const uid = userid;
   const [achievements, setAchievements] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -106,7 +107,7 @@ export function AddAchievement({ userid }) {
 
 
   async function fetchAchievements() {
-    const res = await fetch(`http://localhost:4000/api/club/${uid}/achievements`);
+    const res = await authedFetch(`http://localhost:4000/api/club/${uid}/achievements`);
     const data = await res.json();
     if (data.success) setAchievements(data.achievements);
   }
@@ -615,7 +616,7 @@ export default function ClubProfile() {
                       <div className="flex items-center">
                         <div className="flex flex-col">
                           <span className="font-bold text-white text-[32px]">{g.gameName}</span>
-                          {g.username && <span className="text-[20px] text-gray-400">@{g.username}</span>}
+                      
                         </div>
                         <div className="flex gap-2 ml-auto">
                           <button className="hover:text-[#fccc22] text-sm">

@@ -176,7 +176,6 @@ const checkUsernameAvailable = async (username) => {
             emailVerified: true,
             provider: "google.com",
             authUid: uid,
-            password: "", 
           });
 
           const res = await fetch(`${API_BASE}/verify-complete`, {
@@ -255,7 +254,7 @@ form.append("authUid",formData.authUid || "");
     form.append("clubAvatar", formData.clubAvatar);
   }
  
-  console.log("🟣 Submitting club form data:", formData);
+
 
   const res = await fetch("http://localhost:4000/api/users/verify-complete", {
     method: "POST",

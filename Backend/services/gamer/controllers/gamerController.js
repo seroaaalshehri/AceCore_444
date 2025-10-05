@@ -75,41 +75,6 @@ const updated = await updateUserProfileService(userid, safe);
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
    /* const fileInput = req.file ? {
       buffer: req.file.buffer,
       originalname: req.file.originalname,

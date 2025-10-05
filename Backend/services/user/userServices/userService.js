@@ -61,6 +61,7 @@ async function usernameExistsByLower(usernameLower) {
 }
 
 
+
 async function verifyCompleteService(payload = {}) {
   const rawEmail = payload.gamerEmail || payload.clubEmail || payload.email || "";
   const username = payload.username || "";
@@ -191,6 +192,7 @@ async function deleteUserService(id) {
   await batch.commit();
   return { id };
 }
+
 
 module.exports = {
   verifyCompleteService,

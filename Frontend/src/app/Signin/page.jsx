@@ -14,6 +14,8 @@ import {
   signInWithPopup,
   signOut,
   OAuthProvider,
+  // UPDATED: import custom-token sign-in
+  signInWithCustomToken, // UPDATED
 } from "firebase/auth";
 import { authedFetch } from "../../../lib/authedFetch";
 
@@ -42,9 +44,32 @@ async function redirectAfterLogin(router, setOk, setErr) {
     setErr && setErr(e?.message || "Failed to load profile.");
   }
 }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+
+// UPDATED: helper to call your backend login and get a Firebase custom token
+async function loginWithUsernamePassword(identifier, password) { // UPDATED
+  const res = await fetch("http://localhost:4000/api/users/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      // Backend currently expects username. We pass whatever the user typed
+      // (username or email). If your backend only accepts username, ensure
+      // the input is username on the UI; otherwise extend backend to accept email too.
+      username: String(identifier || "").trim(), // UPDATED
+      password: String(password || ""),          // UPDATED
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data?.success || !data?.customToken) {
+    throw new Error(data?.message || "Login failed."); // UPDATED
+  }
+  return data.customToken; // UPDATED
+}
 
 export default function SignInPage() {
   const router = useRouter();
+  
 
   const [isClub, setIsClub] = useState(false);
 
@@ -59,14 +84,18 @@ export default function SignInPage() {
   const onGamerEmailLogin = async (email, password) => {
     setGError(""); setGOk(""); setGLoading(true);
     try {
-      if (!email || !email.includes("@")) throw new Error("Please enter a valid email address.");
+      if (!email) throw new Error("Please enter your email or username."); // UPDATED (loosened msg)
       if (!password) throw new Error("Please enter your password.");
 
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      // UPDATED: Use backend /login → custom token → Firebase session
+      // We intentionally do NOT call signInWithEmailAndPassword here, since
+      // you asked to use the custom-token path with the login endpoint.
+      const customToken = await loginWithUsernamePassword(email, password); // UPDATED
+      await signInWithCustomToken(auth, customToken);                       // UPDATED
 
-    
       await redirectAfterLogin(router, setGOk, setGError);
     } catch (err) {
+      console.log("AUTH FAIL =>", err?.code, err?.message, err?.customData); // UPDATED (extra debug)
       const msg =
         err?.code === "auth/user-not-found" ||
         err?.code === "auth/wrong-password" ||
@@ -83,14 +112,16 @@ export default function SignInPage() {
   const onClubEmailLogin = async (email, password) => {
     setCError(""); setCOk(""); setCLoading(true);
     try {
-      if (!email || !email.includes("@")) throw new Error("Please enter a valid email address.");
+      if (!email) throw new Error("Please enter your email or username."); // UPDATED (loosened msg)
       if (!password) throw new Error("Please enter your password.");
 
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      // UPDATED: Same approach for Club — go through backend /login to get custom token
+      const customToken = await loginWithUsernamePassword(email, password); // UPDATED
+      await signInWithCustomToken(auth, customToken);                       // UPDATED
 
-      
       await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
+      console.log("AUTH FAIL =>", err?.code, err?.message, err?.customData); // UPDATED (extra debug)
       const msg =
         err?.code === "auth/user-not-found" ||
         err?.code === "auth/wrong-password" ||
