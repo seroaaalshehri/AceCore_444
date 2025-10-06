@@ -14,19 +14,11 @@ const upload = multer({ storage: multer.memoryStorage() }); // <— important
 
 
 
-/*
-const uploadProfile = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) =>
-    file.mimetype.startsWith("image/") ? cb(null, true) : cb(new Error("Images only")),
-});
 
 
-//for achievement files
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
-}*/
+}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -55,6 +47,6 @@ router.get("/:userid/followNums", authenticate, requireOwner, clubController.get
 router.post("/:userid/add/games", authenticate, requireOwner, clubController.addGame);
 router.post("/:userid/add", authenticate, requireOwner, upload2.single("file"), clubController.addAchievement);
 router.get("/games/all", clubController.getAllGames);
-router.put("/club/:userid/profile", upload.single("avatar"), clubController.UpdateUserProfile);
+router.put("/:userid/profile", upload.single("avatar"), clubController.UpdateUserProfile);
 
 module.exports = router;

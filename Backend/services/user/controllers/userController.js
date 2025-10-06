@@ -12,7 +12,7 @@ const { getStorage } = require("firebase-admin/storage");
 const { v4: uuidv4 } = require("uuid");
 const USERS = db.collection("users");
 
-// NEW: check if a username is available
+// check if a username is available
 exports.checkUsername = async (req, res) => {
   try {
     const raw = (req.query.username || "").trim();
@@ -23,7 +23,7 @@ exports.checkUsername = async (req, res) => {
   
     const usernameLower = raw.toLowerCase();
 
-    // You’ll implement this in the service (see step 2)
+
     const { usernameExistsByLower } = require("../userServices/userService");
     const exists = await usernameExistsByLower(usernameLower);
 

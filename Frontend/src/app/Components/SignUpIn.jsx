@@ -12,7 +12,7 @@ import gamer from "../../../public/GamerSignup.json";
 import Link from "next/link";
 import DateAlert from "./DateAlert";
 import FormAlert from "./FormAlert";
-
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
 import { auth } from "../../../lib/firebaseClient";
 import {
   GoogleAuthProvider,
@@ -64,7 +64,8 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [clubPasswordMsg, setClubPasswordMsg] = useState("");
   const [genderError, setGenderError] = useState("");
   const [gamesError, setGamesError] = useState("");
-
+  const [showGamerSignUpPw, setShowGamerSignUpPw] = useState(false); 
+  const [showClubSignUpPw, setShowClubSignUpPw] = useState(false); 
 
 React.useEffect(() => {
   if (errorMsg || okMsg) {
@@ -640,10 +641,11 @@ const validateClubLogo = () => {
               <label htmlFor="club-password" className="block text-base mb-1">
                 Password
               </label>
+              <div className="password-wrapper">
               <input
                 id="club-password"
                 name="clubPassword"         
-                type="password"
+                type={showClubSignUpPw ? "text" : "password"}
                 placeholder="Enter password"
                 value={formData.clubPassword || ""}   
                 onChange={onInputChange}
@@ -652,11 +654,20 @@ const validateClubLogo = () => {
                 maxLength={16}
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
+              <button
+    type="button"
+    className="password-toggle signup-toggle"
+    onClick={() => setShowClubSignUpPw(!showClubSignUpPw)}
+    aria-label={showClubSignUpPw ? "Hide password" : "Show password"}
+  >
+    {showClubSignUpPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+  </button>
                 {clubPasswordMsg && (
                 <p className="mt-1 text-xs text-red-400">{clubPasswordMsg}</p>
               
               )}
             </div>
+          </div>
           </div>
 
           {/* Club Username + Name */}
@@ -941,10 +952,11 @@ disabled={
                 <label htmlFor="password" className="block text-base mb-1">
                   Password
                 </label>
+                <div className="password-wrapper">
                 <input
                   id="gamer-password"                
                   name="gamerPassword"               
-                  type="password"
+                  type={showGamerSignUpPw ? "text" : "password"}
                   placeholder="Enter your password"
                   value={formData.gamerPassword || ""}   
                   onChange={onInputChange}
@@ -953,10 +965,19 @@ disabled={
                   maxLength={16}
                   className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
                 />
+                <button
+    type="button"
+    className="password-toggle signup-toggle"
+    onClick={() => setShowGamerSignUpPw(!showGamerSignUpPw)}
+    aria-label={showGamerSignUpPw ? "Hide password" : "Show password"}
+  >
+    {showGamerSignUpPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+  </button>
                   {gamerPasswordMsg && (
                   <p className="mt-1 text-xs text-red-400">{gamerPasswordMsg}</p>
                 )}
               </div>
+            </div>
             </div>
 
             {/* Nationality dropdown */}

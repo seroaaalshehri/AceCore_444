@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
  images: {
   domains: [
     "firebasestorage.googleapis.com",
+    "storage.googleapis.com", 
     "localhost" 
   ]
 }

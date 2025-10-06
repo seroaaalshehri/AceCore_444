@@ -11,16 +11,19 @@ passport.use(
       clientID: process.env.TWITCH_CLIENT_ID,
       clientSecret: process.env.TWITCH_CLIENT_SECRET,
       callbackURL: "http://localhost:4000/api/users/auth/twitch/callback",
-      scope: ["user:read:email", "user:read:broadcast"],
+      scope: ["user:read:email", 
+         "channel:read:stream_key", 
+        "channel:manage:broadcast", 
+
+      ],
     },
     async (accessToken, refreshToken, profile, done) => {
       const user = {
         twitchId: profile.id,
-        displayName: profile.display_name,
         email: profile.email,
-        profileImage: profile.profile_image_url,
         accessToken,
         refreshToken,
+        tokenObtainedAt: Date.now(),
       };
       return done(null, user);
     }

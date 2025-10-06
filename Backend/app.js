@@ -23,6 +23,7 @@ app.use(
   })
 );
 
+
 // Routes
 const userRoutes = require("./services/user/routes/userRoutes");
 const gamerRoutes = require("./services/gamer/routes/gamerRoutes");

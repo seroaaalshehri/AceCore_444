@@ -154,5 +154,5 @@ module.exports = {
   addUserGame,
   getUserGames,
   getGames,
-  updateUserProfileService
+  updateUserProfileService,
 };

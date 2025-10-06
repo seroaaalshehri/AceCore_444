@@ -153,12 +153,15 @@ export function AddAchievement({ userid }) {
       formData.append("association", form.association);
       formData.append("game", form.game);
       formData.append("date", form.date);
-      if (form.file) formData.append("file", form.file);
+      if (form.file) {
+        formData.append("file", form.file);
+      }
 
-      const res = await fetch(`http://localhost:4000/api/club/${uid}/add`, {
+      const res = await authedFetch(`http://localhost:4000/api/club/${uid}/add`, {
         method: "POST",
         body: formData,
       });
+
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Unknown error");
 
@@ -167,6 +170,7 @@ export function AddAchievement({ userid }) {
       setErrors({});
       setFileErr("");
       setOpen(false);
+
     } catch (err) {
       console.error("❌ Error saving achievement:", err);
       alert("Failed to save achievement. Try again.");
@@ -358,10 +362,10 @@ export function AddAchievement({ userid }) {
 }
 
 export default function ClubProfile() {
-  const router = useRouter();
-  const params = useParams();
-   const raw = Array.isArray(params?.id) ? params.id[0] : params?.id;
+    const params = useParams();
+  const raw = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const uid = decodeURIComponent(raw ?? "");
+  const router = useRouter();
   const [games, setGames] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
@@ -371,12 +375,15 @@ export default function ClubProfile() {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [error, setError] = useState("");
-  const [profile, setProfile] = useState(null);
-    const ready = useOwnerGuard();
+  const ready = useOwnerGuard();
   const { id } = useParams();
   const userId = Array.isArray(id) ? id[0] : id;
 
- useEffect(() => {
+
+
+
+  // followers / following
+  useEffect(() => {
     if (!ready || !uid) return;
     (async () => {
       try {
@@ -392,7 +399,7 @@ export default function ClubProfile() {
     })();
   }, [uid, ready]);
 
-
+  // all available games 
   useEffect(() => {
     if (!ready) return;
     (async () => {
@@ -406,6 +413,7 @@ export default function ClubProfile() {
     })();
   }, [ready]);
 
+  // user’s games
   const refreshGames = async () => {
     if (!ready || !uid) return;
     try {
@@ -416,9 +424,8 @@ export default function ClubProfile() {
       console.error("listGames:", e);
     }
   };
- useEffect(() => { refreshGames(); }, [uid, ready]);
 
- 
+  useEffect(() => { refreshGames(); }, [uid, ready]);
 
   async function handleAdd() {
     if (!selectedGame) {
@@ -432,8 +439,7 @@ export default function ClubProfile() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gameid: selectedGame.id,
-        username: username || "—",
-        rank: 0
+       
       })
     });
 
@@ -443,10 +449,12 @@ export default function ClubProfile() {
     setUsername("");
   }
 
+
   const availableGames = allGames.filter(
     (g) => !games.some((ug) => ug.gameid === g.id)
   );
 
+  const [profile, setProfile] = useState(null);
   useEffect(() => {
     if (!ready || !uid) return;
 
@@ -471,11 +479,11 @@ export default function ClubProfile() {
     return <div className="text-gray-400 p-6">Loading profile...</div>;
   }
 
+
   return (
-    <div className="flex min-h-screen">
+     <div className="flex min-h-screen">
       <div className="w-[250px]">
-        <LeftSidebar />
-      </div>
+        <LeftSidebar role="club" active="profile" userId={id} />      </div>
 
       
       <div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
@@ -629,12 +637,11 @@ export default function ClubProfile() {
                 ))}
               </div>
 
-              {isModalOpen && (
+                     {isModalOpen && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-[5000]">
                   <div className="bg-[#1d1530] rounded-xl p-6 w-96 relative">
-
                     <button
-                      onClick={() => { setIsModalOpen(false); setSelectedGame(null); setError(""); setUsername(""); }}
+                      onClick={() => { setIsModalOpen(false); setSelectedGame(null); setError(""); }}
                       className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
                     >
                       ×
@@ -647,25 +654,34 @@ export default function ClubProfile() {
                       {availableGames.map((game) => (
                         <button
                           key={game.id}
-                          onClick={() => { setSelectedGame(game); setError(""); }}
-                          className={`p-3 rounded border flex items-center gap-3 ${
-                            selectedGame?.id === game.id
-                              ? "border-yellow-400 bg-[#0C0817]"
-                              : "border-[#0C0817] bg-[#0C0817] hover:border-[#fccc22]"
-                          }`}
+                          onClick={() => {
+                            setSelectedGame(game);
+                            setError(""); // clear error if user picks a game
+                          }}
+                          className={`p-3 rounded border flex items-center gap-3 ${selectedGame?.id === game.id
+                            ? "border-yellow-400 bg-[#0C0817]"
+                            : "border-[#0C0817] bg-[#0C0817] hover:border-[#fccc22]"
+                            }`}
                         >
-                          <img src={game.gamePhoto} alt={game.gameName} className="w-14 h-14 rounded" />
+                          <img
+                            src={game.gamePhoto}
+                            alt={game.gameName}
+                            className="w-14 h-14 rounded"
+                          />
                           <span className="text-white text-xl">{game.gameName}</span>
                         </button>
                       ))}
+
                     </div>
+
+                   
 
                     <button
                       onClick={handleAdd}
-                      className="px-9 py-1 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200"
-                    >
+                      className="px-9 py-1 mt-3 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200">
                       Add
                     </button>
+
                   </div>
                 </div>
               )}

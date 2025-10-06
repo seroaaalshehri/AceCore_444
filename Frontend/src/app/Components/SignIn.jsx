@@ -6,9 +6,8 @@ import Lottie from "lottie-react";
 import clubSignUp from "../../../public/ClubSignUpIcon.json";
 import gamerSignUp from "../../../public/GamerSignup.json";
 import Link from "next/link";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
 
-import { auth } from "../../../lib/firebaseClient";
-import { OAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
 
 export default function SignIn({
   isClub,
@@ -18,7 +17,7 @@ export default function SignIn({
   onGamerEmailLogin,
   onClubEmailLogin,
   onGoogleLogin,
-  onTwitchLogin, 
+  handleTwitchSignIn, 
 
   // status from parent 
   gLoading = false,
@@ -32,6 +31,9 @@ export default function SignIn({
   const [cEmail, setCEmail] = useState("");
   const [cPw, setCPw] = useState("");
 
+  const [showGPw, setShowGPw] = useState(false); 
+  const [showCPw, setShowCPw] = useState(false); 
+
   // Gmail guard (added)
   const [gGmailMsg, setGGmailMsg] = useState("");
 
@@ -44,32 +46,6 @@ export default function SignIn({
     const domain = String(email || "").split("@")[1]?.toLowerCase() || "";
     return domain === "gmail.com" || domain === "googlemail.com";
   };
-
-  // Twitch login handler 
-  const handleTwitchLogin = async () => {
-    try {
-      setTError("");
-      setTLoading(true);
-
-      const useRedirect = false;
-
-      const provider = new OAuthProvider("oidc.twitch");
-      provider.addScope("openid");
-      provider.addScope("user:read:email");
-
-      if (useRedirect) {
-        await signInWithRedirect(auth, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
-    } catch (e) {
-      console.error(e);
-      setTError(e?.message || "Failed to sign in with Twitch.");
-    } finally {
-      setTLoading(false);
-    }
-  };
-
 
 
 
@@ -111,14 +87,14 @@ export default function SignIn({
           <div className="w-full flex flex-col gap-3">
             <div className="w-full">
               <label htmlFor="club-email" className="block text-base font-semibold mb-1 text-gray-200">
-                Username/Email
+                Username
               </label>
               <input
                 id="club-email"
                 type="text"
                 value={cEmail}
                 onChange={(e) => setCEmail(e.target.value)}
-                placeholder="Enter your Username or Email"
+                placeholder="Enter your Username"
                 required
                 disabled={cLoading || tLoading}
                 autoComplete="email"
@@ -129,9 +105,10 @@ export default function SignIn({
               <label htmlFor="club-pass" className="block text-base font-semibold mb-1 text-gray-200">
                 Password
               </label>
+              <div className="password-wrapper">
               <input
                 id="club-pass"
-                type="password"
+                type={showCPw ? "text" : "password"}
                 value={cPw}
                 onChange={(e) => setCPw(e.target.value)}
                 placeholder="Enter your password "
@@ -140,7 +117,20 @@ export default function SignIn({
                 autoComplete="current-password"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
+              <button
+    type="button"
+    className="password-toggle signin-toggle"
+    onClick={() => setShowCPw(!showCPw)}
+    aria-label={showCPw ? "Hide password" : "Show password"}
+  >
+    {showCPw ? (
+      <EyeSlashIcon className="h-5 w-5" />
+    ) : (
+      <EyeIcon className="h-5 w-5" />
+    )}
+  </button>
             </div>
+          </div>
           </div>
 
           {(cError || tError) && (
@@ -158,7 +148,7 @@ export default function SignIn({
           <div className="w-full flex justify-center mt-6">
             <button
               type="button"
-              onClick={handleTwitchLogin}
+              onClick={handleTwitchSignIn}
               disabled={cLoading || tLoading}
               className="button-custom disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -191,7 +181,7 @@ export default function SignIn({
           <div className="w-full flex flex-col gap-3">
             <div className="w-full">
               <label htmlFor="g-email" className="block text-base font-semibold mb-1 text-gray-200">
-                 Username/Email
+                 Username
               </label>
               <input
                 id="g-email"
@@ -213,7 +203,7 @@ export default function SignIn({
                     setGGmailMsg("");
                   }
                 }}
-                placeholder="Enter your Username or Email"
+                placeholder="Enter your Username"
                 required
                 disabled={gLoading }
                 autoComplete="email"
@@ -224,9 +214,10 @@ export default function SignIn({
               <label htmlFor="g-pass" className="block text-base font-semibold mb-1 text-gray-200">
                 Password
               </label>
+<div className="password-wrapper">
               <input
                 id="g-pass"
-                type="password"
+                type={showGPw ? "text" : "password"}
                 value={gPw}
                 onChange={(e) => setGPw(e.target.value)}
                 placeholder="Enter your password "
@@ -235,7 +226,20 @@ export default function SignIn({
                 autoComplete="current-password"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
+              <button
+    type="button"
+    className="password-toggle signin-toggle"
+    onClick={() => setShowGPw(!showGPw)}
+    aria-label={showGPw ? "Hide password" : "Show password"}
+  >
+    {showGPw ? (
+      <EyeSlashIcon className="h-5 w-5" />
+    ) : (
+      <EyeIcon className="h-5 w-5" />
+    )}
+  </button>
             </div>
+          </div>
           </div>
 
           {/* Gmail guard message */}

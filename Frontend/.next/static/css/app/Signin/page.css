@@ -263,8 +263,15 @@ form button {
   .mobile-switch span.active::after {
     width: 100%;
   }
+  
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/*eye*/
 .password-toggle {
-  background: transparent !important; /* remove purple background */
+  background: transparent !important;
   border: none !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -272,11 +279,21 @@ form button {
   line-height: 0;
   color: #666; 
   position: absolute;
-  right: 100px; 
-  top: 5%;   
-  transform: translateY(-10%); 
 }
+
 .password-toggle:hover {
-  color: #111; 
+  color: #111;
 }
+.signin-toggle {
+  top: 48%;
+  right: 15px;
+  transform: translateY(-50%);
+}
+
+.signup-toggle {
+  right: 10px;   
+  top: 47%;     
+  transform: translateY(-45%);
+}
+
 

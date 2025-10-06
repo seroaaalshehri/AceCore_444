@@ -59,11 +59,10 @@ export default function SignUpPage() {
     if (userData.provider === "twitch") {
       setFormData((prev) => ({
         ...prev,
+        broadcasterId: userData.broadcaster_id || "", 
         clubEmail: userData.email,
-        clubUsername: userData.username,
         signupMethod: "oauth",
         provider: "twitch",
-        authUid: userData.authUid,
       }));
     }
   };
@@ -129,7 +128,8 @@ export default function SignUpPage() {
       youtube: formData.youtube || "",
       discord: formData.discord || "",
     },
-      authUid: formData.authUid || "",
+    authUid: formData.authUid || "",
+      broadcasterId: formData.broadcasterId || "",
   });
 
 // username availability helper
@@ -224,6 +224,7 @@ const checkUsernameAvailable = async (username) => {
         setOkMsg("Verification email sent.");
         return;
       }
+
 if (formData.role === "club") {
 
         const available = await checkUsernameAvailable(formData.clubUsername);
@@ -231,6 +232,27 @@ if (formData.role === "club") {
           setErrorMsg("Username is taken. Choose another one.");
           return;
         }
+
+        const email = String(formData.clubEmail || "").trim();
+  const password = String(formData.clubPassword || "").trim();
+  if (!email || !password) {
+    setErrorMsg("Please fill email and password.");
+    return;
+  }
+
+  const methods = await fetchSignInMethodsForEmail(auth, email);
+  if (methods.length && !methods.includes("password")) {
+    setErrorMsg("This email is already used with a different sign-in method.");
+    return;
+  }
+  if (methods.includes("password")) {
+    setErrorMsg("This email already has a password account.");
+    return;
+  }
+
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  const uid = cred.user.uid;
+
   const form = new FormData();
   form.append("role", "club");
   form.append("username", formData.clubUsername);
@@ -248,7 +270,8 @@ if (formData.role === "club") {
   form.append("x", formData.x || "");
   form.append("youtube", formData.youtube || "");
   form.append("discord", formData.discord || "");
-form.append("authUid",formData.authUid || "");
+ form.append("authUid", uid);  
+ form.append("broadcasterId",formData.broadcasterId || "");
   // Avatar
   if (formData.clubAvatar) {
     form.append("clubAvatar", formData.clubAvatar);

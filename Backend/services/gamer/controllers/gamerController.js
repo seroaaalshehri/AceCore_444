@@ -75,21 +75,8 @@ const updated = await updateUserProfileService(userid, safe);
 
 
 
-   /* const fileInput = req.file ? {
-      buffer: req.file.buffer,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-    } : null;
 
-    const updated = await updateUserProfileService(userid, safe, { fileInput });
-    return res.json({ success: true, profile: updated });
-  } catch (err) {
-    console.error("❌ UpdateUserProfile error:", err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-}*/
 
-// Add achievement
 async function addAchievement(req, res) {
   try {
     const { userid } = req.params;
@@ -115,7 +102,7 @@ async function addAchievement(req, res) {
 }
 
 
-// List achievements
+
 async function listAchievements(req, res) {
   try {
     const { userid } = req.params;

@@ -9,13 +9,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
+  signInWithCustomToken,
   OAuthProvider,
-  // UPDATED: import custom-token sign-in
-  signInWithCustomToken, // UPDATED
+  linkWithPopup,
 } from "firebase/auth";
 import { authedFetch } from "../../../lib/authedFetch";
 
@@ -44,7 +43,7 @@ async function redirectAfterLogin(router, setOk, setErr) {
     setErr && setErr(e?.message || "Failed to load profile.");
   }
 }
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+
 
 // UPDATED: helper to call your backend login and get a Firebase custom token
 async function loginWithUsernamePassword(identifier, password) { // UPDATED
@@ -69,14 +68,11 @@ async function loginWithUsernamePassword(identifier, password) { // UPDATED
 
 export default function SignInPage() {
   const router = useRouter();
-  
-
+  const [authBusy, setAuthBusy] = useState(false);
   const [isClub, setIsClub] = useState(false);
-
   const [gLoading, setGLoading] = useState(false);
   const [gError, setGError] = useState("");
   const [gOk, setGOk] = useState("");
-
   const [cLoading, setCLoading] = useState(false);
   const [cError, setCError] = useState("");
   const [cOk, setCOk] = useState("");
@@ -115,9 +111,9 @@ export default function SignInPage() {
       if (!email) throw new Error("Please enter your email or username."); // UPDATED (loosened msg)
       if (!password) throw new Error("Please enter your password.");
 
-      // UPDATED: Same approach for Club — go through backend /login to get custom token
+      
       const customToken = await loginWithUsernamePassword(email, password); // UPDATED
-      await signInWithCustomToken(auth, customToken);                       // UPDATED
+      await signInWithCustomToken(auth, customToken);                       
 
       await redirectAfterLogin(router, setCOk, setCError);
     } catch (err) {
@@ -152,24 +148,101 @@ export default function SignInPage() {
     }
   };
 
-  // Twitch (Club via OIDC)
-  const onTwitchLogin = async () => {
-    setCError(""); setCOk(""); setCLoading(true);
-    try {
-      if (auth.currentUser) await signOut(auth);
-      const provider = new OAuthProvider("oidc.twitch");
-      provider.addScope("openid");
-      provider.addScope("user:read:email");
-      await signInWithPopup(auth, provider);
+// Twitch (Club via OIDC)
+// Twitch (Club via OIDC)
+// Twitch (Club via OIDC)
+const handleTwitchSignIn = async () => {
+  setCError(""); setCOk(""); setCLoading(true);
 
-  
-      await redirectAfterLogin(router, setCOk, setCError);
-    } catch (err) {
-      setCError(err?.message || "Twitch sign-in failed. Please try again.");
-    } finally {
-      setCLoading(false);
+  try {
+    // Be sure we start clean
+    if (auth.currentUser) await signOut(auth);
+
+    // 1) Start Twitch OIDC popup
+    const provider = new OAuthProvider("oidc.twitch");
+    provider.addScope("openid");
+    provider.addScope("user:read:email");
+
+    const result = await signInWithPopup(auth, provider);
+
+    // 2) Email may be missing with Twitch OIDC — try Firebase first
+    let email = (result && result.user && result.user.email) || "";
+
+    // Grab the Twitch OIDC credential to extract the user access token
+    const credential = OAuthProvider.credentialFromResult(result);
+    const accessToken = credential && credential.accessToken ? credential.accessToken : "";
+
+    // If no email, ask backend to call Helix /users using the access token
+    if (!email && accessToken) {
+      const r = await fetch("http://localhost:4000/api/users/twitch/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ accessToken }),
+      });
+      if (r.ok) {
+        const j = await r.json().catch(() => ({}));
+        if (j && j.email) email = j.email;
+      }
     }
-  };
+
+    if (!email) {
+      throw new Error("Twitch did not return an email. Please complete signup first.");
+    }
+
+    // 3) Ask backend to mint a custom token for the EXISTING Firebase UID of that email
+    const claimRes = await fetch("http://localhost:4000/api/users/claim-by-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email: String(email || "").trim().toLowerCase() }),
+    });
+
+    if (claimRes.status === 404) {
+      // Don’t redirect — just surface the same banner you already show
+      throw new Error("Profile not found. Complete signup first.");
+    }
+    if (!claimRes.ok) {
+      const body = await claimRes.json().catch(() => ({}));
+      throw new Error(body?.message || "Could not claim existing account.");
+    }
+
+    const { customToken } = await claimRes.json();
+
+    // 4) We’re currently signed in as a temporary Twitch UID. Swap to the canonical UID.
+    await signOut(auth);
+    await signInWithCustomToken(auth, customToken);
+
+    // 5) Link Twitch provider to the canonical user so future Twitch sign-ins return SAME UID
+    try {
+      if (credential) {
+        const { linkWithCredential } = await import("firebase/auth");
+        await linkWithCredential(auth.currentUser, credential);
+      } else {
+        const { linkWithPopup } = await import("firebase/auth");
+        const linkProvider = new OAuthProvider("oidc.twitch");
+        linkProvider.addScope("openid");
+        linkProvider.addScope("user:read:email");
+        await linkWithPopup(auth.currentUser, linkProvider);
+      }
+    } catch (linkErr) {
+      const code = String(linkErr?.code || "");
+      // Safe to ignore if already linked
+      if (code !== "auth/credential-already-in-use" && code !== "auth/provider-already-linked") {
+        throw linkErr;
+      }
+    }
+
+    // 6) Normal post-login redirect (now /me will resolve because UID matches your DB)
+    await redirectAfterLogin(router, setCOk, setCError);
+  } catch (err) {
+    setCError(err?.message || "Twitch sign-in failed. Please try again.");
+  } finally {
+    setCLoading(false);
+  }
+};
+
+
 
   return (
     <main className="relative min-h-screen font-barlow overflow-x-hidden flex items-center justify-center">
@@ -213,7 +286,7 @@ export default function SignInPage() {
           onGamerEmailLogin={onGamerEmailLogin}
           onClubEmailLogin={onClubEmailLogin}
           onGoogleLogin={onGoogleLogin}
-          onTwitchLogin={onTwitchLogin}
+          handleTwitchSignIn={handleTwitchSignIn}
           gLoading={gLoading}
           gError={gError}
           cLoading={cLoading}

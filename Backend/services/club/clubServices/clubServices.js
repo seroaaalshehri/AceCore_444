@@ -1,7 +1,46 @@
-const admin = require("firebase-admin");
-const { db } = require("../../../Firebase/firebaseBackend");
+const fs = require("fs");
+const { db ,admin } = require("../../../Firebase/firebaseBackend");
+const { v4: uuidv4 } = require("uuid");
 
-//add achievement
+async function uploadToFirebaseStorage(userId, fileInput) {
+
+
+  const safeName = `${Date.now()}-${fileInput.originalname.replace(/\s+/g, "_")}`;
+  const objectPath = `profileImages/${userId}/${safeName}`;
+  const gcsFile = bucket.file(objectPath);
+  const token = uuidv4();
+
+  await gcsFile.save(fileInput.buffer, {
+    metadata: {
+      contentType: fileInput.mimetype,
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+    resumable: false,
+  });
+
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+  return { url, objectPath };
+}
+
+async function updateUserProfileService(userid, fields, { fileInput } = {}) {
+  const ref = db.collection("users").doc(userid);
+
+  const updates = {
+    clubName: fields.clubName,
+    username:  fields.username,
+    bio:       fields.bio,
+    country: fields.country,
+    socials:   fields.socials,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+if (fields.profilePhoto) {
+    updates.profilePhoto = fields.profilePhoto;
+  }
+
+  await ref.set(updates, { merge: true });
+  return (await ref.get()).data();
+}
+
 async function addUserAchievement(userid, name, association, game, date, reqFile, baseUrl) {
   let fileUrl = null;
   let storagePath = null;
@@ -31,7 +70,6 @@ async function addUserAchievement(userid, name, association, game, date, reqFile
 }
 
 
-//view achievements
 async function getUserAchievements(userid) {
   const snapshot = await db
     .collection("users")
@@ -46,14 +84,12 @@ async function getUserAchievements(userid) {
   }));
 }
 
-//user info
 async function getUserById(userid) {
   const snap = await db.collection("users").doc(userid).get();
   if (!snap.exists) return null;
   return snap.data();
 }
 
-//followers number
 async function getFollowNum(userId) {
   const followersSnap = await db.collection("users").doc(userId).collection("followers").get();
   const followingSnap = await db.collection("users").doc(userId).collection("following").get();
@@ -64,23 +100,30 @@ async function getFollowNum(userId) {
   };
 }
 
-//add games
-async function addUserGame(userid, gameid) {
+async function addUserGame( gameid,userid) {
+
   const ref = await db.collection("userGames").add({
-    userid,
     gameid,
+    userid,
+  
   });
   return { id: ref.id };
 }
 
-//view games
+
+
 async function getUserGames(userid) {
-  const snap = await db.collection("userGames").where("userid", "==", userid).get();
+  const userId=userid;
+  
+
+  const snap = await db.collection("userGames").where("userid", "==", userId).get();
   const results = [];
+
 
   for (const doc of snap.docs) {
     const ug = doc.data();
 
+  
     const gameDoc = await db.collection("games").doc(ug.gameid).get();
     const game = gameDoc.exists ? gameDoc.data() : {};
 
@@ -110,4 +153,5 @@ module.exports = {
   addUserGame,
   getUserGames,
   getGames,
+  updateUserProfileService,
 };

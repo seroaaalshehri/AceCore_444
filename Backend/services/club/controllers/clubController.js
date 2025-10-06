@@ -24,10 +24,10 @@ async function UpdateUserProfile(req, res) {
       : (req.body || {});
 
     const safe = {
-      firstName: payload.firstName ?? "",
-      lastName: payload.lastName ?? "",
+      clubName: payload.clubName ?? "",
+      username: payload.username ?? "",
       bio: payload.bio ?? "",
-      nationality: payload.nationality ?? "",
+      country: payload.country ?? "",
       socials: {
         twitch: payload?.socials?.twitch ?? "",
         youtube: payload?.socials?.youtube ?? "",
@@ -55,8 +55,7 @@ async function UpdateUserProfile(req, res) {
 
 if (req.file && req.file.buffer) {
       const bucket = getStorage().bucket(); // uses your initialized admin app
-      const ext = (req.file.originalname || "").split(".").pop() || "bin";
-      const filePath = `profileImages/${uuidv4()}.${ext}`;
+      const filePath = `profileImages/${uuidv4()}.${req.file.originalname}`;
       const token = uuidv4();
 
       await bucket.file(filePath).save(req.file.buffer, {
@@ -70,9 +69,8 @@ if (req.file && req.file.buffer) {
 const downloadUrl =
         `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 
-safe.profilePhoto = downloadUrl; // or safe.avatarUrl — just be consistent front/back
+safe.profilePhoto = downloadUrl; 
     }
-
 
 
 
@@ -114,7 +112,7 @@ async function addAchievement(req, res) {
   }
 }
 
-// List achievements
+
 async function listAchievements(req, res) {
   try {
     const { userid } = req.params;
@@ -126,7 +124,7 @@ async function listAchievements(req, res) {
   }
 }
 
-// Get user profile
+
 async function getUserProfile(req, res) {
   try {
     const { userid } = req.params;
@@ -136,11 +134,11 @@ async function getUserProfile(req, res) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (data.profilePhoto && !data.profilePhoto.startsWith("http")) {
+   if (data.profilePhoto && !/^https?:\/\//i.test(data.profilePhoto)) {
       const baseUrl = `${req.protocol}://${req.get("host")}`.replace("3000", "4000");
-      data.profilePhoto = `${baseUrl}/${data.profilePhoto}`;
+      const rel = String(data.profilePhoto).replace(/^\/+/, ""); // e.g. "storage/profileImages/.."
+      data.profilePhoto = `${baseUrl}/${rel}`;
     }
-
     res.json({ success: true, profile: data });
   } catch (err) {
     console.error("❌ Error fetching user profile:", err);
@@ -151,7 +149,7 @@ async function getUserProfile(req, res) {
 //get followers number
 async function getFollowNums(req, res) {
   try {
-    const userId = req.params.id;
+    const userId = req.params.userid;
     const stats = await getFollowNum(userId);
     res.json({ success: true, ...stats });
   } catch (error) {
@@ -160,10 +158,11 @@ async function getFollowNums(req, res) {
   }
 }
 
-//add games
+
 async function addGame(req, res) {
   try {
-    const { userid, gameid} = req.body;
+    const { userid } = req.params;
+    const { gameid} = req.body;
 
     if (!userid || !gameid) {
       return res.status(400).json({
@@ -171,27 +170,30 @@ async function addGame(req, res) {
         error: "userid and gameid are required"
       });
     }
-        const result = await addUserGame(
-          userid,
-          gameid,
-        );
-    
-        res.json({ success: true, ...result });
-      } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-      }
-    }
 
-    //view games
-    async function listGames(req, res) {
-      try {
-        const { userid } = req.params;
-        const games = await getUserGames(userid);
-        res.json({ success: true, games });
-      } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-      }
-    }
+    const result = await addUserGame(
+      gameid,
+      userid,
+    
+    );
+
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function listGames(req, res) {
+  try {
+    const { userid } = req.params;
+
+    const games = await getUserGames(userid);
+    res.json({ success: true, games });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 
 async function getAllGames(req, res) {
   try {

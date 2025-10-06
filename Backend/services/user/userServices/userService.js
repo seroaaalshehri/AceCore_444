@@ -24,19 +24,40 @@ async function allocateSequentialId(tx) {
   tx.update(COUNTER_REF, { next: next + 1 });
   return `user${next}`;
 }
+
+//Writes Games
 function toGameIds(raw = []) {
-  if (!Array.isArray(raw)) return [];
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      raw = parsed;
+    } catch {
+      raw = raw.split(",").map(s => s.trim()).filter(Boolean);
+    }
+  }
+  if (!Array.isArray(raw)) {
+    return [];
+  }
   const ids = raw
-    .map((g) => (typeof g === "string" ? g.trim()
-      : typeof g === "object" ? String(g.gameid || g.id || "").trim()
-        : ""))
+    .map((g) =>
+      typeof g === "string"
+        ? g.trim()
+        : typeof g === "object"
+          ? String(g.gameid || g.id || "").trim()
+          : ""
+    )
     .filter(Boolean);
-  return Array.from(new Set(ids));
+  const uniq = Array.from(new Set(ids));
+
+  return uniq;
 }
 
 async function writeUserGames(userid, rawGames = []) {
   const gameIds = toGameIds(rawGames);
-  if (gameIds.length === 0) return;
+  console.log("[writeUserGames] begin", { userid, gameIds, count: gameIds.length });
+  if (gameIds.length === 0) {
+    return;
+  }
   const batch = db.batch();
   for (const gameid of gameIds) {
     const ref = USER_GAMES.doc();
@@ -44,11 +65,12 @@ async function writeUserGames(userid, rawGames = []) {
       gameid,
       rank: 0,
       userid,
-      username: "-"
+      username: "-" 
     });
   }
   await batch.commit();
 }
+
 
 
 async function usernameExistsByLower(usernameLower) {
@@ -133,10 +155,10 @@ async function verifyCompleteService(payload = {}) {
       clubName: payload.clubName || "",
       country: payload.country || "",
       socials: payload.socials || {},
-      avatarUrl: payload.avatarUrl || "",
+      profilePhoto: payload.avatarUrl || "",
       emailVerified: !!payload.emailVerified,
       provider: payload.provider || "password",
-
+      broadcasterId: payload.broadcasterId || "",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

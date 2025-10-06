@@ -2,18 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { User } from "lucide-react";
 import countries from "world-countries";
+import { User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 //import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
 
-
 const API_BASE =process.env.NEXT_PUBLIC_API_BASE;
 
-
+/** -------- styles -------- */
 const FIELD_CLS =
   "w-full p-4 rounded-md bg-[#eee] text-[#1C1633] text-lg placeholder:text-lg " +
   "border border-[#3b2d5e] hover:shadow-[0_0_12px_#5f4a87] focus:outline-none " +
@@ -23,7 +22,7 @@ const GOLD_BTN =
   "bg-[#FCCC22] text-[#2b2142b3] font-bold px-4 py-2 rounded text-base " +
   "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 
-
+/** -------- helpers  -------- */
 function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
   const base =
     "w-full p-4 rounded-md bg-[#eee] text-[#1C1633] text-lg placeholder:text-lg " +
@@ -83,6 +82,7 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
     </div>
   );
 }
+
 const withHttps = (v) => {
   const s = (v || "").trim();
   if (!s) return "";
@@ -116,6 +116,10 @@ const isValidSocialUrlByPlatform = (platform, url) => {
   const candidate = withHttps(v);
   return rules.some((re) => re.test(candidate));
 };
+
+
+
+
 async function readApiJson(res) {
   if (res.status === 204) return { success: true };
   const ct = res.headers.get("content-type") || "";
@@ -126,7 +130,7 @@ async function readApiJson(res) {
   );
 }
 
-export default function ClubPage() {
+export default function AddInfoPage() {
   const router = useRouter();
   const { id } = useParams();
   const USER_ID = Array.isArray(id) ? id[0] : id;
@@ -140,14 +144,16 @@ export default function ClubPage() {
     socials: { twitch: "", youtube: "", x: "", discord: "" },
   });
   const [originalForm, setOriginalForm] = useState(form);
-  const [photoFile, setPhotoFile] = useState(null);
+
   const [photoPreview, setPhotoPreview] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  const [editClubName, setEditClubName] = useState(false);
+  const [isCountryEditing, setIsCountryEditing] = useState(false);
+   const [editClubName, setEditClubName] = useState(false);
   const [editUsername, setEditUsername] = useState(false);
-  const [editCountry, setEditCountry] = useState(false);
+ const [editCountry, setEditCountry] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [editSocials, setEditSocials] = useState({
@@ -156,6 +162,14 @@ export default function ClubPage() {
     youtube: true,
     discord: true,
   });
+
+  const fileRef = useRef(null);
+
+  const update = (path, value) => {
+    if (!path.includes(".")) return setForm((p) => ({ ...p, [path]: value }));
+    const [group, key] = path.split(".");
+    setForm((p) => ({ ...p, [group]: { ...p[group], [key]: value } }));
+  };
 
 
   const logoFileRef = useRef(null);
@@ -171,15 +185,9 @@ export default function ClubPage() {
     setLogoFile(f);
     const url = URL.createObjectURL(f);
     setPhotoPreview(url); // preview only
-  };
-
-  const update = (path, value) => {
-    if (!path.includes(".")) return setForm((p) => ({ ...p, [path]: value }));
-    const [group, key] = path.split(".");
-    setForm((p) => ({ ...p, [group]: { ...p[group], [key]: value } }));
-  };
-
- useEffect(() => {
+  };// this
+  //Read from getProfile
+useEffect(() => {
   (async () => {
     try {
       const res = await authedFetch(
@@ -190,10 +198,10 @@ export default function ClubPage() {
       if (data?.success) {
         const d = data.profile || {};
         const next = {
-          firstName: d.firstName || "",
-          lastName:  d.lastName  || "",
+          clubName: d.clubName || "",
+          username:  d.username  || "",
           bio:       d.bio       || "",
-          nationality: d.nationality || "",
+          country: d.country || "",
           socials: {
             twitch:  d.socials?.twitch  || "",
             youtube: d.socials?.youtube || "",
@@ -214,6 +222,7 @@ export default function ClubPage() {
 }, [USER_ID]);
 
 
+  
   const validate = () => {
     const errs = {};
 
@@ -247,7 +256,6 @@ export default function ClubPage() {
     return Object.keys(errs).length === 0;
   };
 
-
   const sendUpdate = async (method, body, headers) => {
     const res = await authedFetch(
       `${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`,
@@ -264,24 +272,23 @@ export default function ClubPage() {
     return data;
   };
 
-
   const doSave = async () => {
   if (!validate()) { setShowSaveConfirm(false); return; }
 
-    const payload = {
-      clubName: form.clubName.trim(),
-      username: form.username.trim(),
-      bio: form.bio || "",
-      country: form.country,
-      socials: {
+  const payload = {
+    clubName: form.clubName || "",
+    username:  form.username  || "",
+    bio:       form.bio       || "",
+    country: form.country || "",
+    socials: {
       twitch:  withHttps(form.socials?.twitch  || ""),
       youtube: withHttps(form.socials?.youtube || ""),
       x:       withHttps(form.socials?.x       || ""),
       discord: withHttps(form.socials?.discord || ""),
     },
-    };
+  };
 
-     setSaving(true);
+  setSaving(true);
   try {
     let res, data;
 
@@ -300,7 +307,7 @@ export default function ClubPage() {
         body: JSON.stringify(payload),
       });
     }
- 
+
     data = await readApiJson(res);
     if (!res.ok || !data?.success) throw new Error(data?.error || `Save failed ${res.status}`);
 
@@ -322,16 +329,26 @@ export default function ClubPage() {
   };
 
   const onCancel = () => {
-    setForm(initialFormRef.current);
+    setForm(originalForm);
     setErrors({});
-    setEditClubName(false);
-    setEditUsername(false);
-    setEditCountry(false);
-    setEditSocials({ twitch: false, x: false, youtube: true, discord: true });
+    setIsCountryEditing(false);
+    setPhotoFile(null);
+  };
+
+  const onPickAvatar = () => fileRef.current?.click();
+  const onAvatarSelected = (e) => {
+    const f = e.target.files?.[0] || null;
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+    setPhotoFile(f);
+    const url = URL.createObjectURL(f);
+    setPhotoPreview(url);
   };
 
   const handleCancelClick = () => setShowDiscardConfirm(true);
-
   return (
     <>
       <div className="absolute inset-2 z-0">
@@ -370,7 +387,7 @@ export default function ClubPage() {
                     ref={logoFileRef}
                     type="file"
                     accept="image/*"
-                    onChange={onLogoSelected}
+                    onChange={onAvatarSelected}
                     className="hidden"
                   />
 
@@ -635,7 +652,8 @@ export default function ClubPage() {
         </div>
       </main>
 
-      {/* Cancel Confirmation (Yes/No) */}
+
+      {/* Cancel Confirmation */}
       {showDiscardConfirm && (
         <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
           <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[350px] text-center">
@@ -662,7 +680,7 @@ export default function ClubPage() {
         </div>
       )}
 
-      {/* Save Confirmation (Yes/No) */}
+      {/* Save Confirmation */}
       {showSaveConfirm && (
         <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
           <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[350px] text-center">
@@ -672,7 +690,7 @@ export default function ClubPage() {
                 onClick={async () => {
                   await doSave();
                 }}
-                className="w-1/2 bg-[#4682B4] hover:neon-btn-blue px-4 py-2 rounded text-sm"
+                className="w-1/2 bg-[#4682B4] hover:neon-btn-blue px-3 py-1 rounded text-sm"
                 disabled={saving}
               >
                 Yes
