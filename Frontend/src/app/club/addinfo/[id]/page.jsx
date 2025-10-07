@@ -501,7 +501,7 @@ export default function AddInfoPage() {
                     )}
                     <button
                       type="button"
-                      onClick={onPickAvatar}
+                      onClick={onPickLogo}
                       className="text-gray-300 mt-3 hover:text-[#FCCC22] focus:text-[#FCCC22] text-sm"
                       title="Edit logo"
                       aria-label="Edit logo"
