@@ -503,7 +503,7 @@ export default function ClubProfile() {
 
           <div className="flex-1 overflow-y-auto p-6 space-y-2 max-w-6xl mx-auto">
             
-+<section className="relative z-10 rounded-xl p-6 shadow-lg bg-[#2b2142b3]">
++<section className="relative z-10 rounded-xl p-12 shadow-lg bg-[#2b2142b3]">
               <button
                 onClick={() => router.push(`/club/addinfo/${uid}`)}
                 className="absolute top-4 right-4 text-[#fff] hover:text-[#FCCC22] font-bold text-[20px] z-30"
@@ -569,7 +569,7 @@ export default function ClubProfile() {
                     </div>
                   </div>
 
-                  <div className="flex space-x-2 relative top-1 mt-8">
+                  <div className="flex space-x-2 relative top-1 mt-4">
                     {profile.socials?.twitch && (
                       <a href={profile.socials.twitch} target="_blank" rel="noopener noreferrer">
                         <img src="/twitchIcon.svg" alt="Twitch" className="w-7 h-7 relative -top-1 icon-glow" />

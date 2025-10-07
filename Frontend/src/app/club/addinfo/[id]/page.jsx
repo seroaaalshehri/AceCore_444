@@ -5,12 +5,11 @@ import Image from "next/image";
 import countries from "world-countries";
 import { User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-//import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
 
-const API_BASE =process.env.NEXT_PUBLIC_API_BASE;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000/api";
 
 /** -------- styles -------- */
 const FIELD_CLS =
@@ -23,7 +22,15 @@ const GOLD_BTN =
   "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 
 /** -------- helpers  -------- */
-function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
+function SocialField({
+  iconSrc,
+  placeholder,
+  value,
+  onChange,
+  label,
+  error,
+  disabled = false,
+}) {
   const base =
     "w-full p-4 rounded-md bg-[#eee] text-[#1C1633] text-lg placeholder:text-lg " +
     "border border-[#3b2d5e] hover:shadow-[0_0_12px_#5f4a87] focus:outline-none " +
@@ -32,7 +39,8 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
     base +
     (error
       ? " border-red-500 focus:ring-red-400 focus:border-red-400 focus:shadow-[0_0_12px_#f87171]"
-      : "");
+      : "") +
+    (disabled ? " opacity-60 cursor-not-allowed" : "");
 
   return (
     <div>
@@ -59,6 +67,7 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
         <button
           type="button"
           onClick={() => {
+            if (disabled) return;
             const v = (value || "").trim();
             if (!v) return;
             const url = /^https?:\/\//i.test(v) ? v : `https://${v}`;
@@ -68,6 +77,7 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
           aria-label={`Open ${placeholder}`}
           title={`Open ${placeholder}`}
           tabIndex={-1}
+          disabled={disabled}
         >
           <Image src={iconSrc} alt={placeholder} width={24} height={24} />
         </button>
@@ -77,6 +87,7 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={"pl-12 " + cls}
+          disabled={disabled}
         />
       </div>
     </div>
@@ -117,9 +128,6 @@ const isValidSocialUrlByPlatform = (platform, url) => {
   return rules.some((re) => re.test(candidate));
 };
 
-
-
-
 async function readApiJson(res) {
   if (res.status === 204) return { success: true };
   const ct = res.headers.get("content-type") || "";
@@ -147,23 +155,34 @@ export default function AddInfoPage() {
 
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isCountryEditing, setIsCountryEditing] = useState(false);
-   const [editClubName, setEditClubName] = useState(false);
+  const [loadBanner, setLoadBanner] = useState("");
+
+  // per-field pens
+  const [editClubName, setEditClubName] = useState(false);
   const [editUsername, setEditUsername] = useState(false);
- const [editCountry, setEditCountry] = useState(false);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
-  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [editCountry, setEditCountry] = useState(false);
   const [editSocials, setEditSocials] = useState({
     twitch: false,
     x: false,
-    youtube: true,
-    discord: true,
+    youtube: false,
+    discord: false,
   });
 
-  const fileRef = useRef(null);
+  const [usernameCheck, setUsernameCheck] = useState({
+    status: "idle", 
+    available: null,
+    msg: "",
+  });
+  const usernameTimer = useRef(null);
+
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+
+  const logoFileRef = useRef(null);
 
   const update = (path, value) => {
     if (!path.includes(".")) return setForm((p) => ({ ...p, [path]: value }));
@@ -171,171 +190,7 @@ export default function AddInfoPage() {
     setForm((p) => ({ ...p, [group]: { ...p[group], [key]: value } }));
   };
 
-
-  const logoFileRef = useRef(null);
-  const [logoFile, setLogoFile] = useState(null);
   const onPickLogo = () => logoFileRef.current?.click();
-  const onLogoSelected = (e) => {
-    const f = e.target.files?.[0] || null;
-    if (!f) return;
-    if (!f.type.startsWith("image/")) {
-      alert("Please select an image file.");
-      return;
-    }
-    setLogoFile(f);
-    const url = URL.createObjectURL(f);
-    setPhotoPreview(url); // preview only
-  };// this
-  //Read from getProfile
-useEffect(() => {
-  (async () => {
-    try {
-      const res = await authedFetch(
-        `${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`,
-        { headers: { Accept: "application/json" } }
-      );
-      const data = await readApiJson(res);
-      if (data?.success) {
-        const d = data.profile || {};
-        const next = {
-          clubName: d.clubName || "",
-          username:  d.username  || "",
-          bio:       d.bio       || "",
-          country: d.country || "",
-          socials: {
-            twitch:  d.socials?.twitch  || "",
-            youtube: d.socials?.youtube || "",
-            x:       d.socials?.x       || "",
-            discord: d.socials?.discord || "",
-          },
-        };
-        setForm(next);
-        setOriginalForm(next);
-        setPhotoPreview(d.profilePhoto || d.photoUrl || "");
-      }
-    } catch (e) {
-      console.warn("[Load profile] failed:", e);
-    } finally {
-      setLoading(false);
-    }
-  })();
-}, [USER_ID]);
-
-
-  
-  const validate = () => {
-    const errs = {};
-
-    if (!form.clubName.trim()) errs.clubName = "This field is required";
-    if (!form.username.trim()) errs.username = "This field is required";
-    if (!form.country.trim()) errs.country = "This field is required";
-
-    // Required: Twitch and X
-    ["twitch", "x"].forEach((k) => {
-      const v = (form.socials?.[k] || "").trim();
-      if (!v) {
-        errs[k] = "This field is required";
-      } else if (!isValidSocialUrlByPlatform(k, v)) {
-        errs[k] = SOCIAL_ERROR_MSG[k];
-      }
-    });
-
-    // Optional: YouTube and Discord 
-    ["youtube", "discord"].forEach((k) => {
-      const v = (form.socials?.[k] || "").trim();
-      if (v && !isValidSocialUrlByPlatform(k, v)) {
-        errs[k] = SOCIAL_ERROR_MSG[k];
-      }
-    });
-
-    if (!logoFile && !photoPreview) {
-      errs.profilePhoto = "This field is required";
-    }
-
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const sendUpdate = async (method, body, headers) => {
-    const res = await authedFetch(
-      `${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`,
-      { method, body, headers }
-    );
-    if (res.redirected || res.url.includes("/Signin") || res.status === 401) {
-      window.location.href = `/Signin?next=${encodeURIComponent(window.location.pathname)}`;
-      return { success: false };
-    }
-    const data = await readApiJson(res);
-    if (!res.ok || !data?.success) {
-      throw new Error(data?.error || `Save failed with ${res.status}`);
-    }
-    return data;
-  };
-
-  const doSave = async () => {
-  if (!validate()) { setShowSaveConfirm(false); return; }
-
-  const payload = {
-    clubName: form.clubName || "",
-    username:  form.username  || "",
-    bio:       form.bio       || "",
-    country: form.country || "",
-    socials: {
-      twitch:  withHttps(form.socials?.twitch  || ""),
-      youtube: withHttps(form.socials?.youtube || ""),
-      x:       withHttps(form.socials?.x       || ""),
-      discord: withHttps(form.socials?.discord || ""),
-    },
-  };
-
-  setSaving(true);
-  try {
-    let res, data;
-
-    if (photoFile) {
-      const fd = new FormData();
-      fd.append("file", photoFile);
-      fd.append("profile", JSON.stringify(payload));
-      res = await authedFetch(`${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`, {
-        method: "POST",
-        body: fd,
-      });
-    } else {
-      res = await authedFetch(`${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
-    }
-
-    data = await readApiJson(res);
-    if (!res.ok || !data?.success) throw new Error(data?.error || `Save failed ${res.status}`);
-
-    setOriginalForm(form);
-    setIsCountryEditing(false);
-    setShowSaveConfirm(false);
-    router.push(VIEW_PROFILE_URL);
-  } catch (err) {
-    console.error("Save error:", err);
-    alert(err?.message || "Failed to save profile");
-  } finally {
-    setSaving(false);
-  }
-};
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    setShowSaveConfirm(true);
-  };
-
-  const onCancel = () => {
-    setForm(originalForm);
-    setErrors({});
-    setIsCountryEditing(false);
-    setPhotoFile(null);
-  };
-
-  const onPickAvatar = () => fileRef.current?.click();
   const onAvatarSelected = (e) => {
     const f = e.target.files?.[0] || null;
     if (!f) return;
@@ -348,7 +203,248 @@ useEffect(() => {
     setPhotoPreview(url);
   };
 
+  const CHECK_BASE =
+    (API_BASE || "").endsWith("/users") ? API_BASE : `${API_BASE}/users`;
+
+  const checkUsernameAvailable = async (username) => {
+    const u = String(username || "").trim();
+    if (!u) return false;
+    try {
+      const res = await fetch(
+        `${CHECK_BASE}/check-username?username=${encodeURIComponent(u)}`
+      );
+      if (!res.ok) return false;
+      const data = await res.json().catch(() => ({}));
+      return data?.available === true;
+    } catch {
+      return false;
+    }
+  };
+
+  const onUsernameChange = (v) => {
+    update("username", v);
+    setErrors((p) => ({ ...p, username: undefined }));
+
+    setUsernameCheck({ status: "typing", available: null, msg: "" });
+    if (usernameTimer.current) clearTimeout(usernameTimer.current);
+
+    usernameTimer.current = setTimeout(async () => {
+      const typed = String(v || "").trim();
+      const original = String(originalForm?.username || "").trim();
+
+      if (!typed || typed === original) {
+        setUsernameCheck({ status: "idle", available: null, msg: "" });
+        return;
+      }
+
+      setUsernameCheck({ status: "checking", available: null, msg: "" });
+      const ok = await checkUsernameAvailable(typed);
+
+      setUsernameCheck({
+        status: "done",
+        available: ok,
+        msg: ok ? "Username is available" : "Username is taken",
+      });
+
+   
+    }, 500);
+  };
+
+ useEffect(() => {
+  (async () => {
+    setLoading(true);
+    setLoadBanner("");
+    try {
+      // 1) who am I?
+      const meRes = await authedFetch(`${API_BASE}/users/me`, { credentials: "include" });
+      if (meRes.status === 401) {
+        window.location.href = `/Signin?next=${encodeURIComponent(window.location.pathname)}`;
+        return;
+      }
+      const me = await meRes.json();
+      const myId = me?.user?.id;
+      if (!myId) throw new Error("Could not determine current user.");
+
+      // 2) if the route id doesn't match me, use me (prevents 403/401 from requireOwner)
+      const targetId = myId;
+
+      // 3) load my club profile
+      const res = await authedFetch(`${API_BASE}/club/${encodeURIComponent(targetId)}/profile`, {
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+
+      if (res.status === 401) {
+        window.location.href = `/Signin?next=${encodeURIComponent(window.location.pathname)}`;
+        return;
+      }
+      if (res.status === 403) {
+        throw new Error("You don't have permission to edit this profile.");
+      }
+
+      const data = await readApiJson(res); // your helper
+      if (!data?.success) throw new Error(data?.error || "Failed to load profile.");
+
+      const d = data.profile || {};
+      const next = {
+        clubName: d.clubName || "",
+        username: d.username || "",
+        bio: d.bio || "",
+        country: d.country || "",
+        socials: {
+          twitch: d.socials?.twitch || "",
+          youtube: d.socials?.youtube || "",
+          x: d.socials?.x || "",
+          discord: d.socials?.discord || "",
+        },
+      };
+      setForm(next);
+      setOriginalForm(next);
+      setPhotoPreview(d.profilePhoto || d.photoUrl || d.logoUrl || "");
+    } catch (e) {
+      console.warn("[Load profile] failed:", e);
+      setLoadBanner(e?.message || "Failed to load profile.");
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, []);
+
+
+  const validate = () => {
+    const errs = {};
+    if (!form.clubName.trim()) errs.clubName = "This field is required";
+    if (!form.username.trim()) errs.username = "This field is required";
+    if (!form.country.trim()) errs.country = "This field is required";
+
+    // Required socials
+    ["twitch", "x"].forEach((k) => {
+      const v = (form.socials?.[k] || "").trim();
+      if (!v) {
+        errs[k] = "This field is required";
+      } else if (!isValidSocialUrlByPlatform(k, v)) {
+        errs[k] = SOCIAL_ERROR_MSG[k];
+      }
+    });
+
+    // Optional socials
+    ["youtube", "discord"].forEach((k) => {
+      const v = (form.socials?.[k] || "").trim();
+      if (v && !isValidSocialUrlByPlatform(k, v)) {
+        errs[k] = SOCIAL_ERROR_MSG[k];
+      }
+    });
+
+    if (!photoFile && !photoPreview) {
+      errs.profilePhoto = "This field is required";
+    }
+
+    const changedUsername =
+      String(form.username || "").trim() !==
+      String(originalForm.username || "").trim();
+
+    if (changedUsername) {
+      if (usernameCheck.status === "checking") {
+        errs.username = "Checking username… please wait";
+      } else if (usernameCheck.available === false) {
+        errs.username = "Username is taken. Choose another one.";
+      }
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  // -------- Save --------
+  const doSave = async () => {
+    if (!validate()) {
+      setShowSaveConfirm(false);
+      return;
+    }
+
+    const changedUsername =
+      String(form.username || "").trim() !==
+      String(originalForm.username || "").trim();
+
+    if (changedUsername) {
+      if (usernameCheck.status === "checking") {
+        alert("Please wait, checking username availability…");
+        return;
+      }
+      const ok = await checkUsernameAvailable(form.username);
+      if (!ok) {
+        setErrors((p) => ({ ...p, username: "Username is taken. Choose another one." }));
+        setShowSaveConfirm(false);
+        return;
+      }
+    }
+
+    const payload = {
+      clubName: form.clubName || "",
+      username: form.username || "",
+      bio: form.bio || "",
+      country: form.country || "",
+      socials: {
+        twitch: withHttps(form.socials?.twitch || ""),
+        youtube: withHttps(form.socials?.youtube || ""),
+        x: withHttps(form.socials?.x || ""),
+        discord: withHttps(form.socials?.discord || ""),
+      },
+    };
+
+    setSaving(true);
+    try {
+      let res;
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append("file", photoFile);
+        fd.append("profile", JSON.stringify(payload));
+        res = await authedFetch(
+          `${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`,
+          { method: "POST", body: fd, credentials: "include" }
+        );
+      } else {
+        res = await authedFetch(
+          `${API_BASE}/club/${encodeURIComponent(USER_ID)}/profile`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+          }
+        );
+      }
+
+      const data = await readApiJson(res);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Save failed ${res.status}`);
+      }
+
+      setOriginalForm(form);
+      setShowSaveConfirm(false);
+      router.push(VIEW_PROFILE_URL);
+    } catch (err) {
+      console.error("Save error:", err);
+      alert(err?.message || "Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    setShowSaveConfirm(true);
+  };
+
+  const onCancel = () => {
+    setForm(originalForm);
+    setErrors({});
+    setPhotoFile(null);
+    setUsernameCheck({ status: "idle", available: null, msg: "" });
+  };
+
   const handleCancelClick = () => setShowDiscardConfirm(true);
+
   return (
     <>
       <div className="absolute inset-2 z-0">
@@ -369,14 +465,21 @@ useEffect(() => {
       >
         <div className="mx-auto max-w-6xl" style={{ height: "calc(100vh - 100px)" }}>
           <div className="bg-[#2b2142b3] rounded-xl p-8 h-full">
+            {loadBanner && (
+              <div className="mb-4 px-4 py-2 rounded bg-red-600/90 text-white text-sm shadow">
+                {loadBanner}
+              </div>
+            )}
+
             {loading ? (
               <p className="text-gray-300">Loading club profile…</p>
             ) : (
               <form onSubmit={onSubmit} className="h-full grid gap-6 md:grid-cols-[320px,1fr]">
+                {/* LEFT: logo */}
                 <div className="flex flex-col items-center justify-center">
                   <div className="w-72 h-72 mx-auto rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.6)] flex items-center justify-center">
                     {photoPreview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={photoPreview} alt="logo" className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-32 h-32 text-gray-400" />
@@ -398,7 +501,7 @@ useEffect(() => {
                     )}
                     <button
                       type="button"
-                      onClick={onPickLogo}
+                      onClick={onPickAvatar}
                       className="text-gray-300 mt-3 hover:text-[#FCCC22] focus:text-[#FCCC22] text-sm"
                       title="Edit logo"
                       aria-label="Edit logo"
@@ -408,6 +511,7 @@ useEffect(() => {
                   </div>
                 </div>
 
+                {/* RIGHT: fields */}
                 <div className="flex mt-6 flex-col h-full">
                   <div className="space-y-5">
                     {/* club name */}
@@ -445,7 +549,21 @@ useEffect(() => {
                         <div className="flex items-center gap-2">
                           <label className="block text-base font-semibold text-gray-300">Username</label>
                           {errors.username && (
-                            <span className="text-red-400 text-xs">This field is required</span>
+                            <span className="text-red-400 text-xs">{errors.username}</span>
+                          )}
+                          {editUsername && usernameCheck.status !== "idle" && (
+                            <span
+                              className={
+                                "ml-2 text-xs " +
+                                (usernameCheck.status === "checking"
+                                  ? "text-gray-300"
+                                  : usernameCheck.available
+                                  ? "text-green-400"
+                                  : "text-red-400")
+                              }
+                            >
+                              {usernameCheck.status === "checking" ? "Checking…" : usernameCheck.msg}
+                            </span>
                           )}
                         </div>
                         <span
@@ -462,22 +580,24 @@ useEffect(() => {
                       <input
                         placeholder="Unique username"
                         value={form.username}
-                        onChange={(e) => update("username", e.target.value)}
+                        onChange={(e) => onUsernameChange(e.target.value)}
                         disabled={!editUsername}
                         className={`${FIELD_CLS} ${!editUsername ? DISABLED_FIELD : ""}`}
                       />
                     </div>
 
-                    {/* about the club */}
+                    {/* about */}
                     <div>
-                      <label className="block text-base font-semibold mb-1 text-gray-300">About the club</label>
+                      <label className="block text-base font-semibold mb-1 text-gray-300">
+                        About the club
+                      </label>
                       <textarea
                         rows={3}
                         placeholder="Tell gamers about your club"
                         className={FIELD_CLS}
                         value={form.bio}
-                        onChange={(e) => update("bio",e.target.value.slice(0,180))}
-                          maxLength={180}
+                        onChange={(e) => update("bio", e.target.value.slice(0, 180))}
+                        maxLength={180}
                       />
                     </div>
 
@@ -523,9 +643,7 @@ useEffect(() => {
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
                               <label className="block text-base font-semibold text-gray-300">X (Twitter)</label>
-                              {errors.x && (
-                                <span className="text-red-400 text-xs">{errors.x}</span>
-                              )}
+                              {errors.x && <span className="text-red-400 text-xs">{errors.x}</span>}
                             </div>
                             <span
                               role="button"
@@ -557,7 +675,16 @@ useEffect(() => {
                                 <span className="text-red-400 text-xs">{errors.youtube}</span>
                               )}
                             </div>
-                            <span className="opacity-0 select-none">✎</span>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setEditSocials((p) => ({ ...p, youtube: true }))}
+                              className="cursor-pointer text-gray-300 hover:text-[#FCCC22] focus:text-[#FCCC22]"
+                              title="Edit YouTube"
+                              aria-label="Edit YouTube"
+                            >
+                              ✎
+                            </span>
                           </div>
                           <SocialField
                             iconSrc="/youtube.svg"
@@ -578,7 +705,16 @@ useEffect(() => {
                                 <span className="text-red-400 text-xs">{errors.discord}</span>
                               )}
                             </div>
-                            <span className="opacity-0 select-none">✎</span>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setEditSocials((p) => ({ ...p, discord: true }))}
+                              className="cursor-pointer text-gray-300 hover:text-[#FCCC22] focus:text-[#FCCC22]"
+                              title="Edit Discord"
+                              aria-label="Edit Discord"
+                            >
+                              ✎
+                            </span>
                           </div>
                           <SocialField
                             iconSrc="/discord.svg"
@@ -631,6 +767,7 @@ useEffect(() => {
                     </div>
                   </div>
 
+                  {/* bottom actions */}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button type="button" onClick={handleCancelClick} className={GOLD_BTN}>
                       Cancel
@@ -638,7 +775,11 @@ useEffect(() => {
                     <div className="flex-1" />
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={
+                        saving ||
+                        usernameCheck.status === "checking" ||
+                        usernameCheck.available === false
+                      }
                       onClick={() => setShowSaveConfirm(true)}
                       className={GOLD_BTN}
                     >
@@ -651,7 +792,6 @@ useEffect(() => {
           </div>
         </div>
       </main>
-
 
       {/* Cancel Confirmation */}
       {showDiscardConfirm && (

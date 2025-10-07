@@ -47,6 +47,10 @@ router.get("/:userid/followNums", authenticate, requireOwner, clubController.get
 router.post("/:userid/add/games", authenticate, requireOwner, clubController.addGame);
 router.post("/:userid/add", authenticate, requireOwner, upload2.single("file"), clubController.addAchievement);
 router.get("/games/all", clubController.getAllGames);
-router.put("/:userid/profile", upload.single("avatar"), clubController.UpdateUserProfile);
-
+router.put("/:userid/profile",
+  authenticate,
+  requireOwner,
+  upload.single("avatar"),  // <-- keep "file", memory
+  clubController.UpdateUserProfile
+);
 module.exports = router;
