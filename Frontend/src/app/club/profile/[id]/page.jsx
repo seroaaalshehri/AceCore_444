@@ -542,34 +542,36 @@ export default function ClubProfile() {
                 </div>
               </div>
 
-              <div className="absolute left-1/2 top-8 md:top-10 transform z-40">
+              <div className="absolute left-1/2 ml-10 top-8 md:top-10 transform z-40">
                 <div className="flex gap-8 bg-transparent relative top-5 items-center">
                   <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
                     <div className="text-3xl font-bold text-white">{followersCount}</div>
-                    <div className="text-xl text-gray-400">Followers</div>
+                    <div className="text-2xl text-gray-400">Followers</div>
                   </Link>
                   <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
                     <div className="text-3xl font-bold text-white">{followingCount}</div>
-                    <div className="text-xl text-gray-400">Following</div>
+                    <div className="text-2xl text-gray-400">Following</div>
                   </Link>
                 </div>
               </div>
 
              
               <div className="-mt-5 flex justify-between relative top-7 items-start">
-                <div className="max-w-[650px] text-white mt-8 md:mt-8 pl-[140px]">
-                  <p className="text-xl mb-5">{profile.bio}</p>
+               <div className="flex flex-col mb-8  ml-48 text-white-400 text-2xl">
+                  <p className="mb-8 max-w-[80ch] whitespace-pre-line break-words leading-relaxed">
+                    {profile.bio}
+                  </p>
                 </div>
 
                 <div className="flex flex-col items-end">
-                  <div className="text-white-400 text-lg text-right -mt-4 md:-mt-6">
-                    <div className="mt-1 flex items-center gap-2">
+                  <div className="text-white-400 text-lg text-right ml-50 -mt-24 md:-mt-6">
+                    <div className="mt-24 ml-50 flex items-center gap-1">
                       <MapPin className="size-5 text-fuchsia-300 " />
                       {profile.country}
                     </div>
                   </div>
 
-                  <div className="flex space-x-2 relative top-1 mt-4">
+                  <div className="flex space-x-2 relative top-1 mt-5">
                     {profile.socials?.twitch && (
                       <a href={profile.socials.twitch} target="_blank" rel="noopener noreferrer">
                         <img src="/twitchIcon.svg" alt="Twitch" className="w-7 h-7 relative -top-1 icon-glow" />

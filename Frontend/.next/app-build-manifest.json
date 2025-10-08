@@ -6,6 +6,22 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/club/addinfo/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/addinfo/[id]/page.js"
+    ],
+    "/club/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/profile/[id]/page.css",
+      "static/chunks/app/club/profile/[id]/page.js"
+    ],
+    "/club/followList/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/followList/[id]/page.js"
+    ],
     "/SignUp/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -18,26 +34,26 @@
       "static/css/app/Signin/page.css",
       "static/chunks/app/Signin/page.js"
     ],
-    "/club/profile/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/club/profile/[id]/page.css",
-      "static/chunks/app/club/profile/[id]/page.js"
-    ],
-    "/club/addinfo/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/addinfo/[id]/page.js"
-    ],
     "/Home/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/Home/page.js"
     ],
-    "/club/followList/[id]/page": [
+    "/gamer/profile/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/club/followList/[id]/page.js"
+      "static/css/app/gamer/profile/[id]/page.css",
+      "static/chunks/app/gamer/profile/[id]/page.js"
+    ],
+    "/gamer/addinfo/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/addinfo/[id]/page.js"
+    ],
+    "/Logout/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Logout/page.js"
     ]
   }
 }

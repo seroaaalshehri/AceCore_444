@@ -1,6 +1,9 @@
 {
   "/SignUp/page": "app/SignUp/page.js",
-  "/Signin/page": "app/Signin/page.js",
+  "/Home/page": "app/Home/page.js",
+  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js",
   "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
-  "/club/addinfo/[id]/page": "app/club/addinfo/[id]/page.js"
+  "/club/addinfo/[id]/page": "app/club/addinfo/[id]/page.js",
+  "/Signin/page": "app/Signin/page.js",
+  "/Logout/page": "app/Logout/page.js"
 }

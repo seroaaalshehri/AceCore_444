@@ -580,9 +580,10 @@ export default function AddInfoPage() {
                       <input
                         placeholder="Unique username"
                         value={form.username}
-                        onChange={(e) => onUsernameChange(e.target.value)}
+                        onChange={(e) => onUsernameChange(e.target.value.slice(0, 16))}
                         disabled={!editUsername}
                         className={`${FIELD_CLS} ${!editUsername ? DISABLED_FIELD : ""}`}
+                         maxLength={16}
                       />
                     </div>
 
@@ -594,7 +595,7 @@ export default function AddInfoPage() {
                       <textarea
                         rows={3}
                         placeholder="Tell gamers about your club"
-                        className={FIELD_CLS}
+                        className={FIELD_CLS} resize-none h-28 overflow-y-auto
                         value={form.bio}
                         onChange={(e) => update("bio", e.target.value.slice(0, 180))}
                         maxLength={180}

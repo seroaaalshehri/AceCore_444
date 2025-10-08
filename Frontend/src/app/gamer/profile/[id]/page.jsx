@@ -545,7 +545,10 @@ export default function GamerProfile() {
                 <div className="flex-1 min-w-0">
                   <div className=" relative top-2 min-w-0">
                     <h2 className="text-[40px] font-bold truncate">
-                      {profile.firstName} {profile.lastName}
+                      {profile.firstName} 
+                    </h2>
+                     <h2 className="text-[40px] font-bold truncate">
+                      {profile.lastName}
                     </h2>
                     <p className="text-[26px] text-gray-400 mt-1 truncate">
                       @{profile.username}
@@ -554,8 +557,8 @@ export default function GamerProfile() {
                 </div>
               </div>
 
-              <div className="absolute left-1/2 top-8 md:top-10  transform z-40">
-                <div className="flex gap-4 bg-transparent ml-20 relative top-20 items-center">
+              <div className="absolute left-1/2 ml-10 top-8 md:top-10  transform z-40">
+                <div className="flex gap-8 bg-transparent ml-20 relative top-20 items-center">
                   <Link href={`/gamer/followList/${uid}`} className="cursor-pointer text-center">
                     <div className="text-4xl font-bold text-white">
                       {followersCount}
@@ -573,10 +576,10 @@ export default function GamerProfile() {
               </div>
 
               {/* Bio + right info row */}
-              <div className="-mt-5 flex justify-between   relative top-10 items-start gap-8">
+              <div className="-mt-5 flex justify-between   relative top-7 items-start gap-8">
                 {/* Bio */}
-                <div className="flex flex-col mb-8  ml-48 text-white-400 text-xl">
-                  <p className="mb-8 max-w-[48ch] whitespace-pre-line break-words leading-relaxed">
+                <div className="flex flex-col mb-8 ml-48 text-white-400 text-2xl">
+                  <p className="mb-8 max-w-[80ch] whitespace-pre-line break-words leading-relaxed">
                     {profile.bio}
                   </p>
                 </div>
@@ -584,8 +587,8 @@ export default function GamerProfile() {
 
                 <div className="flex flex-col items-end">
               
-                  <div className="text-white-400 text-xl text-right">
-                    <div className="mt-3 flex items-center gap-2">
+                  <div className="text-white-400 text-lg text-right ml-50 -mt-24 md:-mt-6">
+                    <div className="mt-24 ml-50 flex items-center gap-1">
                       <Flag className="size-5 text-fuchsia-300 relative top-1" />
                       {profile.nationality}
                     </div>
@@ -597,7 +600,7 @@ export default function GamerProfile() {
 
 
                   </div>
-                  <div className="flex space-x-2 relative top-10 mt-8">
+                  <div className="flex space-x-2 relative top-1 mt-5">
                     {profile.socials?.twitch && (
                       <a href={profile.socials.twitch} target="_blank" rel="noopener noreferrer">
                         <img src="/twitchIcon.svg" alt="Twitch" className="w-9 h-9 relative -top-1 icon-glow" />
