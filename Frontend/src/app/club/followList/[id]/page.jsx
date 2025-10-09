@@ -21,13 +21,15 @@ function api(path) {
 
 /* -------------------- UI classes -------------------- */
 const GOLD_BTN =
-  "bg-[#FCCC22] text-[#2b2142b3] font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
+  "bg-[#FCCC22] text-[#2b2142b3] font-bold px-3 py-1 rounded text-xl disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 const GOLD_BTN_GHOST =
-  "border border-[#FCCC22] text-[#FCCC22] font-bold px-3 py-1 rounded text-l hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
+  "border border-[#FCCC22] text-[#FCCC22] font-bold px-3 py-1 rounded text-xl hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 const ZEN_TAB =
-  "px-3 py-1 text-l font-bold border-b-2 border-transparent text-[#dee1e6] hover:text-[#FCCC22] hover:border-[#FCCC22] transition-colors";
+  "px-3 py-1 text-xl font-bold border-b-2 border-transparent text-[#dee1e6] hover:text-[#FCCC22] hover:border-[#FCCC22] transition-colors";
 const ZEN_TAB_ACTIVE =
-  "px-3 py-1 text-l font-bold border-b-2 border-[#FCCC22] text-[#FCCC22]";
+  "px-3 py-1 text-xl font-bold border-b-2 border-[#FCCC22] text-[#FCCC22]";
+
+
 
 
 function PersonRow({ u }) {
@@ -39,25 +41,28 @@ function PersonRow({ u }) {
   const role = (u?.role || "").toLowerCase();
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-[#1C1633]/30">
-      <div className="relative h-10 w-10 rounded-full overflow-hidden bg-[#1C1633] border border-[#5f4a87]">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt={username} className="h-full w-full object-cover" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center">
-            <UserIcon className="h-5 w-5 text-gray-400" />
-          </div>
-        )}
-      </div>
-      <div className="min-w-0">
-        <div className="text-white text-sm truncate">{display}</div>
-        <div className="text-xs text-gray-300 truncate">
-          @{username}{role ? ` • ${role}` : ""}
+  <div className="flex items-center gap-6 px-6 py-5 rounded-lg hover:bg-[#1C1633]/60 transition">
+    {/* Avatar even bigger */}
+    <div className="relative h-24 w-24 rounded-full overflow-hidden bg-[#1C1633] border-2 border-[#5f4a87] shadow-[0_0_12px_#5f4a87]">
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatarUrl} alt={username} className="h-full w-full object-cover" />
+      ) : (
+        <div className="h-full w-full flex items-center justify-center">
+          <UserIcon className="h-12 w-12 text-gray-400" />
         </div>
+      )}
+    </div>
+
+    {/* Text */}
+    <div className="min-w-0">
+      <div className="text-white text-[26px] font-bold truncate">{display}</div>
+      <div className="text-[20px] text-gray-300 truncate">
+        @{username}{role ? ` • ${role}` : ""}
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 
@@ -212,17 +217,17 @@ export default function FollowListsPage() {
         />
       </div>
 
-      <LeftSidebar role="gamer" active="profile" userId={USER_ID} />
+      <LeftSidebar role="club" active="profile" userId={USER_ID} />
 
       <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
       >
         <div className="mx-auto max-w-6xl">
-          <div className="bg-[#2b2142b3] rounded-xl p-6 md:p-8">
+          <div className="bg-[#1c1430] rounded-xl p-6 md:p-8">
             {/* Tabs + Role Filter */}
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-5">
                 <button
                   className={tab === "following" ? GOLD_BTN : GOLD_BTN_GHOST}
                   onClick={() => setTab("following")}
@@ -312,7 +317,7 @@ export default function FollowListsPage() {
             <div className="flex justify-end mt-4">
               <button
                 type="button"
-                className="text-red-400 font-bold px-3 py-1 rounded text-l disabled:opacity-60 hover:bg-[#3b2d5e] transition-shadow"
+                className="text-red-400 font-bold px-3 py-1 rounded text-xl disabled:opacity-60 hover:bg-[#3b2d5e] transition-shadow"
                 onClick={() => router.back()} 
               >
                 Back

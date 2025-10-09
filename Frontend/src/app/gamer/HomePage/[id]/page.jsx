@@ -7,7 +7,7 @@ import { Radio } from "lucide-react";
 import { useParams } from "next/navigation";             
 
 
-const CARD = "bg-[#1C1633]/60 border border-[#3b2d5e] rounded-xl";
+const CARD = "bg-[#1d1530] border border-[#3b2d5e] rounded-xl";
 // demo posts (will change in coming sprints)
 const seedPosts = [
   { id: "p1", title: "Overwatch-Game start 4 Oct-3pm", team: "Falcons" },
@@ -20,6 +20,7 @@ const seedPosts = [
 // expand seed data so load-more is visible during dev (replace with API in later sprints)
 const ALL_POSTS = Array.from({ length: 48 }, (_, i) => {
   const base = seedPosts[i % seedPosts.length];
+  
   return { id: `p-${i + 1}`, title: base.title, team: base.team };
 });
 
@@ -130,7 +131,7 @@ export default function GamerHomePage() {
               {liveNow.map((lv) => (
                 <article
                   key={lv.id}
-                  className={`${CARD} flex-shrink-0 w-[520px] p-0 overflow-hidden hover:bg-[#1C1633]/80 transition-colors`}
+                  className={`${CARD} flex-shrink-0 w-[520px] p-0 overflow-hidden hover:bg-[#140e24] transition-colors`}
                 >
                   <div className="h-56 w-full bg-gradient-to-br from-[#5f4a87] via-[#2b2142] to-[#1C1633]" />
                   <div className="p-5">
@@ -180,7 +181,7 @@ export default function GamerHomePage() {
               {filtered.slice(0, visibleCount).map((p) => (
                 <article
                   key={p.id}
-                  className={`${CARD} p-4 hover:bg-[#1C1633]/80 transition-colors`}
+                  className={`${CARD} p-4 hover:bg-[#140e24] transition-colors`}
                 >
                   <div className="h-80 w-full rounded-lg bg-gradient-to-br from-[#5f4a87] to-[#2b2142]" />
                   <div className="mt-3 text-white text-xl font-semibold line-clamp-2">

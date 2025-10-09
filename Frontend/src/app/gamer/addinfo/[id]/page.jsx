@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";//new
 import Image from "next/image";
 import countries from "world-countries";
 import { User } from "lucide-react";
@@ -82,6 +82,32 @@ function SocialField({ iconSrc, placeholder, value, onChange, label, error }) {
     </div>
   );
 }
+// --- Username helpers ---new
+const USERNAME_RE =
+  /^(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{2,13}[A-Za-z0-9])$/; // 4..15, dash only in middle
+
+const isValidUsername = (v) => USERNAME_RE.test(String(v || "").trim());
+
+function debounce(fn, ms = 500) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
+// GET /users/check-username?username=...&excludeUserId=...new
+async function checkUsernameAvailable(username, excludeUserId) {
+  const q = new URLSearchParams({ username: String(username || "").trim() });
+  if (excludeUserId) q.set("excludeUserId", excludeUserId);
+  const res = await fetch(`${API_BASE}/users/check-username?${q.toString()}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) return false;
+  const data = await res.json().catch(() => ({}));
+  return data?.available === true;
+}
 
 const withHttps = (v) => {
   const s = (v || "").trim();
@@ -151,6 +177,63 @@ export default function AddInfoPage() {
     nationality: "",
     socials: { twitch: "", youtube: "", x: "", discord: "" },
   });
+
+  //new
+   const [username, setUsername] = useState("");
+const [origUsername, setOrigUsername] = useState(""); // baseline to detect changes
+const checkUsernameDebounced = useMemo(
+  () =>
+    debounce(async (value) => {
+      const s = String(value || "").trim();
+
+      if (!s) {
+        setUStatus("invalid");
+        setUMsg("Username is required.");
+        return;
+      }
+      if (!isValidUsername(s)) {
+        setUStatus("invalid");
+        setUMsg("4–15 chars; letters/digits at ends; dash allowed in middle; no double dashes.");
+        return;
+      }
+
+      // unchanged username new
+      if (s.toLowerCase() === (origUsername || "").toLowerCase()) {
+        setUStatus("available");
+        setUMsg("This is your current username.");
+        return;
+      }
+
+      setUStatus("checking");
+      setUMsg("Checking availability...");
+
+      try {
+        const ok = await checkUsernameAvailable(s, USER_ID);
+        if (ok) {
+          setUStatus("available");
+          setUMsg("Username is available.");
+        } else {
+          setUStatus("taken");
+          setUMsg("Username is taken.");
+        }
+      } catch {
+        setUStatus("error");
+        setUMsg("Could not verify username now.");
+      }
+    }, 500),
+  [origUsername, USER_ID]
+);
+
+const onUsernameChange = (v) => {
+  setUsername(v);
+  checkUsernameDebounced(v);
+};
+
+
+ // availability UI: "idle" | "invalid" | "checking" | "available" | "taken" | "error"
+const [uStatus, setUStatus] = useState("idle");
+ const [uMsg, setUMsg] = useState("");
+ const [isUsernameEditing, setIsUsernameEditing] = useState(false); // new
   const [originalForm, setOriginalForm] = useState(form);
 
   const [photoPreview, setPhotoPreview] = useState("");
@@ -184,8 +267,8 @@ export default function AddInfoPage() {
     }
     setLogoFile(f);
     const url = URL.createObjectURL(f);
-    setPhotoPreview(url); // preview only
-  };// this
+    setPhotoPreview(url); 
+  };
   //Read from getProfile
 useEffect(() => {
   (async () => {
@@ -212,6 +295,8 @@ useEffect(() => {
         setForm(next);
         setOriginalForm(next);
         setPhotoPreview(d.profilePhoto || d.photoUrl || "");
+         setUsername(d.username || "");     
+     setOrigUsername(d.username || ""); 
       }
     } catch (e) {
       console.warn("[Load profile] failed:", e);
@@ -224,6 +309,16 @@ useEffect(() => {
 
   const validate = () => {
     const errs = {};
+    // Username new
+   if (!String(username || "").trim()) {
+     errs.username = "Username is required";
+   } else if (!isValidUsername(username)) {
+     errs.username = "4–15 chars; letters/digits at ends; dash in middle; no double dashes.";
+   } else if (uStatus === "taken" || uStatus === "invalid" || uStatus === "checking") {
+   errs.username = (uStatus === "checking")
+       ? "Checking username…"
+      : "Please choose another username.";
+  }
     if (!form.nationality.trim()) errs.nationality = "Nationality is required";
     ["twitch", "x", "youtube", "discord"].forEach((k) => {
       const v = (form.socials?.[k] || "").trim();
@@ -254,8 +349,23 @@ useEffect(() => {
 
   const doSave = async () => {
   if (!validate()) { setShowSaveConfirm(false); return; }
-
+//  availability re-check (in case of races) new
+   const s = String(username || "").trim();
+ if (!isValidUsername(s)) {
+   alert("Invalid username format.");
+   setShowSaveConfirm(false);
+   return;
+  }
+  if (s.toLowerCase() !== (origUsername || "").toLowerCase()) {
+    const ok = await checkUsernameAvailable(s, USER_ID);
+    if (!ok) {
+      alert("Username is taken. Please choose another one.");
+     setShowSaveConfirm(false);
+     return;
+     }
+  }
   const payload = {
+     username: s, //new
     firstName: form.firstName || "",
     lastName:  form.lastName  || "",
     bio:       form.bio       || "",
@@ -292,6 +402,8 @@ useEffect(() => {
     if (!res.ok || !data?.success) throw new Error(data?.error || `Save failed ${res.status}`);
 
     setOriginalForm(form);
+     setOrigUsername(s);//new
+ setIsUsernameEditing(false);//new
     setIsCountryEditing(false);
     setShowSaveConfirm(false);
     router.push(VIEW_PROFILE_URL);
@@ -313,6 +425,8 @@ useEffect(() => {
     setErrors({});
     setIsCountryEditing(false);
     setPhotoFile(null);
+    setUsername(origUsername);//new
+ setIsUsernameEditing(false);//new
   };
 
   const onPickAvatar = () => fileRef.current?.click();
@@ -347,7 +461,7 @@ useEffect(() => {
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
       >
         <div className="mx-auto max-w-6xl" style={{ height: "calc(100vh - 100px)" }}>
-          <div className="bg-[#2b2142b3] rounded-xl p-6 h-full">
+          <div className="bg-[#1c1430] rounded-xl p-6 h-full">
             {loading ? (
               <p className="text-gray-300">Loading profile…</p>
             ) : (
@@ -390,34 +504,88 @@ useEffect(() => {
                     Upload your Porfile Picture
                   </span>
                 </div>
+{/* RIGHT: fields new */} 
+  <div className="flex mt-8 flex-col h-full">
+    <div className="space-y-4">
+      {/* USERNAME new */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <label className="block text-base font-semibold text-gray-300">
+              Username <span className="text-red-400">*</span>  
+            </label>
+            {uMsg && (
+              <span
+                className={
+                  "text-xs " +
+                  (uStatus === "available"
+                    ? "text-green-400"
+                    : uStatus === "checking"
+                    ? "text-yellow-300"
+                    : "text-red-400")
+                }
+              >
+                {uMsg}
+              </span>
+            )}
+          </div>
 
-                <div className="flex mt-8 flex-col h-full">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-base font-semibold mb-1 text-gray-300">
-                        First name
-                      </label>
-                      <input
-                        placeholder="First name"
-                        value={form.firstName}
-                        onChange={(e) => update("firstName", e.target.value.slice(0, 20))}
-                          maxLength={20}
-                        className={FIELD_CLS}
-                      />
-                    </div>
+          <span
+            role="button"
+            tabIndex={0}
+onClick={() => setIsUsernameEditing(true)}
+            className="cursor-pointer text-gray-300 hover:text-[#FCCC22] focus:text-[#FCCC22]"
+            title={isUsernameEditing ? "Lock username" : "Edit username"}
+            aria-label="Edit username"
+          >
+            ✎
+          </span>
+        </div>
 
-                    <div>
-                      <label className="block text-base font-semibold mb-1 text-gray-300">
-                        Last name
-                      </label>
-                      <input
-                        placeholder="Last name"
-                        value={form.lastName}
-                        onChange={(e) => update("lastName", e.target.value.slice(0,20))}
-                        maxLength={20}
-                        className={FIELD_CLS}
-                      />
-                    </div>
+        <input
+          type="text"
+          placeholder="Choose a unique username"
+          value={username}
+          onChange={(e) => onUsernameChange(e.target.value.slice(0, 15))}
+          disabled={!isUsernameEditing}
+          required
+          minLength={4}
+          maxLength={15}
+          pattern="[A-Za-z0-9][A-Za-z0-9-]{2,13}[A-Za-z0-9]"
+          className={`${FIELD_CLS} ${!isUsernameEditing ? DISABLED_FIELD : ""}`}
+        />
+      </div>
+
+      {/* FIRST + LAST in one row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-base font-semibold mb-1 text-gray-300">
+            First name
+          </label>
+          <input
+            placeholder="First name"
+            value={form.firstName}
+            onChange={(e) => update("firstName", e.target.value.slice(0, 20))}
+            maxLength={20}
+            className={FIELD_CLS}
+          />
+        </div>
+
+        <div>
+          <label className="block text-base font-semibold mb-1 text-gray-300">
+            Last name
+          </label>
+          <input
+            placeholder="Last name"
+            value={form.lastName}
+            onChange={(e) => update("lastName", e.target.value.slice(0, 20))}
+            maxLength={20}
+            className={FIELD_CLS}
+          />
+        </div>
+      </div>
+
+
 
                     <div>
                       <label className="block text-base font-semibold mb-1 text-gray-300">
@@ -521,8 +689,12 @@ useEffect(() => {
                     </button>
                     <div className="flex-1" />
                     <button
-                      type="button"
-                      disabled={saving}
+                      type="button"  
+                      //new
+                       disabled={saving ||
+ uStatus === "checking" ||
+  uStatus === "taken" ||
+  uStatus === "invalid" }
                       onClick={() => setShowSaveConfirm(true)}
                       className={GOLD_BTN}
                     >

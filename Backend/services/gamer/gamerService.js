@@ -31,6 +31,7 @@ async function updateUserProfileService(userid, fields, { fileInput } = {}) {
     bio:       fields.bio,
     nationality: fields.nationality,
     socials:   fields.socials,
+    username_lower: fields.username ? fields.username.toLowerCase() : "",
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 if (fields.profilePhoto) {

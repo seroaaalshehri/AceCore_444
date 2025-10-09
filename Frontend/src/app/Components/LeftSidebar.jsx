@@ -24,16 +24,15 @@ const GAMER_ROUTES = {
   logout: "/Logout",
 };
 
-/* --------- Club: static now, -------- */
+/* --------- Club: static now, -------- */ 
 const CLUB_ROUTES_STATIC = {
-  home: "/club/HomePage",
-  scrims: "/club/scrims",
-  profile: "/club/profile",
-  search: "/club/Search",
-  notifications: "/club/notifications",
-  logout: "/Home",
-};
-
+ home: ({ userId }) => `/club/HomePage/${userId}`,
+  scrims: "/club/scrims", // change to a function later /gamer/scrims/[id]
+  profile: ({ userId }) => `/club/profile/${userId}`,
+  search: ({ userId }) => `/club/Search/${userId}`,
+  notifications: "/club/notifications", 
+  logout: "/Logout",
+}
 const CLUB_ROUTES_DYNAMIC = {
   home: ({ userId }) => `/club/HomePage/${userId}`,
   scrims: ({ userId }) => `/club/scrims/${userId}`,
@@ -78,8 +77,8 @@ export default function LeftSidebar({
     role === "gamer"
       ? GAMER_ROUTES
       : clubDynamic
-        ? CLUB_ROUTES_DYNAMIC
-        : CLUB_ROUTES_STATIC;
+        ? CLUB_ROUTES_STATIC 
+        : CLUB_ROUTES_DYNAMIC;
 
   const homeHref = resolveRoute(routes.home, { userId });
   const scrimsHref = resolveRoute(routes.scrims, { userId });

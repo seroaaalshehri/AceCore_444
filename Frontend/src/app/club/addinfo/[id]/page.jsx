@@ -464,7 +464,7 @@ export default function AddInfoPage() {
         style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
       >
         <div className="mx-auto max-w-6xl" style={{ height: "calc(100vh - 100px)" }}>
-          <div className="bg-[#2b2142b3] rounded-xl p-8 h-full">
+          <div className="bg-[#1c1430] rounded-xl p-8 h-full">
             {loadBanner && (
               <div className="mb-4 px-4 py-2 rounded bg-red-600/90 text-white text-sm shadow">
                 {loadBanner}
@@ -595,7 +595,7 @@ export default function AddInfoPage() {
                       <textarea
                         rows={3}
                         placeholder="Tell gamers about your club"
-                        className={FIELD_CLS} resize-none h-28 overflow-y-auto
+                        className={FIELD_CLS}
                         value={form.bio}
                         onChange={(e) => update("bio", e.target.value.slice(0, 180))}
                         maxLength={180}

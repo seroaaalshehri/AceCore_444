@@ -178,188 +178,193 @@ export function AddAchievement({ userid }) {
   }
 
   return (
-    <div>
-      <div className="p-6 mt-0 px-4 sm:px-6 lg:px-8 mx-auto w-full max-w-6xl grid grid-cols-1 gap-8">
-        <div className="flex items-center gap-3 mb-6">
-          <h3 className="text-4xl font-bold text-[#fccc22]">ACHIEVEMENTS</h3>
-
-
-
-          
-          <button
-            onClick={() => setOpen(true)}
-            className="text-white hover:text-[#6449b5] font-bold text-3xl"
-          >
-            +
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {achievements.map((ach) => (
-            <div
-              key={ach.id}
-              className="flex items-center justify-between bg-[#2b2142b3] relative -top-5 rounded-xl p-6 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6"
-            >
-              <FaTrophy size={22} className="text-[#FCCC22] text-3xl flex-shrink-0" />
-
-              <div className="flex flex-col min-w-[220px]">
-                <h3 className="text-3xl font-bold text-white">{ach.name}</h3>
-                <p className="text-xl text-gray-300">{ach.game}</p>
-              </div>
-
-              <div className="flex flex-col min-w-[200px]">
-                <p className="text-2xl text-gray-200">{ach.association}</p>
-                <p className="text-xl text-gray-400">{formatDate(ach.date)}</p>
-              </div>
-
-              <div className="px-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-[#2b2142] w-[220px]">
-                  <div className="w-10 h-10 flex items-center justify-center">
-                    {ach.file?.endsWith(".pdf") ? (
-                      <FileText className="w-6 h-6 text-red-500" />
-                    ) : ach.file?.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
-                      <ImageIcon className="w-6 h-6 text-green-400" />
+     <div>
+          <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full max-w-15xl grid grid-cols-1 gap-8">
+            <div className="flex items-center gap-3 mb-6 -ml-6">
+              <h1 className="text-5xl font-bold text-[#fccc22]">ACHIEVEMENTS</h1>
+              <button
+                onClick={() => setOpen(true)}
+                className="text-white hover:text-[#6449b5] font-bold text-5xl"
+              >
+                +
+              </button>
+            </div>
+    
+            <div className="space-y-6">
+              {achievements.map((ach) => (
+                <div
+                  key={ach.id}
+              className="flex items-center justify-between bg-[#34285a] relative -top-5 rounded-xl pt-7 pb-7 pr-10 pl-12 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6 -ml-10 w-[109%] mx-auto"
+                >
+                  <FaTrophy size={30} className="text-[#FCCC22] text-3xl flex-shrink-0" />
+    
+                  <div className="flex flex-col min-w-[220px]">
+                    <h3 className="text-3xl font-bold text-white">{ach.name}</h3>
+                    <p className="text-xl text-gray-300">{ach.game}</p>
+                  </div>
+    
+                  <div className="flex flex-col min-w-[200px]">
+                    <p className="text-2xl text-gray-200">{ach.association}</p>
+                    <p className="text-xl text-gray-400"> {formatDate(ach.date)}</p>
+                  </div>
+    
+                  <div className="px-4">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#2b2142] w-[220px]">
+                      <div className="w-10 h-10 flex items-center justify-center">
+                        {ach.file?.endsWith(".pdf") ? (
+                          <FileText className="w-6 h-6 text-red-500" />
+                        ) : ach.file?.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                          <ImageIcon className="w-6 h-6 text-green-400" />
+                        ) : (
+                          <File className="w-6 h-6 text-[#fccc22]" />
+                        )}
+                      </div>
+    
+                      <div className="flex flex-col">
+                        <p className="font-medium text-white truncate max-w-[150px]">
+                          {ach.file?.split("/").pop()}
+                        </p>
+                        <a
+                          href={ach.file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 text-sm underline"
+                        >
+                          Open
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+    
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="text-gray-400 hover:text-[#FCCC22] font-bold text-[20px]"
+                    >
+                      <span className="inline-block transform -scale-x-100">✎</span>
+                    </button>
+    
+                    <button
+                      className="text-gray-400 hover:text-[#FCCC22]"
+                    >
+                      <FaTrash size={15} />
+                    </button>
+                  </div> </div>
+              ))}
+            </div>  </div>
+    
+          {open && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+              <div className="bg-[#1d1530]  rounded-xl p-6 w-96 relative">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
+                >
+                  ×
+                </button>
+    
+                <form onSubmit={handleSave} className="flex flex-col">
+                  <p className="text-white text-lg font-semibold mb-2">Enter achievement name</p>
+                  <input
+                    type="text"
+                    placeholder="Achievement"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm({ ...form, name: e.target.value.slice(0, 35) })
+                    }
+                    maxLength={35}
+                    className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${errors.name ? "ring-2 ring-red-500" : ""
+                      }`}
+                    aria-describedby="name-err"
+                  />
+                  <div id="name-err" className="text-xs text-gray-400 mb-2">
+                    {errors.name ? <span className="text-red-400">{errors.name}</span> : `${form.name?.length || 0}/35`}
+                  </div>
+    
+                  <p className="text-white text-lg font-semibold mb-2">Select game</p>
+                  <select
+                    value={form.game}
+                    onChange={(e) => setForm({ ...form, game: e.target.value })}
+                    className={`p-3 rounded bg-[#0C0817] text-white mb-1 ${errors.game ? "ring-2 ring-red-500" : ""
+                      }`}
+                    aria-describedby="game-err"
+                  >
+                    <option value="">Select</option>
+                    <option value="Overwatch">Overwatch</option>
+                    <option value="Rocket League">Rocket League</option>
+                    <option value="Call of Duty">Call of Duty</option>
+                  </select>
+                  <div id="game-err" className="text-xs text-red-400 mb-2">{errors.game || ""}</div>
+    
+                  <p className="text-white text-lg font-semibold mb-2">Enter official association</p>
+                  <input
+                    type="text"
+                    placeholder="Association"
+                    value={form.association}
+                    onChange={(e) => setForm({ ...form, association: e.target.value.slice(0, 35) })}
+                    maxLength={35}
+                    className={`p-3 rounded bg-[#0C0817]  mb-1 text-white ${errors.association ? "ring-2 ring-red-500" : ""
+                      }`}
+                    aria-describedby="assoc-err"
+                  />
+                  <div id="assoc-err" className="text-xs text-gray-400 mb-2">
+                    {errors.association ? <span className="text-red-400">{errors.association}</span> : `${form.association?.length || 0}/35`}
+                  </div>
+    
+                  <p className="text-white text-lg font-semibold mb-2">Enter the issued date</p>
+                  <input
+                    type="date"
+                    value={form.date}
+                    max={todayStr}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v && v > todayStr) {
+    
+                        setForm((f) => ({ ...f, date: todayStr }));
+                        setErrors((errs) => ({ ...errs, date: "Date cannot be in the future." }));
+                      } else {
+                        setForm((f) => ({ ...f, date: v }));
+    
+                        setErrors((errs) => ({ ...errs, date: "" }));
+                      }
+                    }}
+                    className={`p-3 rounded bg-[#0C0817] mb-1 text-white date-yellow ${errors.date ? "ring-2 ring-red-500" : ""
+                      }`}
+                    aria-describedby="date-err"
+                  />
+                  <div id="date-err" className="text-xs text-red-400 mb-2">{errors.date || ""}</div>
+    
+                  <p className="text-white text-lg font-semibold mb-2">Upload file / photo</p>
+                  <input
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp,.svg,application/pdf"
+                    onChange={handleFileChange}
+                    className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${(errors.file || fileErr) ? "ring-2 ring-red-500" : ""
+                      }`}
+                    aria-describedby="file-help"
+                  />
+                  <div id="file-help" className="text-xs mb-2">
+                    {fileErr ? (
+                      <span className="text-red-400">{fileErr}</span>
+                    ) : errors.file ? (
+                      <span className="text-red-400">{errors.file}</span>
                     ) : (
-                      <File className="w-6 h-6 text-[#fccc22]" />
+                      <span className="text-gray-400">Only PNG, JPG, WebP, SVG, or PDF.</span>
                     )}
                   </div>
-
-                  <div className="flex flex-col">
-                    <p className="font-medium text-white truncate max-w-[150px]">
-                      {ach.file?.split("/").pop()}
-                    </p>
-                    <a
-                      href={ach.file}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 text-sm underline"
-                    >
-                      Open
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button className="text-gray-400 hover:text-[#FCCC22] font-bold text-[17px]">
-                  <span className="inline-block transform -scale-x-100">✎</span>
-                </button>
-                <button className="text-gray-400 hover:text-[#FCCC22]">
-                  <FaTrash size={13} />
-                </button>
+                  <button
+                    type="submit"
+                    className="px-9 py-2 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl mt-4 mb-2 hover:scale-105 transition-transform duration-200"
+                  >
+                    Save
+                  </button>
+                </form>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
+          )}
     
-      {open && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-<div className="bg-[#1d1530] rounded-xl p-6 w-96 relative">
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
-            >
-              ×
-            </button>
-
-            <form onSubmit={handleSave} className="flex flex-col">
-              <p className="text-white text-lg font-semibold mb-2">Enter achievement name</p>
-              <input
-                type="text"
-                placeholder="Achievement"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value.slice(0, 35) })}
-                maxLength={35}
-                className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${errors.name ? "ring-2 ring-red-500" : ""}`}
-                aria-describedby="name-err"
-              />
-              <div id="name-err" className="text-xs text-gray-400 mb-2">
-                {errors.name ? <span className="text-red-400">{errors.name}</span> : `${form.name?.length || 0}/35`}
-              </div>
-
-              <p className="text-white text-lg font-semibold mb-2">Select game</p>
-              <select
-                value={form.game}
-                onChange={(e) => setForm({ ...form, game: e.target.value })}
-                className={`p-3 rounded bg-[#0C0817] text-white mb-1 ${errors.game ? "ring-2 ring-red-500" : ""}`}
-                aria-describedby="game-err"
-              >
-                <option value="">Select</option>
-                <option value="Overwatch">Overwatch</option>
-                <option value="Rocket League">Rocket League</option>
-                <option value="Call of Duty">Call of Duty</option>
-              </select>
-              <div id="game-err" className="text-xs text-red-400 mb-2">{errors.game || ""}</div>
-
-              <p className="text-white text-lg font-semibold mb-2">Enter official association</p>
-              <input
-                type="text"
-                placeholder="Association"
-                value={form.association}
-                onChange={(e) => setForm({ ...form, association: e.target.value.slice(0, 35) })}
-                maxLength={35}
-                className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${errors.association ? "ring-2 ring-red-500" : ""}`}
-                aria-describedby="assoc-err"
-              />
-              <div id="assoc-err" className="text-xs text-gray-400 mb-2">
-                {errors.association ? <span className="text-red-400">{errors.association}</span> : `${form.association?.length || 0}/35`}
-              </div>
-
-              <p className="text-white text-lg font-semibold mb-2">Enter the issued date</p>
-    <input
-  type="date"
-  value={form.date}
-  max={todayStr} 
-  onChange={(e) => {
-    const v = e.target.value;
-    if (v && v > todayStr) {
-      setForm((f) => ({ ...f, date: todayStr }));
-      setErrors((errs) => ({ ...errs, date: "Date cannot be in the future." }));
-    } else {
-      setForm((f) => ({ ...f, date: v }));
-      setErrors((errs) => ({ ...errs, date: "" }));
-    }
-  }}
-  className={`p-3 rounded bg-[#0C0817] mb-1 text-white date-yellow ${
-    errors.date ? "ring-2 ring-red-500" : ""
-  }`}
-  aria-describedby="date-err"
-/>
-              <div id="date-err" className="text-xs text-red-400 mb-2">{errors.date || ""}</div>
-
-              <p className="text-white text-lg font-semibold mb-2">Upload file / photo</p>
-              <input
-                type="file"
-                accept=".png,.jpg,.jpeg,.webp,.svg,application/pdf"
-                onChange={handleFileChange}
-                className={`p-3 rounded bg-[#0C0817] mb-1 text-white ${(errors.file || fileErr) ? "ring-2 ring-red-500" : ""}`}
-                aria-describedby="file-help"
-              />
-              <div id="file-help" className="text-xs mb-2">
-                {fileErr ? (
-                  <span className="text-red-400">{fileErr}</span>
-                ) : errors.file ? (
-                  <span className="text-red-400">{errors.file}</span>
-                ) : (
-                  <span className="text-gray-400">Only PNG, JPG, WebP, SVG, or PDF.</span>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                className="px-9 py-2 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl mt-4 mb-2 hover:scale-105 transition-transform duration-200"
-              >
-                Save
-              </button>
-            </form>
-          </div>
         </div>
-      )}
-    </div>
-  );
-}
+      );
+    }
 
 export default function ClubProfile() {
     const params = useParams();
@@ -483,8 +488,8 @@ export default function ClubProfile() {
   return (
      <div className="flex min-h-screen">
       <div className="w-[250px]">
-        <LeftSidebar role="club" active="profile" userId={id} />      </div>
-
+        <LeftSidebar role="club" active="profile" userId={userId} clubDynamic/>     
+         </div>
       
       <div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
         <div className="relative w-full min-h-screen">
@@ -501,27 +506,27 @@ export default function ClubProfile() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-2 max-w-6xl mx-auto">
-            
-+<section className="relative z-10 rounded-xl p-12 shadow-lg bg-[#2b2142b3]">
+          <div className="flex-1 overflow-y-auto p-6 space-y-2 max-w-7xl mx-auto">
+             <div className="p-4 flex justify-start">
+            </div> 
+
+<section className="relative z-10 rounded-xl pt-14 -pb-20 pr-14 pl-20 px-12 shadow-lg bg-[#1c1430] flex flex-col justify-start">
               <button
                 onClick={() => router.push(`/club/addinfo/${uid}`)}
-                className="absolute top-4 right-4 text-[#fff] hover:text-[#FCCC22] font-bold text-[20px] z-30"
+    className="absolute top-6 right-6 text-[#fff] hover:text-[#FCCC22] font-bold pt-1 pr-1 text-[20px] z-30"
               >
                 <span className="inline-block transform -scale-x-100">✎</span>
               </button>
 
 
-
-
-              <div className="flex relative top-2 ml-4 items-start gap-6">
+  <div className="flex relative top-0 -ml-5 items-start gap-6">
                                 {profile.profilePhoto ? (
-                  <div className="w-60 h-60 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                  <div className="w-44 h-44 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
                     <Image
                       src={profile.profilePhoto}
                       alt="Profile Avatar"
-                      width={105}           
-                      height={105}
+                      width={176}           
+                      height={176}
                       className="w-full h-full object-cover rounded-full"
                     />
                   </div>
@@ -530,112 +535,148 @@ export default function ClubProfile() {
                     <User size={80} className=" text-gray-400" /> 
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <div className=" relative top-2 min-w-0">
-                    <h2 className="text-[32px] font-bold truncate">
-                      {profile.clubName}
-                    </h2>
-                    <p className="text-[21px] text-gray-400 mt-1 truncate">
-                      @{profile.username}
-                    </p>
-                  </div>
-                </div>
+            <div className="flex-1 min-w-0 ml-3 mt-5">
+      <div className="relative top-2 min-w-0">
+        <h2 className="text-[40px] font-bold truncate">
+          {profile.clubName}
+        </h2>
+        <p className="text-[26px] text-gray-400 mt-1 truncate">
+          @{profile.username}
+        </p>
+      </div>
+    </div>
               </div>
 
-              <div className="absolute left-1/2 ml-10 top-8 md:top-10 transform z-40">
-                <div className="flex gap-8 bg-transparent relative top-5 items-center">
-                  <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
-                    <div className="text-3xl font-bold text-white">{followersCount}</div>
-                    <div className="text-2xl text-gray-400">Followers</div>
-                  </Link>
-                  <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
-                    <div className="text-3xl font-bold text-white">{followingCount}</div>
-                    <div className="text-2xl text-gray-400">Following</div>
-                  </Link>
-                </div>
+            <div className="absolute left-[55%] top-8 md:top-5 transform z-40">
+    <div className="flex gap-4 bg-transparent ml-21 relative top-24 -mt-5 items-center">
+      <Link
+        href={`/club/followList/${uid}`}
+        className="cursor-pointer text-center"
+      >
+        <div className="text-4xl font-bold text-white">{followersCount}</div>
+        <div className="text-2xl text-gray-400">Followers</div>
+      </Link>
+
+      <Link
+        href={`/club/followList/${uid}`}
+        className="cursor-pointer text-center"
+      >
+        <div className="text-4xl font-bold text-white">{followingCount}</div>
+        <div className="text-2xl text-gray-400">Following</div>
+      </Link>
+    </div>
               </div>
 
              
-              <div className="-mt-5 flex justify-between relative top-7 items-start">
-               <div className="flex flex-col mb-8  ml-48 text-white-400 text-2xl">
-                  <p className="mb-8 max-w-[80ch] whitespace-pre-line break-words leading-relaxed">
-                    {profile.bio}
-                  </p>
-                </div>
+            <div className="mt-9 ml-2 text-white text-[22px] leading-relaxed
+                w-3/4  sm:w-5/4 lg:w-2/3
+                whitespace-normal break-words [overflow-wrap:anywhere]">
+  {profile.bio}
+</div>
 
-                <div className="flex flex-col items-end">
-                  <div className="text-white-400 text-lg text-right ml-50 -mt-24 md:-mt-6">
-                    <div className="mt-24 ml-50 flex items-center gap-1">
+               <div className="flex flex-col items-end mt-[-95px] pb-6">
+    <div className="text-white-400 text-xl text-right">
+      <div className="flex items-center gap-2">
                       <MapPin className="size-5 text-fuchsia-300 " />
                       {profile.country}
                     </div>
                   </div>
 
-                  <div className="flex space-x-2 relative top-1 mt-5">
-                    {profile.socials?.twitch && (
-                      <a href={profile.socials.twitch} target="_blank" rel="noopener noreferrer">
-                        <img src="/twitchIcon.svg" alt="Twitch" className="w-7 h-7 relative -top-1 icon-glow" />
-                      </a>
-                    )}
-                    {profile.socials?.discord && (
-                      <a href={profile.socials.discord} target="_blank" rel="noopener noreferrer">
-                        <img src="/discord.svg" alt="Discord" className="w-9 h-9 relative -top-2 ml-2.5 icon-glow" />
-                      </a>
-                    )}
-                    {profile.socials?.youtube && (
-                      <a href={profile.socials.youtube} target="_blank" rel="noopener noreferrer">
-                        <img src="/youtube.svg" alt="YouTube" className="w-[55px] h-[55px] relative -top-4 icon-glow" />
-                      </a>
-                    )}
-                    {profile.socials?.x && (
-                      <a href={profile.socials.x} target="_blank" rel="noopener noreferrer">
-                        <img src="/x.svg" alt="X" className="w-6 h-6 icon-glow" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
+                 <div className="flex space-x-2 relative top-5 mt-6">
+      {profile.socials?.twitch && (
+        <a
+          href={profile.socials.twitch}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="/twitchIcon.svg"
+            alt="Twitch"
+            className="w-9 h-9 relative -top-1 icon-glow"
+          />
+        </a>
+      )}
+
+      {profile.socials?.discord && (
+        <a
+          href={profile.socials.discord}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="/discord.svg"
+            alt="Discord"
+            className="w-11 h-11 relative -top-2 ml-2.5 icon-glow"
+          />
+        </a>
+      )}
+
+      {profile.socials?.youtube && (
+        <a
+          href={profile.socials.youtube}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="/youtube.svg"
+            alt="YouTube"
+            className="w-[68px] h-[68px] relative -top-4 icon-glow"
+          />
+        </a>
+      )}
+
+      {profile.socials?.x && (
+        <a href={profile.socials.x} target="_blank" rel="noopener noreferrer">
+          <img src="/x.svg" alt="X" className="w-8 h-8 icon-glow" />
+        </a>
+      )}
+    </div>
+  </div>
+              
             </section>
 
             {/* Add Games  */}
             <div className="p-6">
               <div className="flex relative mb-[30px] z-[50] items-center gap-3 mb-4">
-                <h1 className="text-4xl font-bold text-[#fccc22]">GAMES</h1>
+                <h1 className="text-5xl font-bold text-[#fccc22]">GAMES</h1>
                 {availableGames.length > 0 && (
                   <button
                     onClick={() => setIsModalOpen(true)}
-                    className="text-[#ffff] font-bold text-4xl hover:text-[#6449b5]"
+                    className="text-[#ffff] font-bold text-5xl hover:text-[#6449b5]"
                   >
                     +
                   </button>
                 )}
               </div>
 
-              <div className="mt-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-[20]">
+              <div className="mt-0 grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-10 relative z-[20]">
                 {games.map((g) => (
-                  <div
-                    key={g.id}
-                    className="w-80 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430] overflow-hidden flex flex-col"
-                  >
-                    <img
-                      src={g.gamePhoto}
-                      alt={g.gameName}
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="p-4 flex flex-col gap-2 text-left">
-                      <div className="flex items-center">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-white text-[32px]">{g.gameName}</span>
-                      
-                        </div>
-                        <div className="flex gap-2 ml-auto">
-                          <button className="hover:text-[#fccc22] text-sm">
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+             <div
+  key={g.id}
+  className="w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430] overflow-hidden flex flex-col relative"
+>
+  <img
+    src={g.gamePhoto}
+    alt={g.gameName}
+    className="w-full h-60 object-cover"
+  />
+
+  <div className="p-4 flex flex-col gap-1 text-left">
+    <div className="flex items-center justify-between">
+      {/* Game name on the left */}
+      <span className="font-bold text-white relative -top-2 text-[32px]">
+        {g.gameName}
+      </span>
+
+      {/* Trash icon on the right */}
+      <button className="text-gray-400 hover:text-[#fccc22] text-sm">
+        <FaTrash />
+      </button>
+    </div>
+  </div>
+</div>
+
+
                 ))}
               </div>
 

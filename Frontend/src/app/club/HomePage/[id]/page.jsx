@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { Plus } from "lucide-react";
 
-const CARD = "bg-[#1C1633]/60 border border-[#3b2d5e] rounded-xl";
+const CARD = "bg-[#1d1530] border border-[#3b2d5e] rounded-xl";
 
-/* --- demo posts (will change in coming sprints) --- */
 const seedPosts = [
   { id: "p1", title: "Valorant — Game starts 4 Oct · 3pm", team: "Falcons" },
   { id: "p2", title: "Call Of Duty — Game starts 12 Oct · 4pm", team: "Twisted Minds" },
@@ -22,10 +22,11 @@ const ALL_POSTS = Array.from({ length: 48 }, (_, i) => {
 });
 
 export default function ClubHomePage() {
-  const [leftTab, setLeftTab] = useState("home");
-  const [q, setQ] = useState("");
+  // ✅ Param name must match your folder name: [userId]
+const { id: userId } = useParams();
 
   const PAGE_SIZE = 6;
+  const [q, setQ] = useState("");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -39,32 +40,31 @@ export default function ClubHomePage() {
     });
   }, [q]);
 
-  const canLoadMore = visibleCount < filtered.length;
-
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
     setLoadingMore(false);
   }, [q]);
 
+  const canLoadMore = visibleCount < filtered.length;
+
   const handleLoadMore = async () => {
     if (!canLoadMore || loadingMore) return;
     try {
       setLoadingMore(true);
-      await new Promise((r) => setTimeout(r, 800)); // simulate API latency
+      await new Promise((r) => setTimeout(r, 800));
       setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
     } finally {
       setLoadingMore(false);
     }
   };
 
-  /* add post */
   const onAddPost = () => {
-    
     console.log("Add Post clicked");
   };
 
   return (
     <>
+      {/* background */}
       <div className="absolute inset-2 z-0">
         <Particles
           particleColors={["#ffffff"]}
@@ -75,18 +75,15 @@ export default function ClubHomePage() {
         />
       </div>
 
-      {/* left sidebar */}
-      <LeftSidebar active={leftTab} onChange={setLeftTab} />
+      {/* ✅ Correct, single sidebar render */}
+            <LeftSidebar role="club" active="home" userId={userId} clubDynamic />
 
-      {/* MAIN */}
       <main
         className="relative z-10 pt-8"
         style={{ marginLeft: SIDEBAR_WIDTH + 100, marginRight: 24 }}
       >
-
-        {/* POSTS */}
-        <section >
-          <div className=" flex items-center justify-between">
+        <section>
+          <div className="flex items-center justify-between">
             <h2 className="font-semibold text-xl text-[#FCCC22]">Posts</h2>
             <button
               type="button"
@@ -103,14 +100,9 @@ export default function ClubHomePage() {
           <div className="mt-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
               {filtered.slice(0, visibleCount).map((p) => (
-                <article
-                  key={p.id}
-                  className={`${CARD} p-4 hover:bg-[#1C1633]/80 transition-colors`}
-                >
+                <article key={p.id} className={`${CARD} p-4 hover:bg-[#140e24] transition-colors`}>
                   <div className="h-80 w-full rounded-lg bg-gradient-to-br from-[#5f4a87] to-[#2b2142]" />
-                  <div className="mt-3 text-xl text-white font-semibold line-clamp-2">
-                    {p.title}
-                  </div>
+                  <div className="mt-3 text-xl text-white font-semibold line-clamp-2">{p.title}</div>
                   <div className="text-s text-gray-300">Team: {p.team}</div>
                   <div className="mt-4">
                     <button className="px-3 py-1.5 rounded-md text-sm font-bold bg-[#FCCC22] text-[#2b2142b3] hover:shadow-[0_0_12px_#FCCC22] transition-shadow">
@@ -121,16 +113,15 @@ export default function ClubHomePage() {
               ))}
             </div>
 
-            {/* Load more  */}
             <div className="mt-6 flex items-center justify-center">
               {canLoadMore ? (
                 <button
                   disabled={loadingMore}
                   onClick={handleLoadMore}
                   className={`px-4 py-2 rounded-lg font-semibold text-sm
-                                bg-[#FCCC22] text-[#2b2142b3] border border-[#3b2d5e]
-                                hover:shadow-[0_0_14px_#FCCC22] transition-all
-                                disabled:opacity-60 disabled:cursor-not-allowed`}
+                    bg-[#FCCC22] text-[#2b2142b3] border border-[#3b2d5e]
+                    hover:shadow-[0_0_14px_#FCCC22] transition-all
+                    disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
                   {loadingMore ? (
                     <span className="inline-flex items-center gap-2">
@@ -147,8 +138,7 @@ export default function ClubHomePage() {
             </div>
           </div>
         </section>
-
-      </main >
+      </main>
     </>
   );
 }
