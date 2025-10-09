@@ -6,6 +6,12 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/club/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/profile/[id]/page.css",
+      "static/chunks/app/club/profile/[id]/page.js"
+    ],
     "/Signin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -17,6 +23,16 @@
       "static/chunks/main-app.js",
       "static/css/app/gamer/profile/[id]/page.css",
       "static/chunks/app/gamer/profile/[id]/page.js"
+    ],
+    "/gamer/followList/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/followList/[id]/page.js"
+    ],
+    "/gamer/addinfo/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/addinfo/[id]/page.js"
     ],
     "/gamer/HomePage/[id]/page": [
       "static/chunks/webpack.js",
@@ -33,36 +49,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/Home/page.js"
     ],
-    "/club/profile/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/club/profile/[id]/page.css",
-      "static/chunks/app/club/profile/[id]/page.js"
-    ],
-    "/club/HomePage/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/HomePage/[id]/page.js"
-    ],
-    "/gamer/addinfo/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/gamer/addinfo/[id]/page.js"
-    ],
     "/club/addinfo/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/club/addinfo/[id]/page.js"
     ],
-    "/gamer/followList/[id]/page": [
+    "/club/HomePage/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/gamer/followList/[id]/page.js"
-    ],
-    "/club/followList/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/followList/[id]/page.js"
+      "static/chunks/app/club/HomePage/[id]/page.js"
     ]
   }
 }

@@ -2873,6 +2873,16 @@ eval("\nObject.defineProperty(exports, \"__esModule\", ({\n    value: true\n}));
 
 /***/ }),
 
+/***/ "(ssr)/./node_modules/next/dist/compiled/client-only/index.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/next/dist/compiled/client-only/index.js ***!
+  \**************************************************************/
+/***/ (() => {
+
+
+
+/***/ }),
+
 /***/ "(ssr)/./node_modules/next/dist/compiled/next-devtools/index.js":
 /*!****************************************************************!*\
   !*** ./node_modules/next/dist/compiled/next-devtools/index.js ***!

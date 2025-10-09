@@ -1194,9 +1194,6 @@ video {
 .h-24 {
   height: 6rem;
 }
-.h-28 {
-  height: 7rem;
-}
 .h-3 {
   height: 0.75rem;
 }
@@ -1648,9 +1645,6 @@ video {
 }
 .\!resize-none {
   resize: none !important;
-}
-.resize-none {
-  resize: none;
 }
 .resize-y {
   resize: vertical;
