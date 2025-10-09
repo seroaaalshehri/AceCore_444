@@ -191,7 +191,7 @@ export function AddAchievement({ userid }) {
           {achievements.map((ach) => (
             <div
               key={ach.id}
-              className="flex items-center justify-between bg-[#34285a] relative -top-5 rounded-xl pt-7 pb-7 pr-10 pl-12 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6 -ml-10 w-[120%] mx-auto"
+              className="flex items-center justify-between bg-[#1c1430] relative -top-5 rounded-xl pt-7 pb-7 pr-10 pl-12 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6 -ml-10 w-[120%] mx-auto"
             >
               <FaTrophy size={30} className="text-[#FCCC22] text-3xl flex-shrink-0" />
 
