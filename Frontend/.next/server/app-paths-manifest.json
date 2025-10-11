@@ -1,7 +1,3 @@
 {
-  "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
-  "/Logout/page": "app/Logout/page.js",
-  "/Signin/page": "app/Signin/page.js",
-  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js",
-  "/Home/page": "app/Home/page.js"
+  "/gamer/scrimArenasLive/join/page": "app/gamer/scrimArenasLive/join/page.js"
 }

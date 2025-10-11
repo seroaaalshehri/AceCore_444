@@ -5,12 +5,16 @@ type AppRoutes = never
 type PageRoutes = never
 type LayoutRoutes = "/"
 type RedirectRoutes = never
-type RewriteRoutes = never
+type RewriteRoutes = "/agora-app-builder" | "/agora-app-builder/" | "/agora-app-builder/[[...path]]" | "/agora-app-builder/index.html"
 type Routes = AppRoutes | PageRoutes | LayoutRoutes | RedirectRoutes | RewriteRoutes
 
 
 interface ParamMap {
   "/": {}
+  "/agora-app-builder": {}
+  "/agora-app-builder/": {}
+  "/agora-app-builder/[[...path]]": { "path"?: string[]; }
+  "/agora-app-builder/index.html": {}
 }
 
 

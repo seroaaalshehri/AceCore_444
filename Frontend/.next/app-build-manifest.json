@@ -6,33 +6,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/club/profile/[id]/page": [
+    "/gamer/scrimArenasLive/join/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/club/profile/[id]/page.css",
-      "static/chunks/app/club/profile/[id]/page.js"
-    ],
-    "/Logout/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Logout/page.js"
-    ],
-    "/Home/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Home/page.js"
-    ],
-    "/Signin/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/Signin/page.css",
-      "static/chunks/app/Signin/page.js"
-    ],
-    "/gamer/profile/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/gamer/profile/[id]/page.css",
-      "static/chunks/app/gamer/profile/[id]/page.js"
+      "static/chunks/app/gamer/scrimArenasLive/join/page.js"
     ]
   }
 }
