@@ -4,13 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
-    
     "build": "next build --turbopack",
-    "start": "next start",
-   "dev:front": "next dev -H 0.0.0.0 -p 3000",
-    "dev:ab": "cd ../agora-app-builder/acecore && npm run web",
-    "dev:api": "cd ../Backend && node --watch server.js",  
-    "dev:all": "concurrently -n FRONT,AB,API -c green,cyan,yellow \"npm:dev:front\" \"npm:dev:ab\" \"npm:dev:api\""
+    "start": "next start"
   },
   "dependencies": {
     "@appbuilder/web": "file:../agora-app-builder/Builds/web-sdk/appbuilder-web-3.1.8-3-lXmfogv4k6.tgz",

@@ -27,7 +27,7 @@ const GAMER_ROUTES = {
 /* --------- Club: static now, -------- */ 
 const CLUB_ROUTES_STATIC = {
  home: ({ userId }) => `/club/HomePage/${userId}`,
-  scrims: "/club/scrims", // change to a function later /gamer/scrims/[id]
+  scrims:  ({ userId }) => `/club/createscrimarena/${userId}`, // change to a function later /gamer/scrims/[id]
   profile: ({ userId }) => `/club/profile/${userId}`,
   search: ({ userId }) => `/club/Search/${userId}`,
   notifications: "/club/notifications", 
@@ -35,7 +35,7 @@ const CLUB_ROUTES_STATIC = {
 }
 const CLUB_ROUTES_DYNAMIC = {
   home: ({ userId }) => `/club/HomePage/${userId}`,
-  scrims: ({ userId }) => `/club/scrims/${userId}`,
+  scrims: ({ userId }) => `/club/createscrimarena/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
   search: ({ userId }) => `/club/Search/${userId}`,
   notifications: ({ userId }) => `/club/notifications/${userId}`,
@@ -113,20 +113,22 @@ export default function LeftSidebar({
           href={homeHref}
           disabled={!homeHref}  
         />
-        <LeftNavItem
-          icon={CalendarClock}
-          label="Scrims Scheduling"
-          active={active === "scrims"}
-          href={scrimsHref}
-          disabled={!scrimsHref}
-        />
-        <LeftNavItem
+ <LeftNavItem
           icon={User}
           label="Profile"
           active={active === "profile"}
           href={profileHref}
           disabled={!profileHref}
         />
+
+        <LeftNavItem
+          icon={CalendarClock}
+          label=" create Scrim Arenas"
+          active={active === "scrims"}
+          href={scrimsHref}
+          disabled={!scrimsHref}
+        />
+       
         <LeftNavItem
           icon={Search}
           label="Search"
