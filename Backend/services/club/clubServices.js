@@ -233,7 +233,7 @@ async function getUserScrimsWithGame(userid, { gameid, from, to }) {
 
 
 async function initScrimArenaForSchedule(userid, scheduleId) {
-  // Create a scrimArena doc with an auto id
+
   const scrimRef = db.collection("users").doc(userid).collection("scrimArena").doc();
   const scrimId = scrimRef.id;
 
@@ -248,7 +248,6 @@ async function initScrimArenaForSchedule(userid, scheduleId) {
 
   await scrimRef.set(base);
 
-  // back-link from schedule to scrim
   const scheduleRef = db.collection("users").doc(userid).collection("schedule").doc(scheduleId);
   await scheduleRef.set({ scrimId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
 
@@ -381,6 +380,25 @@ async function setRequestStatusService({ clubId, slotId, requestId, newStatus })
         { userid, createdAt: admin.firestore.FieldValue.serverTimestamp() },
         { merge: true }
       );
+
+      // NEW: also create a record for the GAMER at users/{userid}/scrimArenas/{autoId}
+      const scrimId = String(slot.scrimId || ""); // set during addScrim/initScrimArenaForSchedule
+      const gamerArenaCol = db.collection("users").doc(userid).collection("scrimArenas");
+      const gamerArenaRef = gamerArenaCol.doc(); // auto-id
+
+      tx.set(
+        gamerArenaRef,
+        {
+          scrimId,               
+          slotId,                  
+          clubId,                  
+          isjoin: true,           
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+
     }
 
     // Leaving accepted: remove {userid} doc

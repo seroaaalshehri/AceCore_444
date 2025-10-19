@@ -2,9 +2,9 @@ const express = require("express");
 const router = express.Router();
 const { db , admin} = require("../../../Firebase/firebaseBackend");
 
-/* helper: load club + scrim + schedule */
+
 async function loadClubScrimAndSchedule(clubId, scrimId) {
-  // club doc (for clubName/logo)
+
   const clubDoc = await db.collection("users").doc(clubId).get();
   const club = clubDoc.exists ? clubDoc.data() : {};
 
@@ -14,12 +14,11 @@ async function loadClubScrimAndSchedule(clubId, scrimId) {
   const sDoc = await scrimRef.get();
   const s = sDoc.exists ? sDoc.data() : {};
 
-  // scheduleId can live in the scrim doc OR we can find it by scrimId
   let scheduleId = s?.scheduleId || s?.scheduleID || s?.schedule?.id || null;
   let schedule = null;
 
   if (!scheduleId) {
-    // fallback: find schedule by scrimId
+
     const q = await db.collection("users").doc(clubId)
       .collection("schedule").where("scrimId", "==", scrimId).limit(1).get();
     if (!q.empty) {
@@ -62,13 +61,12 @@ router.get("/:gamerId/scrim-appointments", async (req, res) => {
         clubName: club?.clubName || club?.displayName || `@${clubId}`,
         clubLogo: club?.profilePhoto || club?.avatarUrl || "",
 
-        // scrim meta (from users/{clubId}/scrimArena/{scrimId})
         title: scrim?.title || "",
         status: scrim?.status || "",
         channelName: scrim?.channelName || "",
         attendeeUrl: scrim?.attendeeUrl || "",
 
-        // schedule meta (from users/{clubId}/schedule/{scheduleId})
+       
         scheduleId: scheduleId || null,
         schedule: schedule ? {
           gameid: schedule.gameid ?? "",
@@ -83,7 +81,7 @@ router.get("/:gamerId/scrim-appointments", async (req, res) => {
         updatedAt: scrim?.updatedAt || null,
       });
     }
- // NEW: batch-fetch games by schedule.gameid and attach schedule.game
+ 
     const gameIds = [...new Set(rows.map(r => r.schedule?.gameid).filter(Boolean))];
     const gameById = new Map();
     for (let i = 0; i < gameIds.length; i += 10) {
@@ -120,7 +118,6 @@ router.get("/:gamerId/scrim-appointments/:scrimId", async (req, res) => {
   try {
     const { gamerId, scrimId } = req.params;
 
-    // find which club this scrim belongs to for this gamer
     const gSnap = await db.collection("users").doc(gamerId)
       .collection("scrimArenas").where("scrimId", "==", scrimId)
       .limit(1).get();
@@ -131,7 +128,6 @@ router.get("/:gamerId/scrim-appointments/:scrimId", async (req, res) => {
     const { club, scrim, schedule, scheduleId } =
       await loadClubScrimAndSchedule(clubId, scrimId);
 
-    // NEW: fetch game for this schedule and attach as schedule.game
     let gamePayload = null;
     const gid = schedule?.gameid;
     if (gid) {
@@ -171,7 +167,6 @@ router.get("/:gamerId/scrim-appointments/:scrimId", async (req, res) => {
           scrimEndTime: schedule.scrimEndTime ?? null,
           createdAt: schedule.createdAt ?? null,
           updatedAt: schedule.updatedAt ?? null,
-          // NEW: attach game object so the client can read schedule.game.gamePhoto
           game: gamePayload,
         } : null,
       }
@@ -186,7 +181,6 @@ router.get("/:gamerId/:scrimId/ended", async (req, res) => {
   try {
     const { gamerId, scrimId } = req.params;
 
-    // NEW: lookup the gamer’s link to find the clubId
     const linkSnap = await db.collection("users").doc(gamerId)
       .collection("scrimArenas")
       .where("scrimId", "==", scrimId)
@@ -202,7 +196,6 @@ router.get("/:gamerId/:scrimId/ended", async (req, res) => {
       return res.status(400).json({ ok: false, error: "Missing clubId", ended: false });
     }
 
-    // NEW: read the club’s scrimArena/{scrimId} to get status
     const scrimDoc = await db.collection("users").doc(clubId)
       .collection("scrimArena").doc(scrimId)
       .get();
@@ -214,7 +207,6 @@ router.get("/:gamerId/:scrimId/ended", async (req, res) => {
     const status = String((scrimDoc.data() || {}).status || "").toLowerCase();
     const ended = status === "ended";
 
-    // NEW: return simple boolean (plus status for debugging/UX)
     return res.json({ ok: true, ended, status });
   } catch (e) {
     console.error("ended-check error:", e);
