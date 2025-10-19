@@ -22,7 +22,7 @@ const ALL_POSTS = Array.from({ length: 48 }, (_, i) => {
 });
 
 export default function ClubHomePage() {
-  // ✅ Param name must match your folder name: [userId]
+  
 const { id: userId } = useParams();
 
   const PAGE_SIZE = 6;

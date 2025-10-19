@@ -100,8 +100,7 @@ export function AddAchievement({ userid }) {
   });
   const [errors, setErrors] = useState({});
   const [fileErr, setFileErr] = useState("");
-
-
+  const [loading, setLoading] = useState(false);
 
   async function fetchAchievements() {
     const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/achievements`);
@@ -133,6 +132,8 @@ export function AddAchievement({ userid }) {
 
   async function handleSave(e) {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
 
     const nextErrors = {};
     if (!form.name?.trim()) nextErrors.name = "Required.";
@@ -142,7 +143,10 @@ export function AddAchievement({ userid }) {
     if (!form.file) nextErrors.file = "Required.";
 
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length || fileErr) return;
+    if (Object.keys(nextErrors).length || fileErr) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -350,9 +354,10 @@ export function AddAchievement({ userid }) {
               </div>
               <button
                 type="submit"
-                className="px-9 py-2 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl mt-4 mb-2 hover:scale-105 transition-transform duration-200"
+                disabled={loading}
+                className="px-9 py-2 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl mt-4 mb-2 hover:scale-105 transition-transform duration-200 disabled:opacity-80"
               >
-                Save
+                {loading ? "Saving..." : "Save"}
               </button>
             </form>
           </div>
@@ -381,6 +386,7 @@ export default function GamerProfile() {
   const ready = useOwnerGuard();
   const { id } = useParams();
   const userId = Array.isArray(id) ? id[0] : id;
+  const [loading, setLoading] = useState(false);
 
 
 
@@ -432,10 +438,13 @@ export default function GamerProfile() {
 
   async function handleAdd() {
     if (!selectedGame) {
+      setLoading(false);
       setError(" Please select a game");
       return;
     }
     setError("");
+    if (loading) return;
+    setLoading(true);
 
     await authedFetch(`http://localhost:4000/api/gamer/${uid}/add/games`, {
       method: "POST",
@@ -511,141 +520,141 @@ export default function GamerProfile() {
             </div>
 
             {/* Gamer Info  #1d1338*/}
-<section className="relative z-10 rounded-xl pt-14 -pb-20 pr-14 pl-20 px-12 shadow-lg bg-[#1c1430] flex flex-col justify-start">
+            <section className="relative z-10 rounded-xl pt-14 -pb-20 pr-14 pl-20 px-12 shadow-lg bg-[#1c1430] flex flex-col justify-start">
 
-  <button
-    onClick={() => router.push(`/gamer/addinfo/${uid}`)}
-    className="absolute top-6 right-6 text-[#fff] hover:text-[#FCCC22] font-bold pt-1 pr-1 text-[20px] z-30"
-  >
-    <span className="inline-block transform -scale-x-100">✎</span>
-  </button>
+              <button
+                onClick={() => router.push(`/gamer/addinfo/${uid}`)}
+                className="absolute top-6 right-6 text-[#fff] hover:text-[#FCCC22] font-bold pt-1 pr-1 text-[20px] z-30"
+              >
+                <span className="inline-block transform -scale-x-100">✎</span>
+              </button>
 
-  <div className="flex relative top-0 -ml-5 items-start gap-6">
-    {profile.profilePhoto ? (
-      <div className="w-44 h-44 rounded-full overflow-hidden bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
-        <Image
-          src={profile.profilePhoto}
-          alt="Profile Avatar"
-          width={176}
-          height={176}
-          className="w-full h-full object-cover rounded-full"
-        />
-      </div>
-    ) : (
-      <div className="w-40 h-40 flex items-center justify-center rounded-full bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
-        <User size={80} className="text-gray-400" />
-      </div>
-    )}
+              <div className="flex relative top-0 -ml-5 items-start gap-6">
+                {profile.profilePhoto ? (
+                  <div className="w-44 h-44 rounded-full overflow-hidden bg-[#1C1633] border-3 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                    <Image
+                      src={profile.profilePhoto}
+                      alt="Profile Avatar"
+                      width={176}
+                      height={176}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-40 h-40 flex items-center justify-center rounded-full bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                    <User size={80} className="text-gray-400" />
+                  </div>
+                )}
 
-    <div className="flex-1 min-w-0 ml-3 mt-5">
-      <div className="relative top-2 min-w-0">
-        <h2 className="text-[40px] font-bold truncate">
-          {profile.firstName} {profile.lastName}
-        </h2>
-        <p className="text-[26px] text-gray-400 mt-1 truncate">
-          @{profile.username}
-        </p>
-      </div>
-    </div>
-  </div>
+                <div className="flex-1 min-w-0 ml-3 mt-5">
+                  <div className="relative top-2 min-w-0">
+                    <h2 className="text-[40px] font-bold truncate">
+                      {profile.firstName} {profile.lastName}
+                    </h2>
+                    <p className="text-[26px] text-gray-400 mt-1 truncate">
+                      @{profile.username}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-  <div className="absolute left-[55%] top-8 md:top-5 transform z-40">
-    <div className="flex gap-4 bg-transparent ml-21 relative top-24 -mt-5 items-center">
-      <Link
-        href={`/gamer/followList/${uid}`}
-        className="cursor-pointer text-center"
-      >
-        <div className="text-4xl font-bold text-white">{followersCount}</div>
-        <div className="text-2xl text-gray-400">Followers</div>
-      </Link>
+              <div className="absolute left-[55%] top-8 md:top-5 transform z-40">
+                <div className="flex gap-4 bg-transparent ml-21 relative top-24 -mt-5 items-center">
+                  <Link
+                    href={`/gamer/followList/${uid}`}
+                    className="cursor-pointer text-center"
+                  >
+                    <div className="text-4xl font-bold text-white">{followersCount}</div>
+                    <div className="text-2xl text-gray-400">Followers</div>
+                  </Link>
 
-      <Link
-        href={`/gamer/followList/${uid}`}
-        className="cursor-pointer text-center"
-      >
-        <div className="text-4xl font-bold text-white">{followingCount}</div>
-        <div className="text-2xl text-gray-400">Following</div>
-      </Link>
-    </div>
-  </div>
+                  <Link
+                    href={`/gamer/followList/${uid}`}
+                    className="cursor-pointer text-center"
+                  >
+                    <div className="text-4xl font-bold text-white">{followingCount}</div>
+                    <div className="text-2xl text-gray-400">Following</div>
+                  </Link>
+                </div>
+              </div>
 
-  {/* Bio section */}
- {/* Bio */}
-<div className="mt-9 ml-2 text-white text-[22px] leading-relaxed
+              {/* Bio section */}
+              {/* Bio */}
+              <div className="mt-9 ml-2 text-white text-[22px] leading-relaxed
                 w-3/4  sm:w-5/4 lg:w-2/3
                 whitespace-normal break-words [overflow-wrap:anywhere]">
-  {profile.bio}
-</div>
+                {profile.bio}
+              </div>
 
 
 
-  {/* Right info section */}
-<div className="flex flex-col items-end mt-[-95px] pb-6">
-    <div className="text-white-400 text-xl text-right">
-      <div className="flex items-center gap-2">
-        <Flag className="size-5 text-fuchsia-300" />
-        {profile.nationality}
-      </div>
+              {/* Right info section */}
+              <div className="flex flex-col items-end mt-[-95px] pb-6">
+                <div className="text-white-400 text-xl text-right">
+                  <div className="flex items-center gap-2">
+                    <Flag className="size-5 text-fuchsia-300" />
+                    {profile.nationality}
+                  </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <Cake className="size-5 text-fuchsia-300" />
-        <p>Born</p>
-        {formatDate(profile.birthdate)}
-      </div>
-    </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Cake className="size-5 text-fuchsia-300" />
+                    <p>Born</p>
+                    {formatDate(profile.birthdate)}
+                  </div>
+                </div>
 
-    <div className="flex space-x-2 relative top-5 mt-6">
-      {profile.socials?.twitch && (
-        <a
-          href={profile.socials.twitch}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img
-            src="/twitchIcon.svg"
-            alt="Twitch"
-            className="w-9 h-9 relative -top-1 icon-glow"
-          />
-        </a>
-      )}
+                <div className="flex space-x-2 relative top-5 mt-6">
+                  {profile.socials?.twitch && (
+                    <a
+                      href={profile.socials.twitch}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src="/twitchIcon.svg"
+                        alt="Twitch"
+                        className="w-9 h-9 relative -top-1 icon-glow"
+                      />
+                    </a>
+                  )}
 
-      {profile.socials?.discord && (
-        <a
-          href={profile.socials.discord}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img
-            src="/discord.svg"
-            alt="Discord"
-            className="w-11 h-11 relative -top-2 ml-2.5 icon-glow"
-          />
-        </a>
-      )}
+                  {profile.socials?.discord && (
+                    <a
+                      href={profile.socials.discord}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src="/discord.svg"
+                        alt="Discord"
+                        className="w-11 h-11 relative -top-2 ml-2.5 icon-glow"
+                      />
+                    </a>
+                  )}
 
-      {profile.socials?.youtube && (
-        <a
-          href={profile.socials.youtube}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img
-            src="/youtube.svg"
-            alt="YouTube"
-            className="w-[68px] h-[68px] relative -top-4 icon-glow"
-          />
-        </a>
-      )}
+                  {profile.socials?.youtube && (
+                    <a
+                      href={profile.socials.youtube}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        src="/youtube.svg"
+                        alt="YouTube"
+                        className="w-[68px] h-[68px] relative -top-4 icon-glow"
+                      />
+                    </a>
+                  )}
 
-      {profile.socials?.x && (
-        <a href={profile.socials.x} target="_blank" rel="noopener noreferrer">
-          <img src="/x.svg" alt="X" className="w-8 h-8 icon-glow" />
-        </a>
-      )}
-    </div>
-  </div>
+                  {profile.socials?.x && (
+                    <a href={profile.socials.x} target="_blank" rel="noopener noreferrer">
+                      <img src="/x.svg" alt="X" className="w-8 h-8 icon-glow" />
+                    </a>
+                  )}
+                </div>
+              </div>
 
-</section>
+            </section>
 
 
 
@@ -753,8 +762,9 @@ export default function GamerProfile() {
 
                     <button
                       onClick={handleAdd}
-                      className="px-9 py-1 mt-3 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200">
-                      Add
+                      disabled={loading}
+                      className="px-9 py-1 mt-3 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200 disabled:opacity-80">
+                      {loading ? "loading..." : "Add"}
                     </button>
 
                   </div>

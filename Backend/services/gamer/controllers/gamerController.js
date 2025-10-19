@@ -12,7 +12,14 @@ const {
   getUserGames,
   getGames,
   updateUserProfileService,
-
+listGamerRequests,
+  getClubSlots,
+  createRequest,
+  getClubGames,
+    getGamerSlotsService,
+    getGamerAcceptedScrimsService,
+    listGamesForGamerService,
+ 
 } = require("../gamerService");
 
 //addInfo
@@ -25,6 +32,7 @@ async function UpdateUserProfile(req, res) {
       : (req.body || {});
 
     const safe = {
+      username: payload.username ?? "",
       firstName: payload.firstName ?? "",
       lastName: payload.lastName ?? "",
       bio: payload.bio ?? "",
@@ -274,6 +282,95 @@ async function getFollowers(req, res) {
 }
 
 
+async function listGamerRequestsController(req, res, next) {
+  try {
+    const { gamerId } = req.params;
+    const raw = String(req.query.status || "all");
+    const allowed = new Set(["on_hold", "accepted", "declined", "all"]);
+    const status = allowed.has(raw) && raw !== "all" ? raw : undefined;
+
+    const items = await listGamerRequests({ gamerId, status, limit: 100 });
+    return res.json({ success: true, items });
+  } catch (e) {
+    next(e);
+  }
+}
+
+
+// 🔹 Controller: get all club games
+async function listClubGames(req, res) {
+  try {
+    const { userid } = req.params; 
+    const games = await getClubGames(userid);
+    res.json({ success: true, games });
+  } catch (e) {
+    console.error("listClubGames error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+
+async function listClubSlots(req, res) {
+  try {
+    const { clubId } = req.params;
+    const { gameid, from, to } = req.query;
+    const slots = await getClubSlots(clubId, { gameid, from, to });
+    res.json({ success: true, slots });
+  } catch (e) {
+    console.error("listClubSlots error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+async function sendRequest(req, res) {
+  try {
+    const { clubId, slotId } = req.params;
+    const gamerId = req.user?.uid || req.body.gamerId; //for testing 
+    if (!gamerId) throw new Error("Missing gamerId");
+
+
+    const result = await createRequest({ clubId, slotId, gamerId });
+     res.json(result);
+  } catch (e) {
+    console.error("sendRequest error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+
+ async function getGamerSlotsController(req, res, next) {
+  try {
+    const { gamerId } = req.params;
+    const items = await getGamerSlotsService(gamerId);
+    return res.json({ success: true, items });
+  } catch (e) {
+    next(e);
+  }
+}
+
+ async function listGamerAcceptedScrimsController(req, res, next) {
+  try {
+    const { gamerId } = req.params;
+    const { status, gameid } = req.query;
+    const items = await getGamerAcceptedScrimsService(gamerId, { status, gameid });
+    return res.json({ success: true, items });
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function listGamesForGamerController(req, res, next) {
+  try {
+    const { gamerId } = req.params;
+    const games = await listGamesForGamerService(gamerId);
+    return res.json({ success: true, games, items: games }); // items for your existing front-end usage
+  } catch (e) { next(e); }
+}
+
+
+
+
+
 module.exports = {
   addAchievement,
   listAchievements,
@@ -285,9 +382,12 @@ module.exports = {
   UpdateUserProfile,
   getFollowing,
   getFollowers,
-
+  listGamerRequestsController, 
+   listClubSlots,
+   sendRequest,
+   listClubGames,
+   getGamerSlotsController,
+   listGamerAcceptedScrimsController,
+   listGamesForGamerController,
+ 
 };
-
-
-
-

@@ -50,5 +50,19 @@ router.post("/:userid/add", authenticate, requireOwner, upload2.single("file"), 
 router.get("/games/all", gamerController.getAllGames);
 router.put("/gamer/:userid/profile", upload.single("avatar"), gamerController.UpdateUserProfile);
 
+router.get("/:gamerId/scrims", gamerController.listGamerRequestsController);
+/*router.post("/:gamerId/scrims", authenticate, requireOwner, gamerController.createRequestController);*/
+router.get("/:userid/clubgames", gamerController.listClubGames);
+router.get("/:clubId/schedule", gamerController.listClubSlots);
+router.post("/:clubId/schedule/:slotId/request", gamerController.sendRequest);
+router.get("/:gamerId/games", gamerController.getGamerSlotsController);
+router.get("/:gamerId/gamerScrims", gamerController.listGamerAcceptedScrimsController);
+
+// games for tabs/banner
+router.get("/:gamerId/gamesGames", gamerController.listGamesForGamerController);
+
+
+
+
 
 module.exports = router;

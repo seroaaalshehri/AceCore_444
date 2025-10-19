@@ -1,5 +1,5 @@
 
-const { db } = require("../../../Firebase/firebaseBackend");
+const { admin,db } = require("../../../Firebase/firebaseBackend");
 const { FieldValue } = require("firebase-admin").firestore;
 
 /** Counter doc for sequential IDs (user1, user2, ...) */
@@ -158,7 +158,6 @@ async function verifyCompleteService(payload = {}) {
       profilePhoto: payload.avatarUrl || "",
       emailVerified: !!payload.emailVerified,
       provider: payload.provider || "password",
-      broadcasterId: payload.broadcasterId || "",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -176,6 +175,31 @@ async function verifyCompleteService(payload = {}) {
     return docId;
   });
   try { await writeUserGames(userId, payload.games); } catch (e) { console.error("userGames fanout failed:", e); }
+
+  // ---------- NEW: create integrations/twitch doc ----------
+  if (role === "club") {
+    try {
+      await ensureTwitchIntegrationOnSignup(userId, {
+        broadcasterId: payload.broadcasterId || "",
+        provider: payload.provider || "",
+        email: payload.clubEmail || payload.email || ""
+      });
+    } catch (e) {
+      console.error("ensureTwitchIntegrationOnSignup failed:", e);
+    }
+
+    // ---------- NEW: adopt pending tokens + fetch stream key, then CLEANUP tokens ----------
+    try {
+      await adoptPendingTwitchAndFetchKey(
+        userId,
+        payload.broadcasterId || "",
+        payload.clubEmail || payload.email || ""
+      );
+    } catch (e) {
+      console.error("adoptPendingTwitchAndFetchKey failed:", e);
+      // non-fatal; user is created. You can attempt fetching the key later.
+    }
+  }
   return { id: userId };
 }
 
@@ -215,6 +239,142 @@ async function deleteUserService(id) {
   return { id };
 }
 
+//Twitch RTMP 
+
+// Paths
+const TWITCH_INTEG = (userId) =>
+  db.collection("users").doc(userId).collection("integrations").doc("twitch");
+const TWITCH_PENDING = (broadcasterId) =>
+  db.collection("twitchPending").doc(String(broadcasterId));
+
+/**
+ * Create/update the Twitch integration doc at signup for CLUB.
+ * This ensures the subcollection exists, and we record basic fields.
+ * NOTE: streamKey is stored later (after we fetch it with tokens).
+ */
+async function ensureTwitchIntegrationOnSignup(userId, { broadcasterId = "", provider = "", email = "" } = {}) {
+  const base = {
+    broadcasterId: String(broadcasterId || ""),
+    provider: provider || "",
+    email: email || "",
+    streamKey: "",          // will be filled after Helix fetch
+    ingestServer: "",       // optional; default to "live.twitch.tv" at use-time
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  await TWITCH_INTEG(userId).set(base, { merge: true });
+}
+
+/**
+ * Helix: exchange refresh token for a fresh access token.
+ */
+async function twitchRefresh(refreshToken) {
+  const body = new URLSearchParams({
+    client_id: process.env.TWITCH_CLIENT_ID,
+    client_secret: process.env.TWITCH_CLIENT_SECRET,
+    refresh_token: refreshToken,
+    grant_type: "refresh_token",
+  });
+  const r = await fetch("https://id.twitch.tv/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new Error(`Twitch refresh failed ${r.status}: ${JSON.stringify(j)}`);
+  }
+  return {
+    accessToken: j.access_token,
+    refreshToken: j.refresh_token || refreshToken,
+  };
+}
+
+/**
+ * Helix: get the broadcaster's stream key using a user access token.
+ * Requires scope: channel:read:stream_key
+ */
+async function twitchGetStreamKey(accessToken, broadcasterId) {
+  const r = await fetch(`https://api.twitch.tv/helix/streams/key?broadcaster_id=${encodeURIComponent(broadcasterId)}`, {
+    headers: {
+      "Client-Id": process.env.TWITCH_CLIENT_ID,
+      "Authorization": `Bearer ${accessToken}`,
+    }
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    throw new Error(`Get Stream Key failed ${r.status}: ${JSON.stringify(j)}`);
+  }
+  const key = j?.data?.[0]?.stream_key || "";
+  if (!key) throw new Error("Empty stream key from Helix");
+  return key;
+}
+
+/**
+ * On CLUB signup completion:
+ * - read twitchPending/{broadcasterId}
+ * - write tokens into users/{userId}/integrations/twitch (temporarily)
+ * - fetch streamKey via Helix (refresh once if 401)
+ * - store streamKey under integrations/twitch
+ * - CLEANUP: remove tokens (per your conclusion) and delete twitchPending doc
+ */
+async function adoptPendingTwitchAndFetchKey(userId, broadcasterId, emailHint) {
+  if (!broadcasterId) return;
+
+  const pendSnap = await TWITCH_PENDING(broadcasterId).get();
+  if (!pendSnap.exists) return; // No tokens pending; fine (stream key fetch will be handled elsewhere if needed)
+
+  let { accessToken = "", refreshToken = "" } = pendSnap.data();
+
+  // Temporarily write tokens to the integration doc (so we can fetch the key)
+  const integRef = TWITCH_INTEG(userId);
+  await integRef.set({
+    broadcasterId: String(broadcasterId),
+    accessToken,
+    refreshToken,
+    email: emailHint || "",
+    provider: "twitch",
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  // Fetch stream key; refresh once on 401
+  let streamKey = "";
+  try {
+    streamKey = await twitchGetStreamKey(accessToken, broadcasterId);
+  } catch (e) {
+    const msg = String(e?.message || "");
+    if (msg.includes("401") && refreshToken) {
+      const fresh = await twitchRefresh(refreshToken);
+      accessToken  = fresh.accessToken;
+      refreshToken = fresh.refreshToken;
+      // persist fresh tokens (still temporary)
+      await integRef.set({ accessToken, refreshToken, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      // retry get key
+      streamKey = await twitchGetStreamKey(accessToken, broadcasterId);
+    } else {
+      throw e;
+    }
+  }
+
+  // Store the stream key under integrations/twitch
+  await integRef.set({
+    streamKey,
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  // CLEANUP (per your conclusion): remove tokens so you only keep the stream key
+  await integRef.set({
+    accessToken: admin.firestore.FieldValue.delete(),
+    refreshToken: admin.firestore.FieldValue.delete(),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  // Delete pending record
+  await TWITCH_PENDING(broadcasterId).delete();
+}
+
+
+
 
 module.exports = {
   verifyCompleteService,
@@ -224,4 +384,6 @@ module.exports = {
   updateUserService,
   deleteUserService,
   usernameExistsByLower,
+ ensureTwitchIntegrationOnSignup,
+  adoptPendingTwitchAndFetchKey,
 };

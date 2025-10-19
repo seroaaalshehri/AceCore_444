@@ -35,11 +35,16 @@ const userRoutes  = require("./services/user/routes/userRoutes");
 const gamerRoutes = require("./services/gamer/routes/gamerRoutes");
 const clubRoutes  = require("./services/club/routes/clubRoutes");
 const agoraRoutes = require("./services/agora/routes/agoraRoutes");
+//could change the way
+const gamerScrims = require("./services/gamer/routes/gamerScrims");
 
 // Mount
 app.use("/api/users", userRoutes);
 app.use("/api/gamer", gamerRoutes);
 app.use("/api/club",  clubRoutes);
 app.use("/api/agora", agoraRoutes);
+//could change the way
+app.use("/api/gamer/scrims", gamerScrims);
+
 
 module.exports = app;

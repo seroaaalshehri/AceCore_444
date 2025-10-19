@@ -8,36 +8,55 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 const {admin,db} = require("../../../Firebase/firebaseBackend");
 
+
+
+
+
 // Start OAuth
 router.get("/auth/twitch/popup", passport.authenticate("twitch"));
+
 
 router.get(
   "/auth/twitch/callback",
   passport.authenticate("twitch", { session: false }),
-  (req, res) => {
-    const u = req.user; 
+  async (req, res) => {                    
+    try {
+      const u = req.user; 
+      const email = u.email || "";
+      const broadcaster_id = u.twitchId || u.id || ""; 
 
-
-    const email = u.email || "";
-    const broadcaster_id = u.twitchId || u.id || ""; 
     
+      await db.collection("twitchPending").doc(String(broadcaster_id)).set({
+        broadcasterId: String(broadcaster_id),
+        email,
+        accessToken: u.accessToken || "",
+        refreshToken: u.refreshToken || "",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
 
-    res.send(`
-      <script>
-        window.opener.postMessage(
-          {
-            email: "${email}",
-            broadcaster_id: ${JSON.stringify(broadcaster_id)},
-            role: "club",
-            provider: "twitch"
-          },
-          "http://localhost:3000"
-        );
-        window.close();
-      </script>
-    `);
+ 
+      res.send(`
+        <script>
+          window.opener.postMessage(
+            {
+              email: "${email}",
+              broadcaster_id: ${JSON.stringify(broadcaster_id)},
+              role: "club",
+              provider: "twitch"
+            },
+            "http://localhost:3000"
+          );
+          window.close();
+        </script>
+      `);
+    } catch (e) {
+      console.error("twitch callback error:", e);
+      res.status(500).send("Twitch link failed");
+    }
   }
 );
+
 
 //signIN twtich
 router.post("/claim-by-email", async (req, res) => {

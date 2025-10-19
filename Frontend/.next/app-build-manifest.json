@@ -6,10 +6,48 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/club/createscrimarena/[id]/page": [
+    "/gamer/scrimappointments/view/[userId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/club/createscrimarena/[id]/page.js"
+      "static/chunks/app/gamer/scrimappointments/view/[userId]/page.js"
+    ],
+    "/Logout/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Logout/page.js"
+    ],
+    "/Home/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Home/page.js"
+    ],
+    "/Signin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/Signin/page.css",
+      "static/chunks/app/Signin/page.js"
+    ],
+    "/gamer/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/gamer/profile/[id]/page.css",
+      "static/chunks/app/gamer/profile/[id]/page.js"
+    ],
+    "/gamer/scrims/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/scrims/[id]/page.js"
+    ],
+    "/gamer/scrimappointments/join/[userId]/[scrimId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/scrimappointments/join/[userId]/[scrimId]/page.js"
+    ],
+    "/SignUp/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/SignUp/page.css",
+      "static/chunks/app/SignUp/page.js"
     ],
     "/club/profile/[id]/page": [
       "static/chunks/webpack.js",
@@ -17,15 +55,15 @@
       "static/css/app/club/profile/[id]/page.css",
       "static/chunks/app/club/profile/[id]/page.js"
     ],
-    "/club/HomePage/[id]/page": [
+    "/club/scrimappointments/[userId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/club/HomePage/[id]/page.js"
+      "static/chunks/app/club/scrimappointments/[userId]/page.js"
     ],
-    "/_not-found/page": [
+    "/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page.js"
     ]
   }
 }

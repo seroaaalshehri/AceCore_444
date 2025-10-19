@@ -13,6 +13,14 @@ const {
   getUserGames,
   getGames,
   updateUserProfileService,
+   addUserScrim,
+  getUserScrims,
+  initScrimArenaForSchedule,
+  getUserArenas ,
+  getUserScrimsWithGame,
+  listRequestsForSlotService,
+  setRequestStatusService,
+
 } = require("../clubServices");
 
 // -------------------- Add / Update Club Profile --------------------
@@ -247,6 +255,141 @@ async function getFollowers(req, res) {
   }
 }
 
+
+//Updated with logic of init ScrimArenas docs
+async function addScrim(req, res) {
+  try {
+    const { userid } = req.params;
+    const { gameid, scrimTime, scrimEndTime, maxGamers, scrimType, maxAcceptance } = req.body;
+
+    if (!gameid || !scrimTime || !scrimEndTime || !maxGamers || !scrimType || !maxAcceptance)
+      return res.status(400).json({ success: false, error: "Missing fields" });
+
+    // 1) create the schedule slot
+    const slot = await addUserScrim(userid, {
+      gameid,
+      scrimTime,
+      scrimEndTime,
+      maxGamers: Number(maxGamers),
+      scrimType,
+      maxAcceptance: Number(maxAcceptance),
+    });
+
+    // 2) immediately create the paired scrimArena doc & back-link schedule.scrimId
+    const arena = await initScrimArenaForSchedule(userid, slot.id);
+
+    // 3) return both
+    res.json({ success: true, slot: { ...slot, scrimId: arena.scrimId }, arena });
+  } catch (e) {
+    console.error("addScrim error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+async function listScrims(req, res) {
+  try {
+    const { userid } = req.params;
+    const { gameid, from, to } = req.query;
+    const { slots } = await getUserScrims(userid, { gameid, from, to });
+    res.json({ success: true, slots });
+  } catch (e) {
+    console.error("listScrims error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+
+async function listScrimswithgames(req, res) {
+  try {
+    const { userid } = req.params;
+    const { gameid, from, to } = req.query;
+    const { slots } = await getUserScrimsWithGame(userid, { gameid, from, to });
+    res.json({ success: true, slots });
+  } catch (e) {
+    console.error("listScrims error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+
+async function listArenas(req, res) {
+  try {
+    const { userid } = req.params;
+    const status = String(req.query?.status || "").trim().toLowerCase(); 
+    const arenas = await getUserArenas(userid, { status: status || undefined });
+    return res.json({ success: true, arenas });
+  } catch (e) {
+    console.error("listArenas error:", e);
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+async function getArena(req, res) {
+  try {
+    const { userid, scrimid } = req.params;
+    const ref = db.collection("users").doc(userid).collection("scrimArena").doc(scrimid);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ success: false, error: "Not found" });
+    return res.json({ success: true, arena: { id: snap.id, ...snap.data() } });
+  } catch (e) {
+    console.error("getArena error:", e);
+    return res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+
+
+async function listRequestsForSlotController(req, res) {
+  try {
+    const { clubId, slotId } = req.params;
+    const raw = String(req.query.status || "");
+    const allowed = new Set(["on_hold", "accepted", "declined"]);
+    const status = allowed.has(raw) ? raw : undefined;
+
+
+    const items = await listRequestsForSlotService({ clubId, slotId, status, limit: 100 });
+
+    res.json({ ok: true, items });
+  } catch (e) {
+    console.error("listRequestsForSlotController error:", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+}
+
+async function setRequestStatusController(req, res, next) {
+  try {
+    console.log("BODY:", req.body, "PARAMS:", req.params);
+
+    const { clubId, slotId, requestId } = req.params;
+    const { status } = req.body;
+
+    const result = await setRequestStatusService({
+      clubId,
+      slotId,
+      requestId,
+      newStatus: status,
+    });
+
+    res.json(result);
+  } catch (err) {
+    // Map known errors to proper HTTP codes
+    if (err.code === "BAD_REQUEST") {
+      return res.status(400).json({ ok: false, error: err.message });
+    }
+    if (err.code === "NOT_FOUND") {
+      return res.status(404).json({ ok: false, error: err.message });
+    }
+    if (err.code === "SLOT_FULL") {
+      return res.status(409).json({ ok: false, error: err.message });
+    }
+    next(err);
+  }
+}
+
+
+
+
+
 module.exports = {
   UpdateUserProfile,
   addAchievement,
@@ -258,4 +401,12 @@ module.exports = {
   getAllGames,
   getFollowing,
   getFollowers,
+  addScrim,
+  listScrims,
+   listArenas,
+  getArena,
+  listScrimswithgames,
+  listRequestsForSlotController,
+  setRequestStatusController,
+  
 };

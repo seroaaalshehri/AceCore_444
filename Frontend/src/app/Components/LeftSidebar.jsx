@@ -17,17 +17,18 @@ const PANEL = "bg-[#2b2142b3] border border-[#3b2d5e]";
 /* ---------------- Gamer: ID at the end ---------------- */
 const GAMER_ROUTES = {
   home: ({ userId }) => `/gamer/HomePage/${userId}`,
-  scrims: "/gamer/scrims", // change to a function later /gamer/scrims/[id]
+   scrims: ({ userId }) => `/gamer/scrims/${userId}`,
+  scrimsarena:({ userId }) => `/gamer/scrimappointments/view/${userId}`, 
   profile: ({ userId }) => `/gamer/profile/${userId}`,
   search: ({ userId }) => `/gamer/Search/${userId}`,
-  notifications: "/gamer/notifications", 
+  notifications:  ({ userId }) => `/gamer/notifications/${userId}`, 
   logout: "/Logout",
 };
 
 /* --------- Club: static now, -------- */ 
 const CLUB_ROUTES_STATIC = {
  home: ({ userId }) => `/club/HomePage/${userId}`,
-  scrims:  ({ userId }) => `/club/createscrimarena/${userId}`, // change to a function later /gamer/scrims/[id]
+  scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
   search: ({ userId }) => `/club/Search/${userId}`,
   notifications: "/club/notifications", 
@@ -35,7 +36,7 @@ const CLUB_ROUTES_STATIC = {
 }
 const CLUB_ROUTES_DYNAMIC = {
   home: ({ userId }) => `/club/HomePage/${userId}`,
-  scrims: ({ userId }) => `/club/createscrimarena/${userId}`,
+  scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
   search: ({ userId }) => `/club/Search/${userId}`,
   notifications: ({ userId }) => `/club/notifications/${userId}`,
@@ -81,8 +82,10 @@ export default function LeftSidebar({
         : CLUB_ROUTES_DYNAMIC;
 
   const homeHref = resolveRoute(routes.home, { userId });
-  const scrimsHref = resolveRoute(routes.scrims, { userId });
+
+  const scrimsarenaHref =resolveRoute(routes.scrimsarena, { userId });
   const profileHref = resolveRoute(routes.profile, { userId });
+  const scrimsHref = resolveRoute(routes.scrims, { userId });
   const searchHref = resolveRoute(routes.search, { userId });
   const notifHref = resolveRoute(routes.notifications, { userId });
   const logoutHref = resolveRoute(routes.logout, { userId });
@@ -120,15 +123,23 @@ export default function LeftSidebar({
           href={profileHref}
           disabled={!profileHref}
         />
-
-        <LeftNavItem
+ <LeftNavItem
           icon={CalendarClock}
-          label=" create Scrim Arenas"
+          label="Scrim Arena Appointments"
           active={active === "scrims"}
           href={scrimsHref}
           disabled={!scrimsHref}
         />
+      
+ <LeftNavItem
+          icon={CalendarClock}
+          label="Scrim Arenas Scheduled"
+          active={active === "scrimsarena"}
+          href={scrimsarenaHref}
+          disabled={!scrimsarenaHref}
+        />
        
+
         <LeftNavItem
           icon={Search}
           label="Search"
