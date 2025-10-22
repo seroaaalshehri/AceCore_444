@@ -95,11 +95,16 @@ router.put('/:userId/:scrimId/end', async (req, res) => {
 });
 
 
+
+router.delete('/:userid/achievements/:achievementid', authenticate, requireOwner, clubController.deleteAchievement);
+router.delete('/:userid/games/:gameid', authenticate, requireOwner, clubController.deleteGame);
+router.put('/:userid/achievements/:achievementid',authenticate,requireOwner, upload2.single('file'), clubController.updateAchievement);
+
 router.get("/:userid/following", authenticate, clubController.getFollowing);
 router.get("/:userid/followers", authenticate, clubController.getFollowers);
 router.get("/:userid/achievements", authenticate, requireOwner, clubController.listAchievements);
 router.get("/:userid/games", authenticate, requireOwner, clubController.listGames);
-router.get("/:userid/followNums", authenticate, requireOwner, clubController.getFollowNums);
+router.get("/:userid/followNums", clubController.getFollowNums);
 router.post("/:userid/add/games", authenticate, requireOwner, clubController.addGame);
 router.post("/:userid/add", authenticate, requireOwner, upload2.single("file"), clubController.addAchievement);
 router.get("/games/all", clubController.getAllGames);
@@ -110,13 +115,12 @@ router.put("/:userid/profile",
   clubController.UpdateUserProfile
 );
 
-router.get("/:userid/schedule", authenticate, requireOwner, clubController.listScrims);
+router.get("/:userid/schedule", clubController.listScrims);
 router.post("/:userid/schedule", authenticate, requireOwner, clubController.addScrim);
+//new
 router.get("/:userid/scrim-arenas", authenticate, requireOwner, clubController.listArenas);
 router.get("/:userid/scrim-arenas/:scrimid", authenticate, requireOwner, clubController.getArena);
-
 router.get("/:userid/schedule/scrimswithgames", authenticate, requireOwner, clubController.listScrimswithgames);
-
 
 router.get("/:clubId/schedule/:slotId/requests", authenticate, requireOwner, clubController.listRequestsForSlotController );//////////////
 // Update request status
@@ -124,6 +128,11 @@ router.post(
   "/:clubId/schedule/:slotId/requests/:requestId",  authenticate, requireOwner, clubController.setRequestStatusController
 );
   
+router.get("/:userid/clubgames", clubController.listClubGames)
+router.get("/:clubId/schedule", clubController.listClubSlots);
+router.get("/:userid/profile/public", clubController.getUserProfilePublic);
+router.get("/:userid/achievements/public", clubController.listAchievementsPublic);
+router.get("/:userid/games/public", clubController.listGamesPublic);
 
 
 module.exports = router;

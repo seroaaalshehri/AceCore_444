@@ -20,8 +20,8 @@ const GAMER_ROUTES = {
    scrims: ({ userId }) => `/gamer/scrims/${userId}`,
   scrimsarena:({ userId }) => `/gamer/scrimappointments/view/${userId}`, 
   profile: ({ userId }) => `/gamer/profile/${userId}`,
-  search: ({ userId }) => `/gamer/Search/${userId}`,
-  notifications:  ({ userId }) => `/gamer/notifications/${userId}`, 
+  search: "/Search",
+  notifications: ({ userId }) => `/gamer/notifications/${userId}`,
   logout: "/Logout",
 };
 
@@ -30,7 +30,7 @@ const CLUB_ROUTES_STATIC = {
  home: ({ userId }) => `/club/HomePage/${userId}`,
   scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
-  search: ({ userId }) => `/club/Search/${userId}`,
+  search: "/Search",
   notifications: "/club/notifications", 
   logout: "/Logout",
 }
@@ -38,9 +38,9 @@ const CLUB_ROUTES_DYNAMIC = {
   home: ({ userId }) => `/club/HomePage/${userId}`,
   scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
-  search: ({ userId }) => `/club/Search/${userId}`,
-  notifications: ({ userId }) => `/club/notifications/${userId}`,
-  logout: "/logout",
+   search: "/Search",
+   notifications: ({ userId }) => `/club/notifications/${userId}`,
+  logout: "/Logout",
 };
 
 function resolveRoute(entry, params) {
@@ -86,7 +86,7 @@ export default function LeftSidebar({
   const scrimsarenaHref =resolveRoute(routes.scrimsarena, { userId });
   const profileHref = resolveRoute(routes.profile, { userId });
   const scrimsHref = resolveRoute(routes.scrims, { userId });
-  const searchHref = resolveRoute(routes.search, { userId });
+   const searchHref = resolveRoute(routes.search, { userId });
   const notifHref = resolveRoute(routes.notifications, { userId });
   const logoutHref = resolveRoute(routes.logout, { userId });
 
@@ -123,13 +123,18 @@ export default function LeftSidebar({
           href={profileHref}
           disabled={!profileHref}
         />
- <LeftNavItem
+
+       {role === "gamer" && (
+          <>
+     <LeftNavItem
           icon={CalendarClock}
           label="Scrim Arena Appointments"
           active={active === "scrims"}
           href={scrimsHref}
           disabled={!scrimsHref}
-        />
+        /> 
+          </>
+        )}
       
  <LeftNavItem
           icon={CalendarClock}
@@ -139,8 +144,7 @@ export default function LeftSidebar({
           disabled={!scrimsarenaHref}
         />
        
-
-        <LeftNavItem
+ <LeftNavItem
           icon={Search}
           label="Search"
           active={active === "search"}

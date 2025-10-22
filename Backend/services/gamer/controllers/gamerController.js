@@ -12,13 +12,12 @@ const {
   getUserGames,
   getGames,
   updateUserProfileService,
-listGamerRequests,
-  getClubSlots,
+   listGamerRequests,
   createRequest,
-  getClubGames,
-    getGamerSlotsService,
-    getGamerAcceptedScrimsService,
-    listGamesForGamerService,
+   listGamesForGamerService,
+   listNotifications: listNotificationsService,
+   markNotificationRead: markNotificationReadService,
+  getNotificationForGamerService,
  
 } = require("../gamerService");
 
@@ -282,6 +281,73 @@ async function getFollowers(req, res) {
 }
 
 
+
+async function updateAchievement(req, res) {
+  try {
+    const { userid, achievementid } = req.params;
+    const { name, association, game, date } = req.body || {};
+
+    const fields = {};
+    if (name !== undefined)        fields.name = name;
+    if (association !== undefined) fields.association = association;
+    if (game !== undefined)        fields.game = game;
+    if (date !== undefined)        fields.date = date;
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`.replace('3000', '4000');
+
+    const result = await updateUserAchievement(userid, achievementid, fields, req.file, baseUrl);
+    if (!result) return res.status(404).json({ success: false, error: 'Achievement not found' });
+
+    res.json({ success: true, achievement: result });
+  } catch (err) {
+    console.error('updateAchievement error:', err.stack || err); // <-- stack
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function updateGameUsername(req, res) {
+  try {
+    const { userid, gameid } = req.params;
+    const { username } = req.body;
+    if (!username || !username.trim()) {
+      return res.status(400).json({ success: false, error: "Username is required" });
+    }
+    const result = await require("../gamerService").updateUserGameUsername(userid, gameid, username.trim());
+    if (!result) {
+      return res.status(404).json({ success: false, error: "Game not found or not owned by user" });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function deleteAchievement(req, res) {
+  try {
+    console.log('[deleteAchievement] The achievement deletion request has been received', req.params);
+    const { userid, achievementid } = req.params;
+    await require("../gamerService").deleteUserAchievement(userid, achievementid);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Error deleting achievement:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function deleteGame(req, res) {
+  try {
+    console.log('[deleteGame] Game deletion request received', req.params);
+    const { userid, gameid } = req.params;
+    await require("../gamerService").deleteUserGame(userid, gameid);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Error deleting game:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+
+
 async function listGamerRequestsController(req, res, next) {
   try {
     const { gamerId } = req.params;
@@ -296,79 +362,125 @@ async function listGamerRequestsController(req, res, next) {
   }
 }
 
-
-// 🔹 Controller: get all club games
-async function listClubGames(req, res) {
-  try {
-    const { userid } = req.params; 
-    const games = await getClubGames(userid);
-    res.json({ success: true, games });
-  } catch (e) {
-    console.error("listClubGames error:", e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-}
-
-
-async function listClubSlots(req, res) {
-  try {
-    const { clubId } = req.params;
-    const { gameid, from, to } = req.query;
-    const slots = await getClubSlots(clubId, { gameid, from, to });
-    res.json({ success: true, slots });
-  } catch (e) {
-    console.error("listClubSlots error:", e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-}
-
 async function sendRequest(req, res) {
   try {
     const { clubId, slotId } = req.params;
-    const gamerId = req.user?.uid || req.body.gamerId; //for testing 
-    if (!gamerId) throw new Error("Missing gamerId");
+    const authUid = req.user?.uid;
 
+    if (!authUid) throw new Error("Missing authenticated user");
 
+    const userSnap = await db
+      .collection("users")
+      .where("authUid", "==", authUid)
+      .limit(1)
+      .get();
+
+    if (userSnap.empty) throw new Error("User not found for this Firebase UID");
+
+    const gamerId = userSnap.docs[0].id;
     const result = await createRequest({ clubId, slotId, gamerId });
-     res.json(result);
-  } catch (e) {
-    console.error("sendRequest error:", e);
-    res.status(500).json({ success: false, error: e.message });
+    return res.json(result);
+
+  } catch (err) {
+
+    const messages = {
+      ALREADY_REQUESTED: "You have already sent a request for this slot.",
+      DAILY_LIMIT: "You have reached the daily limit of 3 requests per day.",
+      TIME_CONFLICT: "This time conflicts with another slot you have requested.",
+      TIME_EXPIRED: "This slot has already started or ended.",
+      NOT_FOUND: "Slot not found.",
+      BAD_REQUEST: "Missing required parameters: clubId, slotId, or gamerId.",
+    };
+
+    const message = messages[err.code] || "Unexpected error occurred while creating the request.";
+    return res.status(400).json({ success: false, message });
   }
 }
 
-
- async function getGamerSlotsController(req, res, next) {
-  try {
-    const { gamerId } = req.params;
-    const items = await getGamerSlotsService(gamerId);
-    return res.json({ success: true, items });
-  } catch (e) {
-    next(e);
-  }
-}
-
- async function listGamerAcceptedScrimsController(req, res, next) {
-  try {
-    const { gamerId } = req.params;
-    const { status, gameid } = req.query;
-    const items = await getGamerAcceptedScrimsService(gamerId, { status, gameid });
-    return res.json({ success: true, items });
-  } catch (e) {
-    next(e);
-  }
-}
 
 async function listGamesForGamerController(req, res, next) {
   try {
     const { gamerId } = req.params;
     const games = await listGamesForGamerService(gamerId);
-    return res.json({ success: true, games, items: games }); // items for your existing front-end usage
+    return res.json({ success: true, games, items: games }); 
   } catch (e) { next(e); }
 }
 
 
 
+async function getUserProfilePublic(req, res) {
+  try {
+    const { userid } = req.params;
+    const data = await getUserById(userid);
+    if (!data) return res.status(404).json({ success: false, message: 'User not found' });
+    const profile = {
+      id: userid,
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      username: data.username || '',
+      bio: data.bio || '',
+      nationality: data.nationality || '',
+      birthdate: data.birthdate || null,
+      socials: data.socials || {},
+      profilePhoto: data.profilePhoto || '',
+      role: data.role || 'gamer',
+    };
+    return res.json({ success: true, profile });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function listAchievementsPublic(req, res) {
+  try {
+    const { userid } = req.params;
+    const achievements = await getUserAchievements(userid);
+    return res.json({ success: true, achievements });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function listGamesPublic(req, res) {
+  try {
+    const { userid } = req.params;
+    const games = await getUserGames(userid);
+    return res.json({ success: true, games });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function listNotifications(req, res) {
+  try {
+    const { gamerId } = req.params;
+    const notifications = await listNotificationsService({ gamerId });
+    res.status(200).json({ success: true, notifications });
+  } catch (err) { /* … */ }
+}
+
+async function markNotificationRead(req, res) {
+  try {
+    const { gamerId, id } = req.params;
+    await markNotificationReadService({ gamerId, id });
+    res.status(200).json({ success: true });
+  } catch (err) { /* … */ }
+}
+
+
+// NEW: GET /api/gamer/:gamerId/notifications/:id
+async function getNotification(req, res, next) {
+  try {
+    const { gamerId, id } = req.params;
+    const notification = await getNotificationForGamerService({ gamerId, id });
+    return res.status(200).json({ success: true, notification });
+  } catch (err) {
+    if (err.code === "NOT_FOUND") {
+      return res.status(404).json({ success: false, error: err.message });
+    }
+    return next(err);
+  }
+}
 
 
 module.exports = {
@@ -382,12 +494,17 @@ module.exports = {
   UpdateUserProfile,
   getFollowing,
   getFollowers,
+  deleteAchievement,
+  deleteGame,
+  updateGameUsername,
+  updateAchievement,
   listGamerRequestsController, 
-   listClubSlots,
    sendRequest,
-   listClubGames,
-   getGamerSlotsController,
-   listGamerAcceptedScrimsController,
    listGamesForGamerController,
- 
+  getUserProfilePublic,
+  listAchievementsPublic,
+  listGamesPublic,
+   listNotifications,
+   markNotificationRead,
+   getNotification,
 };

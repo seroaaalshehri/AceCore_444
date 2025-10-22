@@ -135,7 +135,8 @@ async function getUserGames(userid) {
       id: doc.id,           
       ...ug,            
       gameName: game.gameName,
-      gamePhoto: game.gamePhoto
+      gamePhoto: game.gamePhoto,
+      
     });
   }
   return results;
@@ -147,6 +148,70 @@ async function getGames() {
     id: doc.id,
     ...doc.data(),
   }));
+}
+async function updateUserAchievement(userid, achievementid, fields = {}, file, baseUrl) {
+  const docRef = db.collection('users').doc(userid)
+                   .collection('achievements').doc(achievementid);
+  const snap = await docRef.get();
+  if (!snap.exists) return false;
+
+  const ach = snap.data() || {};
+
+  const updates = {};
+  if (fields.name !== undefined)        updates.name = fields.name;
+  if (fields.association !== undefined) updates.association = fields.association;
+  if (fields.game !== undefined)        updates.game = fields.game;
+  if (fields.date !== undefined)        updates.date = fields.date;
+  updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+  if (file && (file.path || file.filename)) {
+    const filename = file.filename;   
+    const localPath = file.path;     
+
+    updates.file = `${baseUrl}/storage/achievements/${encodeURIComponent(filename)}`;
+    updates.storagePath = localPath;
+
+   
+    if (ach?.storagePath && ach.storagePath !== localPath) {
+      try {
+        if (fs.existsSync(ach.storagePath)) fs.unlinkSync(ach.storagePath);
+      } catch (e) {
+        console.warn('Old local file delete warning:', e.message || e);
+      }
+    }
+  }
+
+  await docRef.update(updates);
+  const updated = await docRef.get();
+  return updated.exists ? { id: updated.id, ...updated.data() } : true;
+}
+
+
+async function updateUserGameUsername(userid, gameid, username) {
+  const docRef = db.collection("userGames").doc(gameid);
+  const doc = await docRef.get();
+  if (!doc.exists || doc.data().userid !== userid) {
+    return false;
+  }
+  await docRef.update({ username });
+  return true;
+}
+
+async function deleteUserAchievement(userid, achievementid) {
+  const docRef = db.collection("users").doc(userid).collection("achievements").doc(achievementid);
+  await docRef.delete();
+}
+
+async function deleteUserGame(userid, gameid) {
+  const docRef = db.collection("userGames").doc(gameid);
+  const doc = await docRef.get();
+  console.log('[delete Game] userid:', userid, '| gameid:', gameid, '| doc.exists:', doc.exists, '| docUserId:', doc.exists ? doc.data().userid : undefined);
+  if (doc.exists && doc.data().userid === userid) {
+    await docRef.delete();
+    console.log('[delete Game]Deleted successfully');
+  } else {
+    console.log('[delete Game]Not deleted: Check the values');
+  }
 }
 
 async function listGamerRequests({ gamerId, status, limit = 100 }) {
@@ -241,68 +306,20 @@ async function listGamerRequests({ gamerId, status, limit = 100 }) {
 }
 
 
-async function getClubGames(clubId) { 
-  if (!clubId) return [];
-
-  const scheduleSnap = await db
-    .collection("users")
-    .doc(clubId)
-    .collection("schedule")
-    .get(); 
-
-  const uniqueGameIds = [
-    ...new Set(scheduleSnap.docs.map((d) => d.data().gameid).filter(Boolean)),
-  ]; 
-
-  const games = await Promise.all(
-    uniqueGameIds.map(async (id) => {
-      const gameDoc = await db.collection("games").doc(id).get();
-      if (!gameDoc.exists) {
-        return { id, gameName: id, scrimPhoto: "" };
-      }
-
-      const data = gameDoc.data() || {};
-      return {
-        id,
-        gameName: data.gameName || data.name || id,
-        scrimPhoto: data.scrimPhoto,
-      };
-    })
-  );
-
-  return games;
-}
-
-
-async function getClubSlots(clubId, { gameid, from, to }) {
-  let q = db
-    .collection("users")
-    .doc(clubId)
-    .collection("schedule")
-    .orderBy("scrimTime", "asc");
-  if (gameid && gameid !== "all") {
-    q = q.where("gameid", "==", gameid);
-  }
-  if (from) q = q.where("scrimTime", ">=", Timestamp.fromDate(new Date(from)));
-  if (to) q = q.where("scrimTime", "<=", Timestamp.fromDate(new Date(to)));
-
-  const snap = await q.get();
-  const now = new Date();
-
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((slot) => {
-      const end = slot.scrimEndTime?._seconds
-        ? new Date(slot.scrimEndTime._seconds * 1000)
-        : new Date(slot.scrimEndTime);
-      return end > now;
-    });
-}
-
-
-
 async function createRequest({ clubId, slotId, gamerId }) {
-  if (!clubId || !slotId || !gamerId) throw new Error("clubId, slotId, gamerId required");
+  if (!clubId || !slotId || !gamerId) {
+    const err = new Error("clubId, slotId, gamerId required");
+    err.code = "BAD_REQUEST";
+    throw err;
+  }
+
+ const userSnap = await db.collection("users").doc(gamerId).get();
+  const user = userSnap.data();
+  if (user?.role === "club") {
+    const err = new Error("Clubs cannot send requests for time slots.");
+    err.code = "FORBIDDEN";
+    throw err;
+  }  
 
   const slotRef = db
     .collection("users")
@@ -311,127 +328,99 @@ async function createRequest({ clubId, slotId, gamerId }) {
     .doc(slotId);
 
   const slotSnap = await slotRef.get();
-  if (!slotSnap.exists) throw new Error("Slot not found");
+  if (!slotSnap.exists) {
+    const err = new Error("Slot not found");
+    err.code = "NOT_FOUND";
+    throw err;
+  }
 
-const reqRef = slotRef.collection("gamerRequest").doc();
-  const existed = await reqRef.get();
-  if (existed.exists) throw new Error("Request already exists");
+  const slotData = slotSnap.data();
 
+  const slotStart = slotData.scrimTime?._seconds
+    ? new Date(slotData.scrimTime._seconds * 1000)
+    : new Date(slotData.scrimTime);
+  const slotEnd = new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
+
+  const existed = await slotRef
+    .collection("gamerRequest")
+    .where("userid", "==", gamerId)
+    .limit(1)
+    .get();
+
+  if (!existed.empty) {
+    const err = new Error("You have already sent a request for this slot.");
+    err.code = "ALREADY_REQUESTED";
+    throw err;
+  }
+
+  const startOfDay = new Date(slotStart);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(slotStart);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const sameDayRequestsSnap = await db
+    .collectionGroup("gamerRequest")
+    .where("userid", "==", gamerId)
+    .get();
+
+  let sameDayCount = 0;
+  const sameDaySlots = [];
+
+  for (const doc of sameDayRequestsSnap.docs) {
+    const parentSlotRef = doc.ref.parent.parent;
+    const parentSlotSnap = await parentSlotRef.get();
+    if (!parentSlotSnap.exists) continue;
+
+    const parentSlot = parentSlotSnap.data();
+    const start = parentSlot.scrimTime?._seconds
+      ? new Date(parentSlot.scrimTime._seconds * 1000)
+      : new Date(parentSlot.scrimTime);
+
+    if (start >= startOfDay && start <= endOfDay) {
+      sameDayCount++;
+      sameDaySlots.push(parentSlot);
+    }
+  }
+
+  if (sameDayCount >= 3) {
+    const err = new Error("You have reached the daily limit of 3 requests per day.");
+    err.code = "DAILY_LIMIT";
+    throw err;
+  }
+
+  for (const s of sameDaySlots) {
+    const sStart = s.scrimTime?._seconds
+      ? new Date(s.scrimTime._seconds * 1000)
+      : new Date(s.scrimTime);
+    const sEnd = new Date(sStart.getTime() + 2 * 60 * 60 * 1000);
+
+    const overlap = slotStart < sEnd && slotEnd > sStart;
+    if (overlap) {
+      const err = new Error("This time conflicts with another slot you have requested.");
+      err.code = "TIME_CONFLICT";
+      throw err;
+    }
+  }
+
+  const now = new Date();
+  if (now >= slotStart) {
+    const err = new Error("This slot has already started or ended.");
+    err.code = "TIME_EXPIRED";
+    throw err;
+  }
+
+  const reqRef = slotRef.collection("gamerRequest").doc();
   await reqRef.set({
     userid: gamerId,
     status: "on_hold",
-    createdAt: new Date()
+    createdAt: new Date(),
   });
 
   return { success: true, message: "Request sent successfully" };
 }
 
 
-async function getGamerSlotsService(gamerId) {
-  if (!gamerId) return [];
 
-  const requestsSnap = await db
-    .collectionGroup("gamerRequest")
-    .where("userid", "==", String(gamerId))
-    .where("status", "==", "accepted")
-    .get();
-
-  if (requestsSnap.empty) return [];
-
-  const results = [];
-
-  for (const doc of requestsSnap.docs) {
-    const data = doc.data() || {};
-    const slotRef = doc.ref.parent.parent;
-    const clubRef = slotRef.parent.parent;
-
-    const slotSnap = await slotRef.get();
-    const slot = slotSnap.exists ? slotSnap.data() || {} : {};
-
-    const clubSnap = await clubRef.get();
-    const club = clubSnap.exists ? clubSnap.data() || {} : {};
-
-    let gameName = "", scrimPhoto = "";
-    if (slot.gameid) {
-      const gSnap = await db.collection("games").doc(String(slot.gameid)).get();
-      if (gSnap.exists) {
-        const g = gSnap.data() || {};
-        gameName = g.gameName || g.name || "";
-        scrimPhoto = g.scrimPhoto || g.gamePhoto || "";
-      }
-    }
-
-    results.push({
-      id: doc.id,
-      gameid: slot.gameid || "",
-      gameName,
-      scrimPhoto,
-      scrimType: slot.scrimType || "",
-      scrimTime: slot.scrimTime || null,
-      scrimEndTime: slot.scrimEndTime || null,
-      clubId: clubRef.id,
-      clubName: club.clubName || club.username || "",
-    });
-  }
-
-  return results;
-}
-
-
- async function getGamerAcceptedScrimsService(gamerId) {
-  if (!gamerId) return [];
-
-  const q = db
-    .collectionGroup("gamerRequest")
-    .where("userid", "==", String(gamerId))
-    .where("status", "==", "accepted");
-
-  const snap = await q.get();
-  if (snap.empty) return [];
-
-  const results = [];
-
-  for (const d of snap.docs) {
-    const data = d.data() || {};
-    const slotRef = d.ref.parent.parent;
-    const clubRef = slotRef.parent.parent;
-
-    const slotSnap = await slotRef.get();
-    const slot = slotSnap.exists ? slotSnap.data() || {} : {};
-
-    const clubSnap = await clubRef.get();
-    const club = clubSnap.exists ? clubSnap.data() || {} : {};
-
-    let gameName = "",
-      gamePhoto = "";
-    const gameid = slot.gameid;
-    if (gameid) {
-      const gSnap = await db.collection("games").doc(String(gameid)).get();
-      if (gSnap.exists) {
-        const g = gSnap.data() || {};
-        gameName = g.gameName || g.name || "";
-        gamePhoto = g.scrimPhoto || g.gamePhoto || "";
-      }
-    }
-
-    results.push({
-      id: d.id,
-      clubId: clubRef.id,
-      clubName: club.clubName || club.username || clubRef.id,
-      gameid,
-      gameName,
-      scrimType: slot.scrimType || "",
-      scrimTime: slot.scrimTime || null,
-      scrimEndTime: slot.scrimEndTime || null,
-      gamePhoto,
-    });
-  }
-
-  return results;
-}
-
-
-// services/gamer.service.js
 async function listGamesForGamerService(/* gamerId not used if all games are public */) {
   const snap = await db.collection("games").get();
   const games = snap.docs.map(d => {
@@ -445,6 +434,7 @@ async function listGamesForGamerService(/* gamerId not used if all games are pub
   });
   return games;
 }
+
 
 
 const chunk = (arr, n=10) => Array.from({length: Math.ceil(arr.length/n)}, (_,i)=>arr.slice(i*n, (i+1)*n));
@@ -504,6 +494,54 @@ async function getUserScrimsWithGame(userid, { gameid, from, to }) {
 }
 
 
+// Return latest notifications
+async function listNotifications  ({ gamerId }) {
+  if (!gamerId) throw new Error("gamerId required");
+
+  const snap = await db
+    .collection("users")
+    .doc(String(gamerId))
+    .collection("notifications")
+    .orderBy("createdAt", "desc")
+    .get();
+
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
+
+// Optional: mark a notification as read
+async function markNotificationRead  ({ gamerId, id }) {
+  if (!gamerId || !id) throw new Error("gamerId and id required");
+  await db
+    .collection("users")
+    .doc(String(gamerId))
+    .collection("notifications")
+    .doc(String(id))
+    .set({ read: true, readAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+};
+
+
+
+// NEW: read a single notification for a gamer
+async function getNotificationForGamerService({ gamerId, id }) {
+  if (!gamerId || !id) throw new Error("gamerId and id required");
+
+  const snap = await db
+    .collection("users")
+    .doc(String(gamerId))
+    .collection("notifications")
+    .doc(String(id))
+    .get();
+
+  if (!snap.exists) {
+    const err = new Error("Notification not found");
+    err.code = "NOT_FOUND";
+    throw err;
+  }
+
+  return { id: snap.id, ...snap.data() };
+}
+
+
 module.exports = {
   addUserAchievement,
   getUserAchievements,
@@ -513,12 +551,15 @@ module.exports = {
   getUserGames,
   getGames,
   updateUserProfileService,
+   updateUserGameUsername,
+  updateUserAchievement,
+    deleteUserAchievement,
+  deleteUserGame,
   listGamerRequests,
-  getClubSlots,
   createRequest,
-  getClubGames,
-  getGamerSlotsService,
-  getGamerAcceptedScrimsService,
   listGamesForGamerService,
   getUserScrimsWithGame,
+   listNotifications,
+  markNotificationRead,
+  getNotificationForGamerService,
 };

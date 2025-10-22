@@ -18,6 +18,13 @@ const GAME_TABS = [
     { id: "rl", label: "Rocket League" },
 ];
 
+// optional banner images if you have them (safe to leave empty)
+const COVER_BY_GAME = {
+    cod: "/covers/cod-cover.jpg",
+    ow: "/covers/ow-cover.jpg",
+    rl: "/covers/rl-cover.jpg",
+};
+
 function toDate(ts) {
     return ts?._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
 }
@@ -61,8 +68,8 @@ function useOwnerGuard() {
 
 /* ---------- page ---------- */
 export default function ScrimSchedulePage() {
-    const { id } = useParams(); // /gamer/scrims/:id
-    const USER_ID = Array.isArray(id) ? id[0] : id; // ensure string
+    const { id } = useParams(); 
+    const USER_ID = Array.isArray(id) ? id[0] : id; 
     const ready = useOwnerGuard();
     const [games, setGames] = React.useState([]);
     const [slots, setSlots] = React.useState([]);
@@ -133,11 +140,11 @@ export default function ScrimSchedulePage() {
 
     const filteredSlots =
         activeGame === "all" ? slots : slots.filter((s) => (s.gameid || s.gameId) === activeGame);
-        const sortedSlots = [...filteredSlots].sort((a, b) => {
-  const aT = a.scrimTime?._seconds ? a.scrimTime._seconds * 1000 : new Date(a.scrimTime).getTime();
-  const bT = b.scrimTime?._seconds ? b.scrimTime._seconds * 1000 : new Date(b.scrimTime).getTime();
-  return aT - bT;
-});
+    const sortedSlots = [...filteredSlots].sort((a, b) => {
+        const aT = a.scrimTime?._seconds ? a.scrimTime._seconds * 1000 : new Date(a.scrimTime).getTime();
+        const bT = b.scrimTime?._seconds ? b.scrimTime._seconds * 1000 : new Date(b.scrimTime).getTime();
+        return aT - bT;
+    });
 
     if (!ready) return <div className="text-gray-400 p-6">Loading…</div>;
 
@@ -165,7 +172,7 @@ export default function ScrimSchedulePage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.75fr)_150px] gap-20 items-start pr-2 mt-9 ml-20">
+                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.75fr)_150px] gap-30 items-start pr-2 mt-9 pt-7 ml-10">
 
                         {/* LEFT column: schedule card -> buttons -> accepted cards */}
                         <div className="flex flex-col gap-6">
@@ -173,7 +180,7 @@ export default function ScrimSchedulePage() {
 
 
                             <div className="flex items-baseline justify-center">
-                                <h1 className="text-5xl font-bold text-[#fccc22] ">SCRIMS APPOINTMNTS</h1>
+                                <h1 className="text-5xl font-bold text-[#fccc22] ">SCRIM ARENA APPOINTMNTS</h1>
                             </div>
                             <div className="text-gray-300 text-[18px] mt-4" />
 
@@ -216,7 +223,7 @@ export default function ScrimSchedulePage() {
                                 ) : (
 
                                     <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-12 mx-auto max-w-[820px]">
-                                        
+
                                         {sortedSlots.map((s) => {
                                             const gid = s.gameid || s.gameId;
                                             const gmeta = gid ? gameMetaById[gid] : null;
@@ -277,10 +284,9 @@ export default function ScrimSchedulePage() {
                         <div className="lg:w-[560px] lg:ml-auto lg:mr-2 lg:sticky lg:top-6">
                             <div className="flex justify-center gap-3 mb-3 -ml-40 ">
                                 <h2 className="text-5xl font-bold text-[#fccc22]">MY REQUESTS</h2>
-                            </div>
-                            <GamerRequestStatus gamerId={USER_ID} />
-                        </div>
-
+                            </div> <div className="-ml-10 mt-10">
+                            <GamerRequestStatus gamerId={USER_ID}/>
+                        </div> </div>
                     </div>
 
 

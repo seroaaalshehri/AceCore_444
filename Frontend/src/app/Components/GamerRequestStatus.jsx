@@ -105,9 +105,10 @@ const sorted = [...filtered]
   });
 
     return (
-        // Outer section (top-level purple card)
-        <section className="bg-[#1c1430] rounded-xl p-6 md:p-8 mr-20 -ml-12 border border-[#3b2d5e]
-">
+        //Outer section (top-level purple card)
+                 <div className="-ml-25 mr-9">
+        <section className="bg-[#1c1430] rounded-xl p-6 md:p-8 mr-20 -ml-12 w-[100%] border border-[#3b2d5e]
+">      
             <div className="flex justify-center gap-3 pb-3  border-[#3b2d5e] ">
 
                 <div className="flex gap-6" role="tablist" aria-label="Request filters">
@@ -205,7 +206,7 @@ const sorted = [...filtered]
 
 
                 )}
-            </div>
-        </section>
+            </div> 
+        </section> </div>
     );
 }

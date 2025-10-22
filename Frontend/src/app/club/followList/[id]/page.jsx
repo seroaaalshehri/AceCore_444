@@ -7,6 +7,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Particles from "../../../Components/Particles";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../Components/LeftSidebar";
 import { authedFetch } from "../../../../../lib/authedFetch";
+import Link from "next/link"
 
 
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
@@ -34,36 +35,40 @@ const ZEN_TAB_ACTIVE =
 
 function PersonRow({ u }) {
   const username = u?.username || "unknown";
-  const firstName = u?.firstName || "";
-  const lastName = u?.lastName || "";
-  const display = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : username;
+  const role = u?.role === "club" ? "Club" : "Gamer";
   const avatarUrl = u?.profilePhoto || u?.profilePhotoUrl || u?.avatarUrl || "";
-  const role = (u?.role || "").toLowerCase();
+
+  
+  const profileLink =
+    u?.role === "club"
+      ? `/club/view/${u.id}?from=followers`
+      : `/gamer/view/${u.id}?from=followers`;
 
   return (
-  <div className="flex items-center gap-6 px-6 py-5 rounded-lg hover:bg-[#1C1633]/60 transition">
-    {/* Avatar even bigger */}
-    <div className="relative h-24 w-24 rounded-full overflow-hidden bg-[#1C1633] border-2 border-[#5f4a87] shadow-[0_0_12px_#5f4a87]">
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatarUrl} alt={username} className="h-full w-full object-cover" />
-      ) : (
-        <div className="h-full w-full flex items-center justify-center">
-          <UserIcon className="h-12 w-12 text-gray-400" />
-        </div>
-      )}
-    </div>
-
-    {/* Text */}
-    <div className="min-w-0">
-      <div className="text-white text-[26px] font-bold truncate">{display}</div>
-      <div className="text-[20px] text-gray-300 truncate">
-        @{username}{role ? ` • ${role}` : ""}
+    <Link
+      href={profileLink}
+      className="flex items-center gap-6 px-5 py-4 rounded-lg hover:bg-[#1C1633]/40 transition cursor-pointer"
+    >
+     
+      <div className="relative h-20 w-20 rounded-full overflow-hidden bg-[#1C1633] border-2 border-[#5f4a87] shadow-[0_0_12px_#5f4a87]">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={username} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <UserIcon className="h-8 w-8 text-gray-400" />
+          </div>
+        )}
       </div>
-    </div>
-  </div>
-);
+
+     
+      <div className="min-w-0">
+        <div className="text-white text-[22px] font-bold truncate">@{username}</div>
+        <div className="text-gray-300 text-[18px]">{role}</div>
+      </div>
+    </Link>
+  );
 }
+
 
 
 export default function FollowListsPage() {

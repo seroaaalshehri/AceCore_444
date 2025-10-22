@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require('path');
 const { db ,admin } = require("../../Firebase/firebaseBackend");
 const { v4: uuidv4 } = require("uuid");
 const { FieldValue } = require("firebase-admin").firestore;
@@ -26,6 +27,32 @@ async function uploadToFirebaseStorage(userId, fileInput) {
   const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
   return { url, objectPath };
 }
+
+
+/* ------------------ Profile update (you already have similar) ------------------ */
+async function updateUserProfileService(userid, fields, { fileInput } = {}) {
+  const ref = db.collection('users').doc(userid);
+
+  const updates = {
+    clubName: fields.clubName,
+    username: fields.username,
+    bio: fields.bio,
+    country: fields.country,
+    socials: fields.socials,
+    username_lower: fields.username ? fields.username.toLowerCase() : '',
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (fields.profilePhoto) {
+    updates.profilePhoto = fields.profilePhoto;
+  }
+
+  await ref.set(updates, { merge: true });
+  return (await ref.get()).data();
+}
+
+
+
 
 async function updateUserProfileService(userid, fields, { fileInput } = {}) {
   const ref = db.collection("users").doc(userid);
@@ -76,6 +103,46 @@ async function addUserAchievement(userid, name, association, game, date, reqFile
   return { id: docRef.id, ...newAch };
 }
 
+
+
+///////////////////////
+async function updateUserAchievement(userid, achievementid, fields = {}, file, baseUrl) {
+  const docRef = db.collection('users').doc(userid)
+                   .collection('achievements').doc(achievementid);
+  const snap = await docRef.get();
+  if (!snap.exists) return false;
+
+  const ach = snap.data() || {};
+
+  const updates = {};
+  if (fields.name !== undefined)        updates.name = fields.name;
+  if (fields.association !== undefined) updates.association = fields.association;
+  if (fields.game !== undefined)        updates.game = fields.game;
+  if (fields.date !== undefined)        updates.date = fields.date;
+  updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+  if (file && (file.path || file.filename)) {
+    const filename = file.filename;   
+    const localPath = file.path;     
+
+    updates.file = `${baseUrl}/storage/achievements/${encodeURIComponent(filename)}`;
+    updates.storagePath = localPath;
+
+  
+    if (ach?.storagePath && ach.storagePath !== localPath) {
+      try {
+        if (fs.existsSync(ach.storagePath)) fs.unlinkSync(ach.storagePath);
+      } catch (e) {
+        console.warn('Old local file delete warning:', e.message || e);
+      }
+    }
+  }
+
+  await docRef.update(updates);
+  const updated = await docRef.get();
+  return updated.exists ? { id: updated.id, ...updated.data() } : true;
+}
+//////////////////////////////////////////////
 
 async function getUserAchievements(userid) {
   const snapshot = await db
@@ -138,7 +205,8 @@ async function getUserGames(userid) {
       id: doc.id,           
       ...ug,            
       gameName: game.gameName,
-      gamePhoto: game.gamePhoto
+      gamePhoto: game.gamePhoto,
+      scrimPhoto: game.scrimPhoto
     });
   }
   return results;
@@ -156,6 +224,45 @@ async function getGames() {
 
 
 
+async function deleteUserAchievement(userid, achievementid) {
+  const docRef = db.collection("users").doc(userid).collection("achievements").doc(achievementid);
+  await docRef.delete();
+}
+
+async function deleteUserGame(userid, gameDocId) {
+  const userGameRef = db.collection("userGames").doc(gameDocId);
+  const userGameSnap = await userGameRef.get();
+
+  if (!userGameSnap.exists) {
+    return;
+  }
+  const userGameData = userGameSnap.data();
+  const realGameId = userGameData.gameid;
+  if (!realGameId) {
+    return;
+  }
+  await userGameRef.delete();
+  const scheduleRef = db.collection("users").doc(userid).collection("schedule");
+  const scheduleSnap = await scheduleRef.get();
+
+  if (scheduleSnap.empty) {
+    return;
+  }
+  let deletedCount = 0;
+
+  for (const slotDoc of scheduleSnap.docs) {
+    const slotData = slotDoc.data();
+
+    if (slotData.gameid && slotData.gameid.trim() === realGameId.trim()) {
+      await slotDoc.ref.delete();
+      deletedCount++;
+    }
+  }
+
+}
+
+
+
 async function addUserScrim(userid, { gameid, scrimTime, scrimEndTime, maxGamers, scrimType, maxAcceptance }) {
   const ts = Timestamp.fromDate(new Date(scrimTime));
   const endts = Timestamp.fromDate(new Date(scrimEndTime));
@@ -165,12 +272,52 @@ async function addUserScrim(userid, { gameid, scrimTime, scrimEndTime, maxGamers
 }
 
 async function getUserScrims(userid, { gameid, from, to }) {
-  let q = db.collection("users").doc(userid).collection("schedule").orderBy("scrimTime", "asc");
+  let q = db
+    .collection("users")
+    .doc(userid)
+    .collection("schedule")
+    .orderBy("scrimTime", "asc");
+
   if (gameid) q = q.where("gameid", "==", gameid);
   if (from) q = q.where("scrimTime", ">=", Timestamp.fromDate(new Date(from)));
   if (to) q = q.where("scrimTime", "<=", Timestamp.fromDate(new Date(to)));
+
   const snap = await q.get();
-  const slots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (snap.empty) return { slots: [] };
+
+  const slots = await Promise.all(
+    snap.docs.map(async (d) => {
+      const data = d.data() || {};
+
+      const accCol = db
+        .collection("users")
+        .doc(userid)
+        .collection("schedule")
+        .doc(d.id)
+        .collection("gamersAcceptance");
+
+      const accSnap = await accCol.get();
+      const acceptedCount = accSnap.size;
+
+            let gameName = "";
+      if (data.gameid) {
+        const gameSnap = await db.collection("games").doc(data.gameid).get();
+        if (gameSnap.exists) {
+          const gData = gameSnap.data();
+          gameName = gData.gameName || "";
+        }
+      }
+
+      return {
+        id: d.id,
+        ...data,
+        acceptedCount,
+        maxAcceptance: data.maxAcceptance ?? 0,
+        gameName,
+      };
+    })
+  );
+
   return { slots };
 }
 
@@ -421,10 +568,66 @@ async function setRequestStatusService({ clubId, slotId, requestId, newStatus })
           ? Math.max(currentAcceptedCount - 1, 0)
           : currentAcceptedCount;
 
-    return { ok: true, requestId, newStatus, acceptedCount: nextAcceptedCount };
+    return { ok: true, requestId, newStatus, acceptedCount: nextAcceptedCount, gamerId: userid, changed: prevStatus !== newStatus };
   });
 }
 
+async function getClubGames(clubId) {
+  if (!clubId) return [];
+
+  const scheduleSnap = await db
+    .collection("users")
+    .doc(clubId)
+    .collection("schedule")
+    .get();
+
+  const uniqueGameIds = [
+    ...new Set(scheduleSnap.docs.map((d) => d.data().gameid).filter(Boolean)),
+  ];
+
+  const games = await Promise.all(
+    uniqueGameIds.map(async (id) => {
+      const gameDoc = await db.collection("games").doc(id).get();
+      if (!gameDoc.exists) {
+        return { id, gameName: id, scrimPhoto: "" };
+      }
+
+      const data = gameDoc.data() || {};
+      return {
+        id,
+        gameName: data.gameName || data.name || id,
+        scrimPhoto: data.scrimPhoto || "",
+      };
+    })
+  );
+
+  return games;
+}
+
+async function getClubSlots(clubId, { gameid, from, to }) {
+  let q = db
+    .collection("users")
+    .doc(clubId)
+    .collection("schedule")
+    .orderBy("scrimTime", "asc");
+  if (gameid && gameid !== "all") {
+    q = q.where("gameid", "==", gameid);
+  }
+  if (from) q = q.where("scrimTime", ">=", Timestamp.fromDate(new Date(from)));
+  if (to) q = q.where("scrimTime", "<=", Timestamp.fromDate(new Date(to)));
+
+  const snap = await q.get();
+  const now = new Date();
+
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((slot) => {
+      const end = slot.scrimEndTime?._seconds
+        ? new Date(slot.scrimEndTime._seconds * 1000)
+        : new Date(slot.scrimEndTime);
+      return end > now;
+    });
+}
 
 
 
@@ -439,11 +642,16 @@ module.exports = {
   getUserGames,
   getGames,
   updateUserProfileService,
+   updateUserAchievement,
+  deleteUserAchievement,
+  deleteUserGame,
    addUserScrim,
   getUserScrims,
+   getClubGames,
+  getClubSlots,
   initScrimArenaForSchedule, 
   getUserArenas,
   getUserScrimsWithGame,
-    listRequestsForSlotService,
+  listRequestsForSlotService,
   setRequestStatusService,
 };

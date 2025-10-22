@@ -1,15 +1,27 @@
 "use client";
 import React from "react";
+import { authedFetch } from "../../../lib/authedFetch";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../../lib/firebaseClient";
 
 
 export function GamerViewClubSlots({ clubId, userGames = [], user }) {
-    const uid = user?.uid;
+    const [firebaseUser, setFirebaseUser] = React.useState(null);
+
+    React.useEffect(() => {
+        const unsub = onAuthStateChanged(auth, (fbUser) => {
+            setFirebaseUser(fbUser);
+        });
+        return () => unsub();
+    }, []);
+
+    const isClub = user?.role === "club" || user?.rule === "club";
     const [active, setActive] = React.useState("all");
-    // 2) derive the full game object for the banner
-const activeGame = React.useMemo(
-  () => (active === "all" ? null : userGames.find(g => g.id === active)), // <-- use g.id
-  [active, userGames]
-);
+    const activeGame = React.useMemo(
+        () => (active === "all" ? null : userGames.find(g => g.id === String(active) || g.gameid === String(active))),
+        [active, userGames]
+    );
+
     const [slots, setSlots] = React.useState([]);
 
     const tsToDate = (scrimTime) =>
@@ -19,7 +31,6 @@ const activeGame = React.useMemo(
         if (!clubId || !active) return;
         fetchSlots();
     }, [clubId, active]);
-    // feedback modal (same vibe as Slot Full Alert / confirmAction)
     const [feedback, setFeedback] = React.useState({
         open: false,
         title: "",
@@ -37,20 +48,16 @@ const activeGame = React.useMemo(
     }
 
     async function fetchSlots() {
-         if (!clubId) return;
-  const activeParam = active !== "all" ? `gameid=${encodeURIComponent(active)}&` : "";
-  const fromDate = new Date(); fromDate.setHours(0,0,0,0);
-  const toDate = new Date(); toDate.setDate(toDate.getDate() + 7); toDate.setHours(23,59,59,999);
+        if (!clubId) return;
+        const activeParam = active !== "all" ? `gameid=${encodeURIComponent(activeGame?.gameid || active)}&` : "";
+        const fromDate = new Date(); fromDate.setHours(0, 0, 0, 0);
+        const toDate = new Date(); toDate.setDate(toDate.getDate() + 7); toDate.setHours(23, 59, 59, 999);
 
-  const url = `http://localhost:4000/api/gamer/${clubId}/schedule?${activeParam}from=${fromDate.toISOString()}&to=${toDate.toISOString()}`;
+        const url = `http://localhost:4000/api/club/${clubId}/schedule?${activeParam}from=${fromDate.toISOString()}&to=${toDate.toISOString()}`;
 
-  const res = await fetch(url);
-  const data = await res.json();
-  setSlots(data?.slots || []);
         try {
             const res = await fetch(url);
             const data = await res.json();
-            console.log("API Response:", data);
             setSlots(data?.slots || []);
         } catch (err) {
             console.error("fetchSlots error:", err);
@@ -58,57 +65,42 @@ const activeGame = React.useMemo(
     }
 
     async function sendRequest(slotId) {
-        try {
-            if (!user?.uid) {
-                openFeedback("Login required", "Please sign in to send a request.");
-                return;
-            }
+        if (!firebaseUser?.uid) {
+            openFeedback("Login required", "Please sign in to send a request.");
 
+            return;
+        }
+        console.log("User role:", user?.role, "rule:", user?.rule);
+
+
+        try {
             setRequestingId(slotId);
 
             const url = `http://localhost:4000/api/gamer/${clubId}/schedule/${slotId}/request`;
 
-            const res = await fetch(url, {
+            const res = await authedFetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ gamerId: user.uid }),
+                body: JSON.stringify({ gamerId: firebaseUser.uid }),
             });
 
-            // Try reading JSON without hard-failing
             let data = {};
             try { data = await res.clone().json(); } catch { }
 
-            // Detect "already requested" (adjust to your backend’s shape if needed)
-            const msgText =
-                (data?.error || data?.message || "").toLowerCase();
-            const alreadyRequested =
-                res.status === 409 ||
-                data?.code === "ALREADY_REQUESTED" ||
-                msgText.includes("already requested") ||
-                msgText.includes("already sent") ||
-                msgText.includes("duplicate");
+            if (!res.ok || data?.success === false) {
+                const msg = data?.message || "Something went wrong.";
 
-            if (!res.ok) {
-                if (alreadyRequested) {
-                    openFeedback("Already requested", "You already requested to join this time slot.");
-                } else {
-                    // Read text fallback for any other error
-                    let txt = data?.error;
-                    if (!txt) {
-                        try { txt = await res.text(); } catch { }
-                    }
-                    openFeedback("Request failed", txt || "Something went wrong. Please try again.");
-                }
+                let title = "Request failed";
+                if (/already/i.test(msg)) title = "Already requested";
+                else if (/limit/i.test(msg)) title = "Daily limit reached";
+                else if (/conflict/i.test(msg)) title = "Time conflict";
+                else if (/expired/i.test(msg)) title = "Slot unavailable";
+
+                openFeedback(title, msg);
                 return;
             }
 
-            // Success path
-            if (data?.success !== false) {
-                openFeedback("Request sent", "Your request has been sent.");
-            } else {
-                // In case backend returns success:false with 200
-                openFeedback("Request failed", data?.error || "Something went wrong. Please try again.");
-            }
+            openFeedback("Request sent", "Your request has been sent.");
         } catch (e) {
             console.error("sendRequest error:", e);
             openFeedback("Network error", "Please check your connection and try again.");
@@ -116,7 +108,6 @@ const activeGame = React.useMemo(
             setRequestingId(null);
         }
     }
-
 
     const groupedSlots = slots.reduce((acc, slot) => {
         const ms = slot.scrimTime?._seconds
@@ -134,9 +125,9 @@ const activeGame = React.useMemo(
     }, {});
 
     return (
-        <div className="flex min-h-screen">
+        <div>
 
-            <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full grid grid-cols-1 gap-8">
+            <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full grid grid-cols-1 relative z-[100] gap-8">
                 <div className="flex items-center justify-between mb-6 -mt-5 ">
                     <h1 className="text-5xl font-bold text-[#fccc22] -ml-6">SCRIMS SCHEDULING</h1>
                     <div className="-mr-10">
@@ -156,8 +147,8 @@ const activeGame = React.useMemo(
                                     key={g.id}
                                     onClick={() => setActive(g.id)}
                                     className={`px-4 py-2 rounded-md text-xl font-semibold ${active === g.id
-                                            ? "bg-[#FCCC22] text-[#0C0817]"
-                                            : "bg-[#2b2142] text-white hover:bg-[#3a2b57]"
+                                        ? "bg-[#FCCC22] text-[#0C0817]"
+                                        : "bg-[#2b2142] text-white hover:bg-[#3a2b57]"
                                         }`}
                                 >
                                     {g.gameName}
@@ -168,26 +159,42 @@ const activeGame = React.useMemo(
                 </div>
 
                 {activeGame && (
-  <div className="relative w-[108.5%] -ml-[3.5%] rounded-xl overflow-hidden shadow-md -mt-4 pointer-events-none z-10">
-    <img
-      src={activeGame.scrimPhoto || activeGame.gamePhoto || activeGame.image || activeGame.imageUrl}
-      alt={activeGame.gameName || "Game cover"}
-      className="w-full h-64 object-cover"
-    />
-    <div className="absolute inset-0 flex items-center bg-gradient-to-r from-[#1c1430b5] to-transparent px-10">
-      <div className="pointer-events-auto">
-        <h2 className="text-4xl font-bold text-white">{activeGame.gameName}</h2>
-        <p className="text-lg text-gray-300 mt-2">View available scrims and send requests</p>
-      </div>
-    </div>
-  </div>
-)}
+                    <div className="relative w-[107.5%] -ml-[3.5%] rounded-xl overflow-hidden shadow-md -mt-4 mb-4 z-10">
+                        <img
+                            src={activeGame.scrimPhoto}
+                            alt={activeGame.gameName}
+                            className="w-full h-64 object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center px-10
+            bg-gradient-to-r
+            from-[#0A0810FF]/95 from-0%
+            via-[#110D1AFF]/65 via-35%
+            to-transparent to-90%">
+                            <div>
+                                <h2 className="text-4xl font-bold text-white">{activeGame.gameName}</h2>
+                                <p className="text-[#BE1728FF] font-extrabold text-xl
+               [text-shadow:0_0_0.5px_gray]
+               [-webkit-text-stroke:0.3px_#270406FF]">  You can request up to 3 scrims per day</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {slots.length > 0 && (
                     <div className="flex flex-col -mt-2 space-y-10">
                         {Object.entries(groupedSlots)
+                            .filter(([_, slots]) => {
+                                const now = new Date();
+                                return slots.some(slot => {
+                                    const start = tsToDate(slot.scrimTime);
+                                    const diffHours = (start - now) / (1000 * 60 * 60);
+                                    return diffHours > 24;
+                                });
+                            })
+
                             .sort(([a], [b]) => new Date(a) - new Date(b))
                             .map(([dateStr, slots]) => (
+
                                 <div
                                     key={dateStr}
                                     className="flex items-center relative left-[48px]"
@@ -205,8 +212,14 @@ const activeGame = React.useMemo(
                                             .filter((slot) => {
                                                 const start = tsToDate(slot.scrimTime);
                                                 const now = new Date();
-                                                return start >= now;
+
+                                                const diffMs = start.getTime() - now.getTime();
+
+                                                const diffHours = diffMs / (1000 * 60 * 60);
+
+                                                return diffHours > 24;
                                             })
+
                                             .sort((a, b) => tsToDate(a.scrimTime) - tsToDate(b.scrimTime))
                                             .map((slot) => {
                                                 const start = tsToDate(slot.scrimTime).toLocaleTimeString([], {
@@ -226,7 +239,7 @@ const activeGame = React.useMemo(
                                                         className="relative flex items-center justify-between bg-[#231a3b] border border-[#3a2f56] rounded-xl px-5 py-5 "
                                                         style={{
                                                             width: "300px",
-                                                            height: "100px",
+                                                            height: "125px",
                                                         }}
                                                     >
                                                         <div className="flex flex-col leading-tight">
@@ -241,35 +254,36 @@ const activeGame = React.useMemo(
 
                                                                     Max {slot.maxGamers} requests
                                                                 </span>
+                                                                 </div>
+                                <span className="text-white text-2xl ">{slot.gameName}</span>
 
                                                                 <button
-                                                                    onClick={() => sendRequest(slot.id)}
-                                                                    disabled={requestingId === slot.id}
-                                                                    className={`w-[77px] h-[38px] absolute bottom-4 right-4 text-[20px] font-bold rounded-md ${requestingId === slot.id
-                                                                            ? "bg-[#c3a322] text-[#0C0817] opacity-70 cursor-not-allowed"
-                                                                            : "bg-[#FCCC22] text-[#0C0817] hover:opacity-80"
+                                                                    onClick={() => !isClub && sendRequest(slot.id)}
+                                                                    disabled={isClub || requestingId === slot.id}
+                                                                    className={`w-[77px] h-[38px] absolute bottom-4 right-4 text-[20px] font-bold rounded-md ${isClub || requestingId === slot.id
+                                                                        ? "bg-[#c3a322] text-[#0C0817] opacity-70 cursor-not-allowed"
+                                                                        : "bg-[#FCCC22] text-[#0C0817] hover:opacity-80"
                                                                         } transition-transform`}
                                                                 >
-                                                                    {requestingId === slot.id ? "..." : "Request"}
+                                                                    {isClub ? "Locked" : requestingId === slot.id ? "..." : "Request"}
                                                                 </button>
-
                                                                 {feedback.open && (
                                                                     <div className="fixed inset-0 flex justify-center items-center  z-[2147483647]">
-                                                                        <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[350px] text-center">
+                                                                        <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[420px] text-center">
                                                                             <p
-                                                                                className={`text-lg font-bold mb-4 ${feedback.title.toLowerCase().includes("failed") ||
-                                                                                        feedback.title.toLowerCase().includes("already")
-                                                                                        ? "text-red-500"
-                                                                                        : "text-[#FCCC22]"
+                                                                                className={`text-2xl font-bold mb-4 ${feedback.title.toLowerCase().includes("failed") ||
+                                                                                    feedback.title.toLowerCase().includes("already")
+                                                                                    ? "text-red-500"
+                                                                                    : "text-[#FCCC22]"
                                                                                     }`}
                                                                             >
                                                                                 {feedback.title}
                                                                             </p>
-                                                                            <p className="text-sm text-gray-300 mb-6">{feedback.message}</p>
+                                                                            <p className="text-xl text-gray-300 mb-6">{feedback.message}</p>
                                                                             <div className="flex w-full">
                                                                                 <button
                                                                                     onClick={closeFeedback}
-                                                                                    className="flex-1 bg-[#5f4a87] hover:bg-[#7a66c7] px-4 py-2 rounded text-sm"
+                                                                                    className="flex-1 bg-[#5f4a87] hover:bg-[#7a66c7] px-4 py-2 rounded text-xl"
                                                                                 >
                                                                                     OK
                                                                                 </button>
@@ -280,7 +294,7 @@ const activeGame = React.useMemo(
 
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                    
                                                 );
                                             })}
                                     </div>

@@ -39,6 +39,10 @@ router.post("/:userid/profile",
   gamerController.UpdateUserProfile
 ); 
 
+router.delete('/:userid/achievements/:achievementid', authenticate, requireOwner, gamerController.deleteAchievement);
+router.delete('/:userid/games/:gameid', authenticate, requireOwner, gamerController.deleteGame);
+router.put('/:userid/games/:gameid', authenticate, requireOwner, gamerController.updateGameUsername);
+router.put('/:userid/achievements/:achievementid', authenticate, requireOwner,upload2.single('file'), gamerController.updateAchievement);
 
 router.get("/:userid/following", authenticate, gamerController.getFollowing);
 router.get("/:userid/followers", authenticate, gamerController.getFollowers);
@@ -49,20 +53,21 @@ router.post("/:userid/add/games", authenticate, requireOwner, gamerController.ad
 router.post("/:userid/add", authenticate, requireOwner, upload2.single("file"), gamerController.addAchievement);
 router.get("/games/all", gamerController.getAllGames);
 router.put("/gamer/:userid/profile", upload.single("avatar"), gamerController.UpdateUserProfile);
-
 router.get("/:gamerId/scrims", gamerController.listGamerRequestsController);
 /*router.post("/:gamerId/scrims", authenticate, requireOwner, gamerController.createRequestController);*/
-router.get("/:userid/clubgames", gamerController.listClubGames);
-router.get("/:clubId/schedule", gamerController.listClubSlots);
-router.post("/:clubId/schedule/:slotId/request", gamerController.sendRequest);
-router.get("/:gamerId/games", gamerController.getGamerSlotsController);
-router.get("/:gamerId/gamerScrims", gamerController.listGamerAcceptedScrimsController);
+router.post("/:clubId/schedule/:slotId/request",authenticate, gamerController.sendRequest);
 
 // games for tabs/banner
 router.get("/:gamerId/gamesGames", gamerController.listGamesForGamerController);
+router.get("/:userid/profile/public", gamerController.getUserProfilePublic);
+router.get("/:userid/achievements/public", gamerController.listAchievementsPublic);
+router.get("/:userid/games/public", gamerController.listGamesPublic);
+
+router.get("/:gamerId/notifications/:id", gamerController.getNotification);
 
 
-
+router.get("/:gamerId/notifications", gamerController.listNotifications);
+router.post("/:gamerId/notifications/:id/read", gamerController.markNotificationRead);
 
 
 module.exports = router;

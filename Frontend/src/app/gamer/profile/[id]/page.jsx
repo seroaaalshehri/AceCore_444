@@ -23,6 +23,40 @@ const ALLOWED_MIME = new Set([
   "application/pdf",
 ]);
 
+function DeleteConfirmModal({ open, onClose, onConfirm, itemType }) {
+  if (!open) return null;
+
+  return (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+      <div className="bg-[#1d1530] rounded-xl p-6 w-100 relative text-left" dir="ltr">
+        <p className="text-2xl font-bold flex justify-center mb-4 text-red-400">
+          Warning!
+        </p>
+        <p className="text-lg font-bold text-white flex justify-center mb-2">
+          Are you sure you want to delete the {itemType === "achievement" ? "achievement" : "game"}?
+        </p>
+        <p className="text-base font-bold text-white-300 flex justify-center mb-4">
+          This action is permanent and cannot be undone
+        </p>
+        <div className="flex w-full space-x-2 mt-4">
+          <button
+            onClick={onConfirm}
+            className="w-1/2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-lg text-white font-bold"
+          >
+            Delete
+          </button>
+          <button
+            onClick={onClose}
+            className="w-1/2 bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded text-lg text-white font-bold"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function useOwnerGuard() {
   const router = useRouter();
   const params = useParams();
@@ -87,8 +121,9 @@ const todayStr = (() => {
   return `${y}-${m}-${day}`; // yyyy-mm-dd in LOCAL time
 })();
 
-export function AddAchievement({ userid }) {
+export function AddAchievement({ userid, onDeleteAchievement, reloadFlag }) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const uid = userid;
   const [achievements, setAchievements] = useState([]);
   const [form, setForm] = useState({
@@ -111,7 +146,7 @@ export function AddAchievement({ userid }) {
   useEffect(() => {
     if (!uid) return;
     fetchAchievements();
-  }, [uid]);
+  }, [uid, reloadFlag]);
 
   function handleFileChange(e) {
     const f = e.target.files?.[0] || null;
@@ -140,7 +175,7 @@ export function AddAchievement({ userid }) {
     if (!form.game?.trim()) nextErrors.game = "Required.";
     if (!form.association?.trim()) nextErrors.association = "Required.";
     if (!form.date?.trim()) nextErrors.date = "Required.";
-    if (!form.file) nextErrors.file = "Required.";
+    if (!editingId && !form.file) nextErrors.file = "Required.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length || fileErr) {
@@ -149,24 +184,47 @@ export function AddAchievement({ userid }) {
     }
 
     try {
-      const formData = new FormData();
-      formData.append("name", form.name);
-      formData.append("association", form.association);
-      formData.append("game", form.game);
-      formData.append("date", form.date);
-      if (form.file) {
-        formData.append("file", form.file);
+      if (editingId) {
+        const url = `http://localhost:4000/api/club/${uid}/achievements/${editingId}`;
+
+        const formData = new FormData();
+        formData.append("name", form.name);
+        formData.append("association", form.association);
+        formData.append("game", form.game);
+        formData.append("date", form.date);
+        if (form.file) {
+          formData.append("file", form.file);
+        }
+
+        const res = await authedFetch(url, {
+          method: "PUT",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || "Unknown error");
+        }
+
+        await fetchAchievements();
+        setEditingId(null);
+      } else {
+        // POST add
+        const formData = new FormData();
+        formData.append("name", form.name);
+        formData.append("association", form.association);
+        formData.append("game", form.game);
+        formData.append("date", form.date);
+        if (form.file) {
+          formData.append("file", form.file);
+        }
+        const url = `http://localhost:4000/api/club/${uid}/add`;
+        console.debug("authedFetch ->", url, "(FormData)");
+        const res = await authedFetch(url, { method: "POST", body: formData });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Unknown error");
+        await fetchAchievements();
       }
-
-      const res = await authedFetch(`http://localhost:4000/api/gamer/${uid}/add`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Unknown error");
-
-      await fetchAchievements();
       setForm({ name: "", association: "", game: "", date: "", file: null });
       setErrors({});
       setFileErr("");
@@ -175,8 +233,11 @@ export function AddAchievement({ userid }) {
     } catch (err) {
       console.error("❌ Error saving achievement:", err);
       alert("Failed to save achievement. Try again.");
+    } finally {
+      setLoading(false);
     }
   }
+
 
   return (
     <div>
@@ -184,7 +245,10 @@ export function AddAchievement({ userid }) {
         <div className="flex items-center gap-3 mb-6 -ml-6">
           <h1 className="text-5xl font-bold text-[#fccc22]">ACHIEVEMENTS</h1>
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setOpen(true);
+              setLoading(false);
+            }}
             className="text-white hover:text-[#6449b5] font-bold text-5xl"
           >
             +
@@ -240,12 +304,29 @@ export function AddAchievement({ userid }) {
               <div className="flex items-center gap-2">
                 <button
                   className="text-gray-400 hover:text-[#FCCC22] font-bold text-[20px]"
+                  onClick={() => {
+                    setForm({
+                      name: ach.name || "",
+                      association: ach.association || "",
+                      game: ach.game || "",
+                      date: ach.date ? (typeof ach.date === 'string' ? ach.date.slice(0, 10) : (ach.date._seconds ? new Date(ach.date._seconds * 1000).toISOString().slice(0, 10) : "")) : "",
+                      file: null
+                    });
+                    setEditingId(ach.id);
+                    setOpen(true);
+                    setErrors({});
+                    setFileErr("");
+                    setLoading(false);
+                  }}
+                  title="Edit Achievement"
                 >
                   <span className="inline-block transform -scale-x-100">✎</span>
                 </button>
 
                 <button
                   className="text-gray-400 hover:text-[#FCCC22]"
+                  onClick={() => onDeleteAchievement(ach)}
+                  title="Delete Achievement"
                 >
                   <FaTrash size={15} />
                 </button>
@@ -257,7 +338,13 @@ export function AddAchievement({ userid }) {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-[#1d1530]  rounded-xl p-6 w-96 relative">
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false)
+                setEditingId(null);
+                setForm({ name: "", association: "", game: "", date: "", file: null });
+                setErrors({});
+                setFileErr("");
+              }}
               className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
             >
               ×
@@ -387,9 +474,10 @@ export default function GamerProfile() {
   const { id } = useParams();
   const userId = Array.isArray(id) ? id[0] : id;
   const [loading, setLoading] = useState(false);
-
-
-
+  const [deleteModal, setDeleteModal] = useState({ open: false, item: null, type: null });
+  const [achievementsReloadFlag, setAchievementsReloadFlag] = useState(0);
+  const [gameModal, setGameModal] = useState({ open: false, mode: "add", game: null, username: "", error: "" });
+const [gameSaving, setGameSaving] = useState(false);
 
   // followers / following
   useEffect(() => {
@@ -436,6 +524,7 @@ export default function GamerProfile() {
 
   useEffect(() => { refreshGames(); }, [uid, ready]);
 
+  /*
   async function handleAdd() {
     if (!selectedGame) {
       setLoading(false);
@@ -460,6 +549,49 @@ export default function GamerProfile() {
     setIsModalOpen(false);
     setSelectedGame(null);
     setUsername("");
+  }
+*/
+
+  async function handleGameModalSave() {
+    if (!gameModal.game) {
+      setGameModal((m) => ({ ...m, error: "Please select a game" }));
+      return;
+    }
+      if (gameSaving) return; 
+  setGameSaving(true);
+const usernameValue = gameModal.username.trim() || "—";
+setGameModal((m) => ({ ...m, error: "" }));
+
+    try {
+      if (gameModal.mode === "edit") {
+        // PATCH update
+        const url = `http://localhost:4000/api/gamer/${uid}/games/${gameModal.game.id}`;
+        const opts = { method: "put", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: gameModal.username.trim() }) };
+        console.debug("authedFetch ->", url, opts);
+        const res = await authedFetch(url, opts);
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "(no body)");
+          throw new Error(`Failed to update username (${res.status}) ${txt}`);
+        }
+      } else {
+        // POST add
+        const url = `http://localhost:4000/api/gamer/${uid}/add/games`;
+const usernameValue = gameModal.username.trim() || "—";
+const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
+        console.debug("authedFetch ->", url, body);
+        const res = await authedFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "(no body)");
+          throw new Error(`Failed to add game (${res.status}) ${txt}`);
+        }
+      }
+      await refreshGames();
+      setGameModal({ open: false, mode: "add", game: null, username: "", error: "" });
+    } catch (e) {
+      setGameSaving(false);
+      setGameModal((m) => ({ ...m, error: "Error saving game" }));
+    }
+    setGameSaving(false);
   }
 
 
@@ -491,6 +623,27 @@ export default function GamerProfile() {
   if (!profile) {
     return <div className="text-gray-400 p-6">Loading profile...</div>;
   }
+
+
+  function handleDeleteAchievement(ach) { setDeleteModal({ open: true, item: ach, type: 'achievement' }); }
+  function handleDeleteGame(game) { setDeleteModal({ open: true, item: game, type: 'game' }); }
+  async function handleConfirmDelete() {
+    if (!deleteModal.open || !deleteModal.item || !deleteModal.type) return;
+    try {
+      if (deleteModal.type === 'achievement') {
+        await authedFetch(`http://localhost:4000/api/gamer/${uid}/achievements/${deleteModal.item.id}`, { method: 'DELETE' });
+        setAchievementsReloadFlag(f => f + 1);
+      } else if (deleteModal.type === 'game') {
+        await authedFetch(`http://localhost:4000/api/gamer/${uid}/games/${deleteModal.item.id}`, { method: 'DELETE' });
+        await refreshGames();
+      }
+      setDeleteModal({ open: false, item: null, type: null });
+    } catch (err) {
+      alert('An error occurred while deleting');
+      setDeleteModal({ open: false, item: null, type: null });
+    }
+  }
+
 
   return (
     <div className="flex min-h-screen">
@@ -580,7 +733,7 @@ export default function GamerProfile() {
 
               {/* Bio section */}
               {/* Bio */}
-              <div className="mt-9 ml-2 text-white text-[22px] leading-relaxed
+              <div className="mt-9 ml-2 text-white text-[25px] leading-relaxed
                 w-3/4  sm:w-5/4 lg:w-2/3
                 whitespace-normal break-words [overflow-wrap:anywhere]">
                 {profile.bio}
@@ -664,8 +817,9 @@ export default function GamerProfile() {
                 <h1 className="text-5xl font-bold text-[#fccc22]">GAMES</h1>
                 {availableGames.length > 0 && (
                   <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="text-[#ffff] font-bold text-5xl hover:text-[#6449b5]">
+ onClick={() =>
+      setGameModal({ open: true, mode: "add", game: null, username: "", error: "" })
+    }                    className="text-[#ffff] font-bold text-5xl hover:text-[#6449b5]">
                     +
                   </button>
                 )}
@@ -698,10 +852,16 @@ export default function GamerProfile() {
                         </div>
 
                         <div className="flex gap-2 relative -top-9">
-                          <button className="hover:text-[#fccc22] text-gray-400">
+                          <button className="hover:text-[#fccc22] text-gray-400"
+                            onClick={() => {
+                              setGameModal({ open: true, mode: "edit", game: g, username: g.username || "", error: "" });
+                            }}
+                            title="Edit username">
                             <span className="inline-block transform -scale-x-100 text-xl">✎</span>
                           </button>
-                          <button className="hover:text-[#fccc22] text-gray-400 text-sm">
+                          <button className="hover:text-[#fccc22] text-gray-400 text-sm"
+                            onClick={() => handleDeleteGame(g)}
+                            title="delete the game">
                             <FaTrash />
                           </button>
                         </div>
@@ -711,75 +871,86 @@ export default function GamerProfile() {
                 ))}
               </div>
 
-
-
-              {isModalOpen && (
+              {/* Unified Add/Edit Game Modal */}
+              {gameModal.open && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-[5000]">
                   <div className="bg-[#1d1530] rounded-xl p-6 w-96 relative">
                     <button
-                      onClick={() => { setIsModalOpen(false); setSelectedGame(null); setError(""); }}
+                      onClick={() => setGameModal({ open: false, mode: "add", game: null, username: "", error: "" })}
                       className="absolute top-3 right-3 text-gray-400 hover:text-white text-4xl"
                     >
                       ×
                     </button>
 
-                    <h2 className="text-2xl font-bold mb-4 text-white">Select Game</h2>
-                    {error && <p className="text-red-500 text-lg mb-3 text-center">{error}</p>}
+                    <h2 className="text-2xl font-bold mb-4 text-white">{gameModal.mode === "edit" ? "Edit Username" : "Select Game"}</h2>
+                    {gameModal.error && <p className="text-red-500 text-lg mb-3 text-center">{gameModal.error}</p>}
 
-                    <div className="grid grid-cols-1 gap-3 mb-4">
-                      {availableGames.map((game) => (
-                        <button
-                          key={game.id}
-                          onClick={() => {
-                            setSelectedGame(game);
-                            setError(""); // clear error if user picks a game
-                          }}
-                          className={`p-3 rounded border flex items-center gap-3 ${selectedGame?.id === game.id
-                            ? "border-yellow-400 bg-[#0C0817]"
-                            : "border-[#0C0817] bg-[#0C0817] hover:border-[#fccc22]"
-                            }`}
-                        >
-                          <img
-                            src={game.gamePhoto}
-                            alt={game.gameName}
-                            className="w-14 h-14 rounded"
-                          />
-                          <span className="text-white text-xl">{game.gameName}</span>
-                        </button>
-                      ))}
+                    {gameModal.mode === "add" && (
+                      <div className="grid grid-cols-1 gap-3 mb-4">
+                        {availableGames.map((game) => (
+                          <button
+                            key={game.id}
+                            onClick={() => setGameModal((m) => ({ ...m, game, error: "" }))}
+                            className={`p-3 rounded border flex items-center gap-3 ${gameModal.game?.id === game.id
+                              ? "border-yellow-400 bg-[#0C0817]"
+                              : "border-[#0C0817] bg-[#0C0817] hover:border-[#fccc22]"
+                              }`}
+                          >
+                            <img
+                              src={game.gamePhoto}
+                              alt={game.gameName}
+                              className="w-14 h-14 rounded"
+                            />
+                            <span className="text-white text-xl">{game.gameName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                    </div>
-
-                    <h2 className="text-2xl font-bold mb-4 text-white">Enter username (optional)</h2>
                     <input
                       type="text"
-                      placeholder="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value.slice(0, 16))}
+                      placeholder="Enter username"
+                      value={gameModal.username}
+                      onChange={(e) => setGameModal((m) => ({ ...m, username: e.target.value.slice(0, 16) }))}
                       maxLength={16}
                       className="w-full mb-1 p-3 rounded bg-[#0C0817] text-white outline-none"
                     />
 
-                    <button
-                      onClick={handleAdd}
-                      disabled={loading}
-                      className="px-9 py-1 mt-3 mx-auto block bg-[#FCCC22] text-[#0C0817] font-bold rounded-md text-xl hover:scale-105 transition-transform duration-200 disabled:opacity-80">
-                      {loading ? "loading..." : "Add"}
-                    </button>
+                 <button
+  onClick={handleGameModalSave}
+  disabled={gameSaving}
+  className={`px-9 py-1 mt-3 mx-auto block font-bold rounded-md text-xl transition-transform duration-200
+    ${gameSaving
+      ? "bg-[#FCCC22] text-[#0C0817] cursor-not-allowed opacity-70"
+      : "bg-[#FCCC22] text-[#0C0817] hover:scale-105 hover:opacity-90"
+    }`}
+>
+  {gameSaving ? "Saving..." : (gameModal.mode === "edit" ? "Save" : "Add")}
+</button>
+
 
                   </div>
                 </div>
               )}
             </div>
 
-
-
             <section className="relative z-100 flex relative mb-[30px] z-[50] items-center gap-3 mb-4">
-              <AddAchievement userid={uid} />
+              <AddAchievement
+                userid={uid}
+                onDeleteAchievement={handleDeleteAchievement}
+                reloadFlag={achievementsReloadFlag}
+              />
             </section>
           </div>
         </div>
       </div >
+
+      <DeleteConfirmModal
+        open={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, item: null, type: null })}
+        onConfirm={handleConfirmDelete}
+        itemType={deleteModal.type}
+      />
     </div >
   );
 }

@@ -3,7 +3,7 @@ const { admin, db } = require('../../../Firebase/firebaseBackend');
 const { FieldPath } = admin.firestore;
 const { getStorage } = require('firebase-admin/storage');
 const { v4: uuidv4 } = require('uuid');
-
+const { notifyRequestStatusChange } = require("../../../notify");
 const {
   addUserAchievement,
   getUserAchievements,
@@ -13,6 +13,9 @@ const {
   getUserGames,
   getGames,
   updateUserProfileService,
+  updateUserAchievement,
+   getClubSlots,
+  getClubGames,
    addUserScrim,
   getUserScrims,
   initScrimArenaForSchedule,
@@ -255,6 +258,58 @@ async function getFollowers(req, res) {
   }
 }
 
+async function updateAchievement(req, res) {
+  try {
+    const { userid, achievementid } = req.params;
+    const { name, association, game, date } = req.body || {};
+
+    const fields = {};
+    if (name !== undefined)        fields.name = name;
+    if (association !== undefined) fields.association = association;
+    if (game !== undefined)        fields.game = game;
+    if (date !== undefined)        fields.date = date;
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`.replace('3000', '4000');
+
+    const result = await updateUserAchievement(userid, achievementid, fields, req.file, baseUrl);
+    if (!result) return res.status(404).json({ success: false, error: 'Achievement not found' });
+
+    res.json({ success: true, achievement: result });
+  } catch (err) {
+    console.error('updateAchievement error:', err.stack || err); // <-- stack
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+
+
+
+
+
+async function deleteAchievement(req, res) {
+  try {
+    console.log('[deleteAchievement] The achievement deletion request has been received', req.params);
+    const { userid, achievementid } = req.params;
+    await require("../clubServices").deleteUserAchievement(userid, achievementid);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Error deleting achievement:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+async function deleteGame(req, res) {
+  try {
+    console.log('[deleteGame] Game deletion request received', req.params);
+    const { userid, gameid } = req.params;
+    await require("../clubServices").deleteUserGame(userid, gameid);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Error deleting game:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 
 //Updated with logic of init ScrimArenas docs
 async function addScrim(req, res) {
@@ -355,12 +410,12 @@ async function listRequestsForSlotController(req, res) {
     res.status(500).json({ ok: false, error: e.message });
   }
 }
-
 async function setRequestStatusController(req, res, next) {
+  let result;                                   // new
+  const { clubId, slotId, requestId } = req.params;
   try {
     console.log("BODY:", req.body, "PARAMS:", req.params);
 
-    const { clubId, slotId, requestId } = req.params;
     const { status } = req.body;
 
     const result = await setRequestStatusService({
@@ -369,8 +424,15 @@ async function setRequestStatusController(req, res, next) {
       requestId,
       newStatus: status,
     });
-
-    res.json(result);
+    if (result.ok && result.changed && result.gamerId) {
+      await notifyRequestStatusChange({               // new
+        gamerId: String(result.gamerId),
+        clubId,
+        slotId,
+        newStatus: result.newStatus,
+      });
+    }
+    return res.json({ ok: true, ...result });
   } catch (err) {
     // Map known errors to proper HTTP codes
     if (err.code === "BAD_REQUEST") {
@@ -387,7 +449,73 @@ async function setRequestStatusController(req, res, next) {
 }
 
 
+async function listClubGames(req, res) {
+  try {
+    const { userid } = req.params;
+    const games = await getClubGames(userid);
+    res.json({ success: true, games });
+  } catch (e) {
+    console.error("listClubGames error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
 
+
+async function listClubSlots(req, res) {
+  try {
+    const { clubId } = req.params;
+    const { gameid, from, to } = req.query;
+    const slots = await getClubSlots(clubId, { gameid, from, to });
+    res.json({ success: true, slots });
+  } catch (e) {
+    console.error("listClubSlots error:", e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+}
+
+
+async function getUserProfilePublic(req, res) {
+  try {
+    const { userid } = req.params;
+    const data = await getUserById(userid);
+    if (!data) return res.status(404).json({ success: false, message: 'User not found' });
+    const profile = {
+      id: userid,
+      clubName: data.clubName || '',
+      username: data.username || '',
+      bio: data.bio || '',
+      country: data.country || '',
+      socials: data.socials || {},
+      profilePhoto: data.profilePhoto || '',
+      role: data.role || 'club',
+    };
+    return res.json({ success: true, profile });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+
+async function listAchievementsPublic(req, res) {
+  try {
+    const { userid } = req.params;
+    const achievements = await getUserAchievements(userid);
+    return res.json({ success: true, achievements });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+
+async function listGamesPublic(req, res) {
+  try {
+    const { userid } = req.params;
+    const games = await getUserGames(userid);
+    return res.json({ success: true, games });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
 
 
 module.exports = {
@@ -401,12 +529,20 @@ module.exports = {
   getAllGames,
   getFollowing,
   getFollowers,
+updateAchievement,
+  deleteAchievement,
+  deleteGame,
   addScrim,
   listScrims,
    listArenas,
   getArena,
+   listClubGames,
+  listClubSlots,
   listScrimswithgames,
   listRequestsForSlotController,
   setRequestStatusController,
+   getUserProfilePublic,
+  listAchievementsPublic,
+  listGamesPublic,
   
 };

@@ -26,6 +26,40 @@ const ALLOWED_MIME = new Set([
   "application/pdf",
 ]);
 
+function DeleteConfirmModal({ open, onClose, onConfirm, itemType }) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+      <div className="bg-[#1d1530] rounded-xl p-6 w-100 relative text-left" dir="ltr">
+        <p className="text-2xl font-bold flex justify-center mb-4 text-red-400">
+          Warning!
+        </p>
+        <p className="text-lg font-bold text-white flex justify-center mb-2">
+          Are you sure you want to delete the {itemType === "achievement" ? "achievement" : "game"}?
+        </p>
+        <p className="text-base font-bold text-white-300 flex justify-center mb-4">
+          This action is permanent and cannot be undone
+        </p>
+        <div className="flex w-full space-x-2 mt-4">
+          <button
+            onClick={onConfirm}
+            className="w-1/2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-lg text-white font-bold"
+          >
+            Delete
+          </button>
+          <button
+            onClick={onClose}
+            className="w-1/2 bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded text-lg text-white font-bold"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function useOwnerGuard() {
   const router = useRouter();
   const params = useParams();
@@ -100,8 +134,9 @@ const todayStr = (() => {
 })();
 
 //*******************************************Achievements method*******************************************
-export function AddAchievement({ userid }) {
+export function AddAchievement({ userid, onDeleteAchievement, reloadFlag }) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const uid = userid;
   const [achievements, setAchievements] = useState([]);
   const [form, setForm] = useState({
@@ -123,7 +158,7 @@ export function AddAchievement({ userid }) {
   useEffect(() => {
     if (!uid) return;
     fetchAchievements();
-  }, [uid]);
+  }, [uid, reloadFlag]);
 
   function handleFileChange(e) {
     const f = e.target.files?.[0] || null;
@@ -153,7 +188,7 @@ export function AddAchievement({ userid }) {
     if (!form.game?.trim()) nextErrors.game = "Required.";
     if (!form.association?.trim()) nextErrors.association = "Required.";
     if (!form.date?.trim()) nextErrors.date = "Required.";
-    if (!form.file) nextErrors.file = "Required.";
+    if (!editingId && !form.file) nextErrors.file = "Required.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length || fileErr) {
@@ -162,24 +197,47 @@ export function AddAchievement({ userid }) {
     }
 
     try {
-      const formData = new FormData();
-      formData.append("name", form.name);
-      formData.append("association", form.association);
-      formData.append("game", form.game);
-      formData.append("date", form.date);
-      if (form.file) {
-        formData.append("file", form.file);
+      if (editingId) {
+        const url = `http://localhost:4000/api/club/${uid}/achievements/${editingId}`;
+
+        const formData = new FormData();
+        formData.append("name", form.name);
+        formData.append("association", form.association);
+        formData.append("game", form.game);
+        formData.append("date", form.date);
+        if (form.file) {
+          formData.append("file", form.file);
+        }
+
+        const res = await authedFetch(url, {
+          method: "PUT",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || "Unknown error");
+        }
+
+        await fetchAchievements();
+        setEditingId(null);
+      } else {
+        // POST add
+        const formData = new FormData();
+        formData.append("name", form.name);
+        formData.append("association", form.association);
+        formData.append("game", form.game);
+        formData.append("date", form.date);
+        if (form.file) {
+          formData.append("file", form.file);
+        }
+        const url = `http://localhost:4000/api/club/${uid}/add`;
+        console.debug("authedFetch ->", url, "(FormData)");
+        const res = await authedFetch(url, { method: "POST", body: formData });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Unknown error");
+        await fetchAchievements();
       }
-
-      const res = await authedFetch(`http://localhost:4000/api/club/${uid}/add`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Unknown error");
-
-      await fetchAchievements();
       setForm({ name: "", association: "", game: "", date: "", file: null });
       setErrors({});
       setFileErr("");
@@ -255,12 +313,28 @@ export function AddAchievement({ userid }) {
               <div className="flex items-center gap-2">
                 <button
                   className="text-gray-400 hover:text-[#FCCC22] font-bold text-[20px]"
+                  onClick={() => {
+                    setForm({
+                      name: ach.name || "",
+                      association: ach.association || "",
+                      game: ach.game || "",
+                      date: ach.date ? (typeof ach.date === 'string' ? ach.date.slice(0, 10) : (ach.date._seconds ? new Date(ach.date._seconds * 1000).toISOString().slice(0, 10) : "")) : "",
+                      file: null
+                    });
+                    setEditingId(ach.id);
+                    setOpen(true);
+                    setErrors({});
+                    setFileErr("");
+                  }}
+                  title="Edit Achievement"
                 >
                   <span className="inline-block transform -scale-x-100">✎</span>
                 </button>
 
                 <button
                   className="text-gray-400 hover:text-[#FCCC22]"
+                  onClick={() => onDeleteAchievement(ach)}
+                  title="Delete Achievement"
                 >
                   <FaTrash size={15} />
                 </button>
@@ -626,10 +700,16 @@ export function ScrimArenaSchedule({ userid, userGames }) {
               alt={active?.gameName}
               className="w-full h-64 object-cover"
             />
-            <div className="absolute inset-0 flex items-center bg-gradient-to-r from-[#1c1430b5] to-transparent px-10">
+            <div className="absolute inset-0 flex items-center px-10
+            bg-gradient-to-r
+            from-[#0A0810FF]/95 from-0%
+            via-[#110D1AFF]/65 via-35%
+            to-transparent to-90%">
               <div>
                 <h2 className="text-4xl font-bold text-white">{active?.gameName}</h2>
-                <p className="text-lg text-gray-300 mt-2">
+                <p className="text-[#BE1728FF] font-extrabold text-xl
+               [text-shadow:0_0_0.5px_gray]
+               [-webkit-text-stroke:0.3px_#270406FF]">
                   Maximum 5 time slots per day for all games
                 </p>
               </div>
@@ -670,54 +750,58 @@ export function ScrimArenaSchedule({ userid, userGames }) {
 
                   <div className="absolute left-[120px] h-[90px] w-[2.5px] bg-[#7a68b9] rounded-full opacity-70"></div>
 
-                   <div className="ml-7 flex flex-wrap gap-4">
-                  {slots
-                    .filter((slot) => {
-                      const start = tsToDate(slot.scrimTime);
-                      const now = new Date();
-                      return start >= now;
-                    })
-                    .sort((a, b) => tsToDate(a.scrimTime) - tsToDate(b.scrimTime))
-                    .map((slot) => {
-                      const start = tsToDate(slot.scrimTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      const end = slot.scrimEndTime
-                        ? tsToDate(slot.scrimEndTime).toLocaleTimeString([], {
+                  <div className="ml-7 flex flex-wrap gap-4">
+                    {slots
+                      .filter((slot) => {
+                        const start = tsToDate(slot.scrimTime);
+                        const startOfToday = new Date();
+                        startOfToday.setHours(0, 0, 0, 0);
+                        return start >= startOfToday;
+                      })
+
+                      .sort((a, b) => tsToDate(a.scrimTime) - tsToDate(b.scrimTime))
+                      .map((slot) => {
+                        const start = tsToDate(slot.scrimTime).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        const end = slot.scrimEndTime
+                          ? tsToDate(slot.scrimEndTime).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })
-                        : null;
+                          : null;
                         return (
                           <div
                             key={slot.id}
                             className="relative flex items-center justify-between bg-[#231a3b] border border-[#3a2f56] rounded-xl px-5 py-5 "
                             style={{
                               width: "300px",
-                              height: "100px",
+                              height: "125px",
                             }}
                           >
                             <div className="flex flex-col leading-tight">
                               <span className="text-[#fccc22] font-bold text-2xl">
                                 {start} – {end}
                               </span>
-                              <div className="flex flex-row gap-5 leading-tight">
 
-                                <span className="text-white text-2xl mt-1">
-                                  {slot.scrimType}
-                                </span>
-                                <span className="text-gray-300 text-xl mt-1 ml-3">
+                                                            <div className="flex flex-row gap-5 leading-tight">
+                                {/* Scrim type + max gamers in one row */}
+                                  <span className="text-white text-2xl mt-1">
+                                    {slot.scrimType}
+                                  </span>
+                                  <span className="text-gray-300 text-xl mt-1 ml-3">
 
-                                  Max {slot.maxGamers} requests
-                                </span>
-
+                                    Max {slot.maxGamers} requests
+                                  </span>
+                                </div>
+                                <span className="text-white text-2xl ">{slot.gameName}</span>
 
                                 <button
                                   onClick={() => router.push(`/club/requests/${clubId}/${slot.id}`)}
                                   className={`w-[77px] h-[38px] absolute bottom-4 right-4 text-[20px] font-bold rounded-md hover:opacity-80 transition-transform ${slot.acceptedCount >= slot.maxAcceptance
-                                      ? "bg-green-500 text-[#0C0817]"
-                                      : "bg-[#FCCC22] text-[#0C0817]"
+                                    ? "bg-green-500 text-[#0C0817]"
+                                    : "bg-[#FCCC22] text-[#0C0817]"
                                     }`}
 
                                 >
@@ -726,7 +810,7 @@ export function ScrimArenaSchedule({ userid, userGames }) {
 
                               </div>
                             </div>
-                          </div>
+                          
                         );
                       })}
                   </div>
@@ -864,7 +948,27 @@ export default function ClubProfile() {
   const { id } = useParams();
   const userId = Array.isArray(id) ? id[0] : id;
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentRole, setCurrentRole] = useState("club");
+  const [deleteModal, setDeleteModal] = useState({ open: false, item: null, type: null });
+  const [achievementsReloadFlag, setAchievementsReloadFlag] = useState(0);
 
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser) return setCurrentUser(null);
+      try {
+        const res = await authedFetch("http://localhost:4000/api/users/me");
+        const data = await res.json();
+        if (data?.user) {
+          setCurrentUser(data.user);
+          setCurrentRole(data.user.role || "club");
+        }
+      } catch (err) {
+        console.error("fetch me failed", err);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // followers / following
   useEffect(() => {
@@ -934,7 +1038,8 @@ export default function ClubProfile() {
     setIsModalOpen(false);
     setSelectedGame(null);
     setUsername("");
-  }
+    setLoading(false);
+  } 
 
 
   const availableGames = allGames.filter(
@@ -966,11 +1071,32 @@ export default function ClubProfile() {
     return <div className="text-gray-400 p-6">Loading profile...</div>;
   }
 
-
+  function handleDeleteAchievement(ach) { setDeleteModal({ open: true, item: ach, type: 'achievement' }); }
+  function handleDeleteGame(game) { setDeleteModal({ open: true, item: game, type: 'game' }); }
+  async function handleConfirmDelete() {
+    if (!deleteModal.open || !deleteModal.item || !deleteModal.type) return;
+    try {
+      if (deleteModal.type === 'achievement') {
+        await authedFetch(`http://localhost:4000/api/club/${uid}/achievements/${deleteModal.item.id}`, { method: 'DELETE' });
+        setAchievementsReloadFlag(f => f + 1);
+      } else if (deleteModal.type === 'game') {
+        await authedFetch(`http://localhost:4000/api/club/${uid}/games/${deleteModal.item.id}`, { method: 'DELETE' });
+        await refreshGames();
+      }
+      setDeleteModal({ open: false, item: null, type: null });
+    } catch (err) {
+      alert('An error occurred while deleting');
+      setDeleteModal({ open: false, item: null, type: null });
+    }
+  }
   return (
     <div className="flex min-h-screen">
       <div className="w-[250px]">
-        <LeftSidebar role="club" active="profile" userId={userId} clubDynamic />
+        <LeftSidebar
+          role={currentRole}
+          active="profile"
+          userId={currentRole === "club" ? currentUser?.id : userId}
+        />
       </div>
 
       <div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
@@ -1050,7 +1176,7 @@ export default function ClubProfile() {
               </div>
 
 
-              <div className="mt-9 ml-2 text-white text-[22px] leading-relaxed
+              <div className="mt-9 ml-2 text-white text-[25px] leading-relaxed
                 w-3/4  sm:w-5/4 lg:w-2/3
                 whitespace-normal break-words [overflow-wrap:anywhere]">
                 {profile.bio}
@@ -1151,8 +1277,11 @@ export default function ClubProfile() {
                         </span>
 
                         {/* Trash icon on the right */}
-                        <button className="text-gray-400 hover:text-[#fccc22] text-sm">
-                          <FaTrash />
+                        <button
+                          className="hover:text-[#fccc22] text-gray-400 text-sm"
+                          onClick={() => handleDeleteGame(g)}
+                          title="delete the game"
+                        >                          <FaTrash />
                         </button>
                       </div>
                     </div>
@@ -1199,8 +1328,6 @@ export default function ClubProfile() {
 
                     </div>
 
-
-
                     <button
                       onClick={handleAdd}
                       disabled={loading}
@@ -1215,7 +1342,7 @@ export default function ClubProfile() {
 
             {/* Achievements section  */}
             <section className="relative z-100">
-              <AddAchievement userid={uid} />
+              <AddAchievement userid={uid} onDeleteAchievement={handleDeleteAchievement} reloadFlag={achievementsReloadFlag} />
             </section>
 
             <section className="relative z-100">
@@ -1225,6 +1352,12 @@ export default function ClubProfile() {
           </div>
         </div>
       </div>
+      <DeleteConfirmModal
+        open={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, item: null, type: null })}
+        onConfirm={handleConfirmDelete}
+        itemType={deleteModal.type}
+      />
     </div>
   );
 }

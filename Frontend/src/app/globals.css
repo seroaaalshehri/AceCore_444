@@ -35,6 +35,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(15%) sepia(19%) saturate(1200%) hue-rotate(228deg) brightness(200%) contrast(75%);
 }
 
+input[type="Time"]::-webkit-calendar-picker-indicator {
+  filter: invert(15%) sepia(19%) saturate(1200%) hue-rotate(228deg) brightness(200%) contrast(75%);
+}
+
 @layer utilities {
   /* Navbar neon link hover */
   .neon-hover {
