@@ -1,10 +1,8 @@
-// src/app/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page.jsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import LeftSidebar, { SIDEBAR_WIDTH } from "../../../../../Components/LeftSidebar";
-
 const APPBUILDER_BASE = process.env.NEXT_PUBLIC_APPBUILDER_BASE_URL; 
 const API_BASE        = process.env.NEXT_PUBLIC_API_BASE_URL;       
 
@@ -19,11 +17,13 @@ export default function CreateScrimArenaPage() {
     try { return new URL(APPBUILDER_BASE).origin; } catch { return "*"; }
   }, []);
 
+
+
   // Build iframe URL to AppBuilder's /create
   useEffect(() => {
     if (!APPBUILDER_BASE || !userId || !scrimId) return;
     const u = new URL(`${APPBUILDER_BASE}/create`);
-    // purely informational (optional)
+   
     u.searchParams.set("userId", String(userId));
     u.searchParams.set("scrimId", String(scrimId));
     setSrc(u.toString());

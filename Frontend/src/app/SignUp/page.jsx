@@ -128,8 +128,10 @@ export default function SignUpPage() {
       youtube: formData.youtube || "",
       discord: formData.discord || "",
     },
-    authUid: formData.authUid || "",
+      authUid: formData.authUid || "",
       broadcasterId: formData.broadcasterId || "",
+   
+
   });
 
 // username availability helper

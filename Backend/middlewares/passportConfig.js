@@ -18,6 +18,7 @@ passport.use(
       ],
     },
     async (accessToken, refreshToken, profile, done) => {
+     
       const user = {
         twitchId: profile.id,
         email: profile.email,

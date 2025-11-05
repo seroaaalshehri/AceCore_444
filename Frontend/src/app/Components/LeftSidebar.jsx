@@ -9,6 +9,7 @@ import {
   Home as HomeIcon,
   CalendarClock,
   Search,
+  Radio,
 } from "lucide-react";
 
 export const SIDEBAR_WIDTH = 300; 
@@ -16,7 +17,7 @@ const PANEL = "bg-[#2b2142b3] border border-[#3b2d5e]";
 
 /* ---------------- Gamer: ID at the end ---------------- */
 const GAMER_ROUTES = {
-  home: ({ userId }) => `/gamer/HomePage/${userId}`,
+  twitchLives: ({ userId }) => `/gamer/HomePage/${userId}`,
    scrims: ({ userId }) => `/gamer/scrims/${userId}`,
   scrimsarena:({ userId }) => `/gamer/scrimappointments/view/${userId}`, 
   profile: ({ userId }) => `/gamer/profile/${userId}`,
@@ -27,7 +28,6 @@ const GAMER_ROUTES = {
 
 /* --------- Club: static now, -------- */ 
 const CLUB_ROUTES_STATIC = {
- home: ({ userId }) => `/club/HomePage/${userId}`,
   scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
   search: "/Search",
@@ -35,7 +35,6 @@ const CLUB_ROUTES_STATIC = {
   logout: "/Logout",
 }
 const CLUB_ROUTES_DYNAMIC = {
-  home: ({ userId }) => `/club/HomePage/${userId}`,
   scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
    search: "/Search",
@@ -69,7 +68,7 @@ function LeftNavItem({ icon: Icon, label, active, href, disabled = false }) {
 
 export default function LeftSidebar({
   role = "gamer",           
-  active = "home",        
+  active = "twitchLives",        
   fixed = true,
   userId,                
   clubDynamic = false,       
@@ -81,7 +80,7 @@ export default function LeftSidebar({
         ? CLUB_ROUTES_STATIC 
         : CLUB_ROUTES_DYNAMIC;
 
-  const homeHref = resolveRoute(routes.home, { userId });
+  const twitchLivesHref = resolveRoute(routes.twitchLives, { userId });
 
   const scrimsarenaHref =resolveRoute(routes.scrimsarena, { userId });
   const profileHref = resolveRoute(routes.profile, { userId });
@@ -108,14 +107,10 @@ export default function LeftSidebar({
       </div>
 
       {/* NAV */}
-      <nav className="space-y-3">
-        <LeftNavItem
-          icon={HomeIcon}
-          label="Home"
-          active={active === "home"}
-          href={homeHref}
-          disabled={!homeHref}  
-        />
+     
+
+ <nav className="space-y-3">
+
  <LeftNavItem
           icon={User}
           label="Profile"
@@ -123,6 +118,17 @@ export default function LeftSidebar({
           href={profileHref}
           disabled={!profileHref}
         />
+  {role === "gamer" && (
+          <>
+        <LeftNavItem
+          icon={Radio}
+          label="Twitch Lives"
+          active={active === "twitchLives"}
+          href={twitchLivesHref}
+          disabled={!twitchLivesHref}  
+        />
+        </>
+        )}
 
        {role === "gamer" && (
           <>
@@ -135,6 +141,8 @@ export default function LeftSidebar({
         /> 
           </>
         )}
+
+        
       
  <LeftNavItem
           icon={CalendarClock}

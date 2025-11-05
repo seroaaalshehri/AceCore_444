@@ -24,8 +24,7 @@ router.get(
       const u = req.user; 
       const email = u.email || "";
       const broadcaster_id = u.twitchId || u.id || ""; 
-
-    
+     
       await db.collection("twitchPending").doc(String(broadcaster_id)).set({
         broadcasterId: String(broadcaster_id),
         email,
@@ -44,6 +43,7 @@ router.get(
               broadcaster_id: ${JSON.stringify(broadcaster_id)},
               role: "club",
               provider: "twitch"
+          
             },
             "http://localhost:3000"
           );

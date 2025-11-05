@@ -257,8 +257,8 @@ async function ensureTwitchIntegrationOnSignup(userId, { broadcasterId = "", pro
     broadcasterId: String(broadcasterId || ""),
     provider: provider || "",
     email: email || "",
-    streamKey: "",          // will be filled after Helix fetch
-    ingestServer: "",       // optional; default to "live.twitch.tv" at use-time
+    streamKey: "",          
+    ingestServer: "",       
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };

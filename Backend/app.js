@@ -39,15 +39,30 @@ const agoraRoutes = require("./services/agora/routes/agoraRoutes");
 const gamerScrims = require("./services/gamer/routes/gamerScrims");
 const SearchRoutes = require("./services/Search/routes/SearchRoutes");
 const followRoutes = require("./services/follow/routes/followRoutes");
+const { getLiveCardsForViewer } = require("./services/twitch/twitchService");
+
+
 
 // Mount
 app.use("/api/users", userRoutes);
 app.use("/api/gamer", gamerRoutes);
 app.use("/api/club",  clubRoutes);
-app.use("/api/agora", agoraRoutes);
 app.use("/api/gamer/scrims", gamerScrims);
 app.use('/api/Search', SearchRoutes);
 app.use('/api/follow', followRoutes);
+
+app.get("/api/home/live-cards", async (req, res) => {
+  try {
+    const viewerId = String(req.query.viewerId || "");
+    if (!viewerId) return res.status(400).json({ ok: false, error: "missing viewerId" });
+
+    const cards = await getLiveCardsForViewer(viewerId);
+    res.json({ ok: true, cards });
+  } catch (e) {
+    console.error("[live-cards]", e);
+    res.status(500).json({ ok: false, error: "server_error" });
+  }
+});
 
 
 module.exports = app;
