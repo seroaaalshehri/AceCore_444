@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { db ,admin } = require("../../Firebase/firebaseBackend");
+const { db, admin } = require("../../Firebase/firebaseBackend");
 const { v4: uuidv4 } = require("uuid");
 const { Timestamp } = require("firebase-admin/firestore");
 
@@ -28,15 +28,15 @@ async function updateUserProfileService(userid, fields, { fileInput } = {}) {
 
   const updates = {
     firstName: fields.firstName,
-    lastName:  fields.lastName,
-    bio:       fields.bio,
+    lastName: fields.lastName,
+    bio: fields.bio,
     nationality: fields.nationality,
-    socials:   fields.socials,
+    socials: fields.socials,
     username: fields.username,
     username_lower: fields.username ? fields.username.toLowerCase() : "",
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
-if (fields.profilePhoto) {
+  if (fields.profilePhoto) {
     updates.profilePhoto = fields.profilePhoto;
   }
 
@@ -103,13 +103,13 @@ async function getFollowNum(userId) {
   };
 }
 
-async function addUserGame( gameid,rank, userid, username) {
+async function addUserGame(gameid, rank, userid, username) {
 
   const ref = await db.collection("userGames").add({
     gameid,
     rank,
-   userid,
-   username
+    userid,
+    username
   });
   return { id: ref.id };
 }
@@ -117,8 +117,8 @@ async function addUserGame( gameid,rank, userid, username) {
 
 
 async function getUserGames(userid) {
-  const userId=userid;
-  
+  const userId = userid;
+
 
   const snap = await db.collection("userGames").where("userid", "==", userId).get();
   const results = [];
@@ -127,16 +127,16 @@ async function getUserGames(userid) {
   for (const doc of snap.docs) {
     const ug = doc.data();
 
-  
+
     const gameDoc = await db.collection("games").doc(ug.gameid).get();
     const game = gameDoc.exists ? gameDoc.data() : {};
 
     results.push({
-      id: doc.id,           
-      ...ug,            
+      id: doc.id,
+      ...ug,
       gameName: game.gameName,
       gamePhoto: game.gamePhoto,
-      
+
     });
   }
   return results;
@@ -151,27 +151,27 @@ async function getGames() {
 }
 async function updateUserAchievement(userid, achievementid, fields = {}, file, baseUrl) {
   const docRef = db.collection('users').doc(userid)
-                   .collection('achievements').doc(achievementid);
+    .collection('achievements').doc(achievementid);
   const snap = await docRef.get();
   if (!snap.exists) return false;
 
   const ach = snap.data() || {};
 
   const updates = {};
-  if (fields.name !== undefined)        updates.name = fields.name;
+  if (fields.name !== undefined) updates.name = fields.name;
   if (fields.association !== undefined) updates.association = fields.association;
-  if (fields.game !== undefined)        updates.game = fields.game;
-  if (fields.date !== undefined)        updates.date = fields.date;
+  if (fields.game !== undefined) updates.game = fields.game;
+  if (fields.date !== undefined) updates.date = fields.date;
   updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
   if (file && (file.path || file.filename)) {
-    const filename = file.filename;   
-    const localPath = file.path;     
+    const filename = file.filename;
+    const localPath = file.path;
 
     updates.file = `${baseUrl}/storage/achievements/${encodeURIComponent(filename)}`;
     updates.storagePath = localPath;
 
-   
+
     if (ach?.storagePath && ach.storagePath !== localPath) {
       try {
         if (fs.existsSync(ach.storagePath)) fs.unlinkSync(ach.storagePath);
@@ -250,7 +250,7 @@ async function listGamerRequests({ gamerId, status, limit = 100 }) {
     if (slotDate) {
       const slotDay = new Date(slotDate.getFullYear(), slotDate.getMonth(), slotDate.getDate());
       if (slotDay < today) {
-        return; 
+        return;
       }
     }
 
@@ -313,13 +313,13 @@ async function createRequest({ clubId, slotId, gamerId }) {
     throw err;
   }
 
- const userSnap = await db.collection("users").doc(gamerId).get();
+  const userSnap = await db.collection("users").doc(gamerId).get();
   const user = userSnap.data();
   if (user?.role === "club") {
     const err = new Error("Clubs cannot send requests for time slots.");
     err.code = "FORBIDDEN";
     throw err;
-  }  
+  }
 
   const slotRef = db
     .collection("users")
@@ -437,15 +437,15 @@ async function listGamesForGamerService(/* gamerId not used if all games are pub
 
 
 
-const chunk = (arr, n=10) => Array.from({length: Math.ceil(arr.length/n)}, (_,i)=>arr.slice(i*n, (i+1)*n));
+const chunk = (arr, n = 10) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, (i + 1) * n));
 
 async function getUserScrimsWithGame(userid, { gameid, from, to }) {
   let q = db.collection("users").doc(userid).collection("schedule").orderBy("scrimTime", "asc");
   if (gameid) q = q.where("gameid", "==", gameid);
-  if (from)  q = q.where("scrimTime", ">=", Timestamp.fromDate(new Date(from)));
-  if (to)    q = q.where("scrimTime", "<=", Timestamp.fromDate(new Date(to)));
+  if (from) q = q.where("scrimTime", ">=", Timestamp.fromDate(new Date(from)));
+  if (to) q = q.where("scrimTime", "<=", Timestamp.fromDate(new Date(to)));
 
-  const snap  = await q.get();
+  const snap = await q.get();
   const slots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (slots.length === 0) return { slots: [] };
 
@@ -459,9 +459,9 @@ async function getUserScrimsWithGame(userid, { gameid, from, to }) {
     gs.forEach(doc => gameById.set(doc.id, { id: doc.id, ...doc.data() }));
   }
 
- 
+
   const scrimIds = [...new Set(slots.map(s => s.scrimId).filter(Boolean))];
-  const arenaById = new Map(); 
+  const arenaById = new Map();
   for (const ids of chunk(scrimIds, 10)) {
     const as = await db.collection("users").doc(userid)
       .collection("scrimArena")
@@ -495,7 +495,7 @@ async function getUserScrimsWithGame(userid, { gameid, from, to }) {
 
 
 // Return latest notifications
-async function listNotifications  ({ gamerId }) {
+async function listNotifications({ gamerId }) {
   if (!gamerId) throw new Error("gamerId required");
 
   const snap = await db
@@ -509,7 +509,7 @@ async function listNotifications  ({ gamerId }) {
 };
 
 // Optional: mark a notification as read
-async function markNotificationRead  ({ gamerId, id }) {
+async function markNotificationRead({ gamerId, id }) {
   if (!gamerId || !id) throw new Error("gamerId and id required");
   await db
     .collection("users")
@@ -541,6 +541,326 @@ async function getNotificationForGamerService({ gamerId, id }) {
   return { id: snap.id, ...snap.data() };
 }
 
+async function deleteCancelledRequestsForSlot({ clubId, slotId, gamerId, requestId }) {
+  try {
+    const slotRef = db
+      .collection("users").doc(String(clubId))
+      .collection("schedule").doc(String(slotId));
+
+    const reqCol = slotRef.collection("gamerRequest");
+
+    const batch = db.batch();
+
+    const toHandle = [];
+    if (requestId) {
+      const doc = await reqCol.doc(String(requestId)).get();
+      if (doc.exists) {
+        const data = doc.data() || {};
+        if (String(data.userid) === String(gamerId)) {
+          toHandle.push({ id: doc.id, data });
+        }
+      }
+    } else {
+      // Prefer to archive only the accepted/cancelled_by_gamer ones for this gamer
+      const acceptedSnap = await reqCol
+        .where("userid", "==", String(gamerId))
+        .where("status", "==", "accepted")
+        .get();
+      const cancelledSnap = await reqCol
+        .where("userid", "==", String(gamerId))
+        .where("status", "==", "cancelled_by_gamer")
+        .get();
+
+      acceptedSnap.forEach(d => toHandle.push({ id: d.id, data: d.data() || {} }));
+      cancelledSnap.forEach(d => {
+        // avoid duplicate if same id appeared already
+        if (!toHandle.find(x => x.id === d.id)) toHandle.push({ id: d.id, data: d.data() || {} });
+      });
+    }
+
+    if (toHandle.length === 0) return; // nothing to do
+
+    for (const item of toHandle) {
+      // Delete the original request so it won't count toward daily limit
+      batch.delete(reqCol.doc(String(item.id)));
+    }
+
+    await batch.commit();
+  } catch (e) {
+    // Do not block cancel flow on cleanup errors
+    console.warn("cancel cleanup warning:", e && (e.message || e));
+  }
+}
+
+async function cancelScrimAppointmentService({ gamerId, appointmentId, slotId: optSlotId, clubId: optClubId }) {
+  if (!gamerId || !appointmentId) {
+    const err = new Error("gamerId and appointmentId are required");
+    err.code = "BAD_REQUEST";
+    throw err;
+  }
+
+  // 1) Try treating appointmentId as gamerRequest document id
+  try {
+    const reqSnap = await db
+      .collectionGroup("gamerRequest")
+      .where(admin.firestore.FieldPath.documentId(), "==", String(appointmentId))
+      .limit(1)
+      .get();
+
+    if (!reqSnap.empty) {
+      const reqDoc = reqSnap.docs[0];
+      const reqData = reqDoc.data() || {};
+      if (String(reqData.userid) !== String(gamerId)) {
+        const err = new Error("You do not have permission to cancel this appointment");
+        err.code = "FORBIDDEN";
+        throw err;
+      }
+      // Allow cancel only for accepted
+      if (String(reqData.status || "").toLowerCase() !== "accepted") {
+        const err = new Error("Only accepted scrims can be canceled.");
+        err.code = "NOT_ACCEPTED";
+        throw err;
+      }
+
+      const slotRef = reqDoc.ref.parent.parent; // users/{clubId}/schedule/{slotId}
+      const clubRef = slotRef.parent.parent;    // users/{clubId}
+      const clubId = String(clubRef.id);
+      const slotId = String(slotRef.id);
+
+      const slotDoc = await slotRef.get();
+      if (!slotDoc.exists) {
+        const err = new Error("Schedule slot not found");
+        err.code = "NOT_FOUND";
+        throw err;
+      }
+      const slot = slotDoc.data() || {};
+      const scrimId = String(slot.scrimId || "");
+      let scrimTimeText = "unknown time";////new
+      if (slot.scrimTime?._seconds) {
+        const dt = new Date(slot.scrimTime._seconds * 1000);
+        scrimTimeText = dt.toLocaleString("en-US", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+      } else if (slot.scrimTime) {
+        const dt = new Date(slot.scrimTime);
+        scrimTimeText = dt.toLocaleString("en-US", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+      }
+
+      let gameName = "";
+      if (slot.gameid) {
+        const gSnap = await db.collection("games").doc(String(slot.gameid)).get();
+        if (gSnap.exists) {
+          const g = gSnap.data() || {};
+          gameName = g.gameName || g.name || "";
+        }
+      }
+      // 24-hour rule
+      const startMs = slot?.scrimTime?._seconds
+        ? slot.scrimTime._seconds * 1000
+        : slot?.scrimTime
+          ? new Date(slot.scrimTime).getTime()
+          : NaN;
+      if (Number.isFinite(startMs)) {
+        const diff = startMs - Date.now();
+        if (diff < 24 * 60 * 60 * 1000) {
+          const err = new Error("Cancellation not allowed within 24 hours of the start time.");
+          err.code = "TOO_CLOSE";
+          throw err;
+        }
+      }
+
+      const batch = db.batch();
+
+      // Remove acceptance for this gamer
+      const accRef = slotRef.collection("gamersAcceptance").doc(String(gamerId));
+      batch.delete(accRef);
+
+      // Note: request will be deleted after batch commit to free daily limit
+
+      // Remove gamer's scrimArenas link(s) for this slot/scrim
+      const gamerArenaCol = db.collection("users").doc(String(gamerId)).collection("scrimArenas");
+      const bySlot = await gamerArenaCol.where("slotId", "==", slotId).get();
+      bySlot.forEach((d) => batch.delete(d.ref));
+      if (scrimId) {
+        const byScrim = await gamerArenaCol.where("scrimId", "==", scrimId).get();
+        byScrim.forEach((d) => batch.delete(d.ref));
+      }
+
+      await batch.commit();
+
+      // Delete this exact request so it won't count against the daily limit
+      await deleteCancelledRequestsForSlot({ clubId, slotId, gamerId, requestId: reqDoc.id });
+
+      const notifier = require("../notify"); // <-- adjust path if needed
+      await notifier.notifyGamerCancelled({
+        clubId,
+        slotId,
+        gamerId: String(gamerId),
+        gameName,
+        scrimTimeText,
+      });
+
+      return {
+        ok: true,
+        gamerId: String(gamerId),
+        clubId,
+        slotId,
+        scrimId,
+        appointmentId: String(appointmentId),
+      };
+    }
+  } catch (e) {
+    // If it's a FORBIDDEN or TOO_CLOSE, rethrow; for NOT_FOUND fall through to fallback
+    if (e && (e.code === "FORBIDDEN" || e.code === "TOO_CLOSE")) throw e;
+    // else continue to fallback
+  }
+
+  // 2) If slotId+clubId provided, resolve directly via schedule path
+  if (optSlotId && optClubId) {
+    const slotRef = db
+      .collection("users").doc(String(optClubId))
+      .collection("schedule").doc(String(optSlotId));
+    const slotDoc = await slotRef.get();
+    if (!slotDoc.exists) {
+      const err = new Error("Schedule slot not found");
+      err.code = "NOT_FOUND";
+      throw err;
+    }
+    const slot = slotDoc.data() || {};
+    const scrimId = String(slot.scrimId || "");
+    let scrimTimeText = "unknown time";
+    if (slot.scrimTime?._seconds) {
+      const dt = new Date(slot.scrimTime._seconds * 1000);
+      scrimTimeText = dt.toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } else if (slot.scrimTime) {
+      const dt = new Date(slot.scrimTime);
+      scrimTimeText = dt.toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    }
+
+    let gameName = "";
+    if (slot.gameid) {
+      const gSnap = await db.collection("games").doc(String(slot.gameid)).get();
+      if (gSnap.exists) {
+        const g = gSnap.data() || {};
+        gameName = g.gameName || g.name || "";
+      }
+    }
+    const startMs = slot?.scrimTime?._seconds
+      ? slot.scrimTime._seconds * 1000
+      : slot?.scrimTime
+        ? new Date(slot.scrimTime).getTime()
+        : NaN;
+    if (Number.isFinite(startMs)) {
+      const diff = startMs - Date.now();
+      if (diff < 24 * 60 * 60 * 1000) {
+        const err = new Error("Cancellation not allowed within 24 hours of the start time.");
+        err.code = "TOO_CLOSE";
+        throw err;
+      }
+    }
+
+    // Enforce accepted: must have accepted request or acceptance doc
+    const reqCol = slotRef.collection("gamerRequest");
+    const acceptedReq = await reqCol
+      .where("userid", "==", String(gamerId))
+      .where("status", "==", "accepted")
+      .limit(1)
+      .get();
+    const accRef = slotRef.collection("gamersAcceptance").doc(String(gamerId));
+    const accDoc = await accRef.get();
+    if (acceptedReq.empty && !accDoc.exists) {
+      const err = new Error("Only accepted scrims can be canceled.");
+      err.code = "NOT_ACCEPTED";
+      throw err;
+    }
+
+    const batch = db.batch();
+    // Remove acceptance
+    batch.delete(accRef);
+
+    // Note: requests will be deleted after batch commit to free daily limit
+
+    // Delete gamer's scrimArenas links
+    const gamerArenaCol = db.collection("users").doc(String(gamerId)).collection("scrimArenas");
+    const bySlot = await gamerArenaCol.where("slotId", "==", String(optSlotId)).get();
+    bySlot.forEach((d) => batch.delete(d.ref));
+    if (scrimId) {
+      const byScrim = await gamerArenaCol.where("scrimId", "==", scrimId).get();
+      byScrim.forEach((d) => batch.delete(d.ref));
+    }
+
+    await batch.commit();
+
+    // Delete relevant requests for this gamer at this slot
+    await deleteCancelledRequestsForSlot({ clubId: String(optClubId), slotId: String(optSlotId), gamerId });
+
+    const notifier = require("../../notify");
+    await notifier.notifyGamerCancelled({
+      clubId: String(optClubId),
+      slotId: String(optSlotId),
+      gamerId: String(gamerId),
+      gameName,
+      scrimTimeText,
+    });
+
+    return {
+      ok: true,
+      gamerId: String(gamerId),
+      clubId: String(optClubId),
+      slotId: String(optSlotId),
+      scrimId,
+      appointmentId: String(appointmentId),
+    };
+  }
+
+}
+
+async function deleteOnHoldRequestService({ gamerId, clubId, slotId, requestId }) {
+  if (!gamerId || !clubId || !slotId || !requestId) {
+    const err = new Error("gamerId, clubId, slotId, requestId are required");
+    err.code = "BAD_REQUEST";
+    throw err;
+  }
+
+  const reqRef = db
+    .collection("users").doc(String(clubId))
+    .collection("schedule").doc(String(slotId))
+    .collection("gamerRequest").doc(String(requestId));
+
+  const snap = await reqRef.get();
+  if (!snap.exists) {
+    const err = new Error("Request not found");
+    err.code = "NOT_FOUND";
+    throw err;
+  }
+
+  const data = snap.data() || {};
+  if (String(data.userid) !== String(gamerId)) {
+    const err = new Error("You do not have permission to delete this request");
+    err.code = "FORBIDDEN";
+    throw err;
+  }
+
+  const status = String(data.status || "").toLowerCase();
+  if (status !== "on_hold") {
+    const err = new Error("Only on-hold requests can be deleted");
+    err.code = "NOT_ON_HOLD";
+    throw err;
+  }
+
+  await reqRef.delete();
+  return { ok: true, gamerId: String(gamerId), clubId: String(clubId), slotId: String(slotId), requestId: String(requestId) };
+}
 
 module.exports = {
   addUserAchievement,
@@ -551,15 +871,17 @@ module.exports = {
   getUserGames,
   getGames,
   updateUserProfileService,
-   updateUserGameUsername,
+  updateUserGameUsername,
   updateUserAchievement,
-    deleteUserAchievement,
+  deleteUserAchievement,
   deleteUserGame,
   listGamerRequests,
   createRequest,
   listGamesForGamerService,
   getUserScrimsWithGame,
-   listNotifications,
+  listNotifications,
   markNotificationRead,
   getNotificationForGamerService,
+  cancelScrimAppointmentService,
+  deleteOnHoldRequestService,
 };

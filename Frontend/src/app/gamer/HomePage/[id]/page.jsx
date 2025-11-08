@@ -49,7 +49,7 @@ export default function GamerHomePage() {
         <section className="mb-7">
           <div className="flex items-center gap-2 text-white/90 mb-3">
             <Radio className="h-6 w-6 text-[#FCCC22]" />
-            <h3 className="font-semibold text-[#FCCC22] text-2xl">Twitch Lives</h3>
+            <h3 className="font-semibold text-[#FCCC22] text-2xl">Lives on Twitch</h3>
           </div>
 
           {!viewerId && (

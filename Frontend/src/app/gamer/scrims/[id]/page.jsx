@@ -10,6 +10,12 @@ import { auth } from "../../../../../lib/firebaseClient";
 import { authedFetch } from "../../../../../lib/authedFetch";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000/api";
 
+
+const GOLD_BTN =
+    "bg-[#FCCC22] text-[#0C0817] font-bold px-6 py-2 rounded-md text-2xl " +
+    "disabled:opacity-60 hover:opacity-90 active:opacity-80 transition-shadow";
+
+
 // fixed game tabs
 const GAME_TABS = [
     { id: "all", label: "All" },
@@ -68,13 +74,94 @@ function useOwnerGuard() {
 
 /* ---------- page ---------- */
 export default function ScrimSchedulePage() {
-    const { id } = useParams(); 
-    const USER_ID = Array.isArray(id) ? id[0] : id; 
+    const { id } = useParams();
+    const USER_ID = Array.isArray(id) ? id[0] : id;
     const ready = useOwnerGuard();
     const [games, setGames] = React.useState([]);
     const [slots, setSlots] = React.useState([]);
     const [activeGame, setActiveGame] = React.useState("all");
     const [loading, setLoading] = React.useState(true);
+const [blockedModal, setBlockedModal] = React.useState(false);
+    const [cancelModalOpen, setCancelModalOpen] = React.useState(false);
+    const [selectedSlot, setSelectedSlot] = React.useState(null);
+    // Global feedback card (success or 24h error)
+    const [feedback, setFeedback] = React.useState(null); // { type: 'success'|'error', message: string }
+
+const openCancelModal = (slot) => {
+    const now = new Date();
+    const scrimDate = new Date(slot.scrimTime._seconds * 1000);
+    const hoursDiff = (scrimDate - now) / (1000 * 60 * 60);
+
+    if (hoursDiff < 24) {
+        setBlockedModal(true);
+        return;
+    }
+
+    setSelectedSlot({ ...slot, id: slot.scrimId || slot.id });
+    setCancelModalOpen(true);
+};
+
+    const closeCancelModal = () => {
+        setSelectedSlot(null);
+        setCancelModalOpen(false);
+    };
+
+    const confirmCancel = async () => {
+        if (!selectedSlot) return;
+
+        const now = new Date();
+        const scrimDate = new Date(selectedSlot.scrimTime._seconds * 1000);
+        const hoursDiff = (scrimDate - now) / (1000 * 60 * 60);
+
+        if (hoursDiff < 24) {
+            // Close modal and show 24h error card
+            closeCancelModal();
+            setFeedback({ type: "error", message: "Cancellation not allowed within 24 hours of the start time." });
+            return;
+        }
+
+        try {
+            const q = new URLSearchParams();
+            if (selectedSlot.slotId) q.set("slotId", selectedSlot.slotId);
+            if (selectedSlot.clubId) q.set("clubId", selectedSlot.clubId);
+            const res = await authedFetch(
+                `${API_BASE}/gamer/${USER_ID}/scrim-appointments/${selectedSlot.id}?${q.toString()}`,
+                { method: "DELETE" }
+            );
+
+            if (res.ok) {
+                setSlots(slots.filter((s) => (s.scrimId || s.id) !== selectedSlot.id));
+                closeCancelModal();
+                setFeedback({ type: "success", message: "Successfully canceled." });
+            } else {
+                let msg = "Failed to cancel scrim.";
+                try {
+                    const err = await res.json();
+                    if (err?.code === "TOO_CLOSE") msg = "Cancellation not allowed within 24 hours of the start time.";
+                    else if (err?.code === "FORBIDDEN") msg = "You can only cancel your own scrim appointments.";
+                    else if (err?.code === "NOT_FOUND") msg = "Scrim appointment not found.";
+                    else if (err?.code === "NOT_ACCEPTED") msg = "Only accepted scrims can be canceled.";
+                } catch { }
+                if (msg.includes("24 hours")) {
+                    // 24h rule -> show error card
+                    closeCancelModal();
+                    setFeedback({ type: "error", message: msg });
+                } else if (msg.includes("Only accepted scrims")) {
+                    // Keep as alert or show as card; we'll show as alert per current UX
+                    alert(msg);
+                    closeCancelModal();
+                } else {
+                    alert(msg);
+                    closeCancelModal();
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error canceling scrim.");
+            closeCancelModal();
+        }
+    };
+
 
     React.useEffect(() => {
         if (!ready || !USER_ID) return;
@@ -180,7 +267,7 @@ export default function ScrimSchedulePage() {
 
 
                             <div className="flex items-baseline justify-center">
-                                <h1 className="text-5xl font-bold text-[#fccc22] ">SCRIM ARENA APPOINTMNTS</h1>
+                                <h1 className="text-5xl font-bold text-[#fccc22] ">SCRIM ARENA APPOINTMENTS</h1>
                             </div>
                             <div className="text-gray-300 text-[18px] mt-4" />
 
@@ -268,6 +355,12 @@ export default function ScrimSchedulePage() {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    <button
+                                                        onClick={() => openCancelModal(s)}
+                                                        className={`relative bottom-3 mb-2 left-6 text-2xl font-bold ${GOLD_BTN}`}
+                                                    >
+                                                        Cancel
+                                                    </button>
                                                 </div>
 
                                             );
@@ -285,13 +378,65 @@ export default function ScrimSchedulePage() {
                             <div className="flex justify-center gap-3 mb-3 -ml-40 ">
                                 <h2 className="text-5xl font-bold text-[#fccc22]">MY REQUESTS</h2>
                             </div> <div className="-ml-10 mt-10">
-                            <GamerRequestStatus gamerId={USER_ID}/>
-                        </div> </div>
+                                <GamerRequestStatus gamerId={USER_ID} />
+                            </div> </div>
                     </div>
 
 
                 </div>
             </div>
+            {cancelModalOpen && selectedSlot && (
+                <div className="fixed inset-0 flex font-barlow items-center justify-center bg-black bg-opacity-60 z-50">
+                    <div className="bg-[#1d1530] rounded-xl p-6 w-100 relative text-left" dir="ltr">
+                        <p className="text-3xl font-bold flex justify-center mb-4 text-red-400">Warning!</p>
+                        <p className="text-2xl font-bold text-white flex justify-center mb-2">
+                            Are you sure you want to cancel this appointment?
+                        </p>
+                        <p className="text-base text-xl font-bold text-white-300 flex justify-center mb-4">
+                            This action is permanent and cannot be undone
+                        </p>
+                        <div className="flex w-full space-x-2 mt-4">
+                            <button
+                                onClick={confirmCancel}
+                                className="w-1/2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-2xl text-white font-bold"
+                            >
+                                Cancel appointment
+                            </button>
+                            <button
+                                onClick={closeCancelModal}
+                                className="w-1/2 bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded text-2xl text-white font-bold"
+                            >
+                                Keep appointment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {blockedModal && (
+    <div className="fixed font-barlow inset-0 flex justify-center items-center bg-black bg-opacity-50 z-[9999]">
+        <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl text-center w-[380px]">
+
+            <h2 className="text-2xl font-bold mb-4 text-red-500 flex justify-center">
+                Cancellation not allowed
+            </h2>
+
+            <p className="text-xl text-gray-300 mb-6 flex justify-center">
+                Cancellation not allowed within 24 hours of the start time.
+            </p>
+
+            <div className="flex w-full">
+                <button
+onClick={() => setBlockedModal(false)}
+                    className="flex-1 bg-[#5f4a87] hover:bg-[#7a66c7] px-4 py-2 rounded text-xl font-bold"
+                >
+                    OK
+                </button>
+            </div>
+
+        </div>
+    </div>
+)}
+
         </div>
     );
 }

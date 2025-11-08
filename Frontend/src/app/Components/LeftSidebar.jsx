@@ -8,6 +8,7 @@ import {
   LogOut,
   Home as HomeIcon,
   CalendarClock,
+  CalendarCheck,
   Search,
   Radio,
 } from "lucide-react";
@@ -31,7 +32,7 @@ const CLUB_ROUTES_STATIC = {
   scrimsarena:({ userId }) => `/club/scrimappointments/${userId}`,
   profile: ({ userId }) => `/club/profile/${userId}`,
   search: "/Search",
-  notifications: "/club/notifications", 
+  notifications: ({ userId }) => `/club/notifications/${userId}`, 
   logout: "/Logout",
 }
 const CLUB_ROUTES_DYNAMIC = {
@@ -122,7 +123,7 @@ export default function LeftSidebar({
           <>
         <LeftNavItem
           icon={Radio}
-          label="Twitch Lives"
+          label="Lives on Twitch"
           active={active === "twitchLives"}
           href={twitchLivesHref}
           disabled={!twitchLivesHref}  
@@ -145,8 +146,8 @@ export default function LeftSidebar({
         
       
  <LeftNavItem
-          icon={CalendarClock}
-          label="Scrim Arenas Scheduled"
+          icon={CalendarCheck}
+          label="Scheduled Scrim Arenas"
           active={active === "scrimsarena"}
           href={scrimsarenaHref}
           disabled={!scrimsarenaHref}

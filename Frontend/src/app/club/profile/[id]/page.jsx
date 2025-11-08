@@ -44,13 +44,13 @@ function DeleteConfirmModal({ open, onClose, onConfirm, itemType }) {
         <div className="flex w-full space-x-2 mt-4">
           <button
             onClick={onConfirm}
-            className="w-1/2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-lg text-white font-bold"
+            className="w-1/2 bg-red-600 hover:bg-red-500 px-4 py-2 rounded text-lg text-white font-bold"
           >
             Delete
           </button>
           <button
             onClick={onClose}
-            className="w-1/2 bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded text-lg text-white font-bold"
+            className="w-1/2 bg-gray-500 hover:bg-gray-400 px-4 py-2 rounded text-lg text-white font-bold"
           >
             Cancel
           </button>
@@ -268,7 +268,7 @@ export function AddAchievement({ userid, onDeleteAchievement, reloadFlag }) {
           {achievements.map((ach) => (
             <div
               key={ach.id}
-              className="flex items-center justify-between bg-[#1c1430] relative -top-5 rounded-xl pt-7 pb-7 pr-10 pl-12 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6 -ml-10 w-[109%] mx-auto"
+              className="flex items-center justify-between bg-[#1c1430] relative -top-5 rounded-xl pt-7 pb-7 pr-10 pl-12 shadow-md hover:scale-[1.01] transition-transform duration-200 gap-6 -ml-10 min-w-[109%]"
             >
               <FaTrophy size={30} className="text-[#FCCC22] text-3xl flex-shrink-0" />
 

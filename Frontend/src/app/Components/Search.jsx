@@ -161,7 +161,7 @@ export default function Search() {
     ? `/club/view/${item.id}?from=search`
     : `/gamer/view/${item.id}?from=search`
   }
-  className="bg-[#FCCC22] text-[#2b2142b3] font-bold px-4 py-2 rounded text-xl hover:shadow-[0_0_16px_#FCCC22] transition-shadow"
+  className="bg-[#FCCC22] text-[#0C0817] font-bold px-4 py-2 rounded text-xl hover:shadow-[0_0_16px_#FCCC22] transition-shadow"
         >
   View
 </Link>

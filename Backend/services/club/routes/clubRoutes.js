@@ -134,5 +134,27 @@ router.get("/:userid/profile/public", clubController.getUserProfilePublic);
 router.get("/:userid/achievements/public", clubController.listAchievementsPublic);
 router.get("/:userid/games/public", clubController.listGamesPublic);
 
+router.delete("/:userid/schedule/:slotId", authenticate, requireOwner, clubController.cancelSchedule);
+
+router.get(
+  "/:userid/notifications",
+  authenticate,
+  requireOwner,
+  clubController.listClubNotifications
+);
+
+router.get(
+  "/:userid/notifications/:id",
+  authenticate,
+  requireOwner,
+  clubController.getClubNotification
+);
+
+router.post(
+  "/:userid/notifications/:id/read",
+  authenticate,
+  requireOwner,
+  clubController.markClubNotificationRead
+);
 
 module.exports = router;

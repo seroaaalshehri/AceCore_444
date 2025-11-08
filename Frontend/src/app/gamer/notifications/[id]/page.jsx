@@ -103,6 +103,8 @@ try {
 
   if (!me) return null;
 
+
+
   return (
     <div className="flex min-h-screen bg-[#0C0817] text-white">
         <div className="absolute inset-2 z-0 pointer-events-none">
@@ -113,7 +115,7 @@ try {
         <LeftSidebar role="gamer" active="notifications" userId={me.id} />
       </div>
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 font-barlow">
         <div className="flex items-center justify-between mb-8">
           <h1 className="ml-20 text-5xl font-bold text-[#FCCC22]">NOTIFICATIONS</h1>
           <EnableNotificationsButton />
@@ -135,7 +137,7 @@ try {
   const relativePath =
     typeof n.link === "string" && n.link.startsWith("/")
       ? n.link
-      : `/gamer/notifications/${me.id}`;
+      : "canceled";
 
   return (
     <Link
@@ -143,7 +145,7 @@ try {
       className="text-[#FCCC22] underline text-xl mt-2 inline-block hover:text-[#ffd84d] transition"
       prefetch={false}
     >
-      View →
+    {relativePath !== "canceled" ? "View →" : ""}
     </Link>
   );
 })()}

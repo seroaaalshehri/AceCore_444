@@ -482,6 +482,46 @@ async function getNotification(req, res, next) {
   }
 }
 
+async function cancelScrimAppointment(req, res) {
+  try {
+    const gamerId = req.params.userid;
+    const appointmentId = req.params.appointmentId;
+    const slotId = req.query.slotId;
+    const clubId = req.query.clubId;
+    const svc = require("../gamerService");
+    const out = await svc.cancelScrimAppointmentService({ gamerId, appointmentId, slotId, clubId });
+    return res.json({ success: true, ...out });
+  } catch (err) {
+    const code = err.code || "ERROR";
+    const status = code === "BAD_REQUEST" ? 400
+                : code === "FORBIDDEN" ? 403
+                : code === "NOT_FOUND" ? 404
+                : code === "TOO_CLOSE" ? 409
+                : code === "NOT_ACCEPTED" ? 409
+                : 500;
+    return res.status(status).json({ success: false, code, error: err.message });
+  }
+}
+
+async function deleteOnHoldRequest(req, res) {
+  try {
+    const gamerId = req.params.userid;
+    const requestId = req.params.requestId;
+    const clubId = req.query.clubId;
+    const slotId = req.query.slotId;
+    const svc = require("../gamerService");
+    const out = await svc.deleteOnHoldRequestService({ gamerId, clubId, slotId, requestId });
+    return res.json({ success: true, ...out });
+  } catch (err) {
+    const code = err.code || "ERROR";
+    const status = code === "BAD_REQUEST" ? 400
+                : code === "FORBIDDEN" ? 403
+                : code === "NOT_FOUND" ? 404
+                : code === "NOT_ON_HOLD" ? 409
+                : 500;
+    return res.status(status).json({ success: false, code, error: err.message });
+  }
+}
 
 module.exports = {
   addAchievement,
@@ -507,4 +547,6 @@ module.exports = {
    listNotifications,
    markNotificationRead,
    getNotification,
+   cancelScrimAppointment,
+   deleteOnHoldRequest,
 };

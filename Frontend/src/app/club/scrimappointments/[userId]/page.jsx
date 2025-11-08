@@ -8,6 +8,7 @@ import { authedFetch } from "../../../../../lib/authedFetch";
 import ScrimAppointmentCard from "../../../Components/scrimAppointments";
 import StatusSelect from "../../../Components/StatusSelect";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import {Alert} from "@heroui/react";
 
 const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 const API_BASE = String(RAW_BASE).replace(/\/+$/, "");
@@ -202,17 +203,40 @@ const isEnded = meta.overriddenStatus === "ended";
 
         <div className="relative z-10 p-6 text-white">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-semibold text-4xl text-[#FCCC22]">Scrim Arenas</h2>
+            <h2 className="font-semibold text-4xl text-[#FCCC22]">Scheduled Scrim Arenas</h2>
+           
             <div className="flex items-center gap-3">
               <span className="status-label text-xl font-semibold">Status</span>
               <StatusSelect value={statusFilter} onChange={(v) => setStatusFilter(v)} />
             </div>
           </div>
 
+
+
+
+<div className="flex flex-col gap-4">
+  <Alert
+    variant="flat"
+    title={
+      <>
+        <span className="font-bold text-xl text-[#A1222F]">Note</span><span className="font-bold " >:</span> You can stream to Twitch using
+        <span className="font-bold "> OBS Studio</span>. When you go live, your gamer followers
+        can discover your stream on <span className="font-bold">AceCore</span>.
+      </>
+    }
+    classNames={{
+      base: "inline-flex w-fit self-start whitespace-nowrap rounded-xl border border-auroraPurple/60 bg-auroraPurple/20 px-4 py-3 ]",
+      icon: "text-auroraPurple",
+      title: "text-white text-l ",
+    }}
+  />
+</div>
+
+
           {msg && <div className="mb-3 text-red-400 break-all">{msg}</div>}
           {loading && <div className="mb-3 text-white/60">Loading…</div>}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 mt-7">
             {!loading && grid.length === 0 ? <div className="text-white/60">No scrims for this filter.</div> : grid}
           </div>
         </div>

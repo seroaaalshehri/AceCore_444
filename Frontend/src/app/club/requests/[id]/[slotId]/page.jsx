@@ -31,6 +31,9 @@ export default function ClubSlotRequestsPage() {
         loading: false,
     });
 
+    const [cancelModal, setCancelModal] = useState({ open: false, loading: false, mode: "confirm" });
+    const [tooLate, setTooLate] = useState(false);
+
     // Wait for Firebase auth
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, (u) => setAuthed(!!u));
@@ -59,6 +62,28 @@ export default function ClubSlotRequestsPage() {
 
             const json = await res.json().catch(() => ({}));
             setItems(Array.isArray(json.items) ? json.items : []);
+
+            const user2 = auth.currentUser;
+            const token2 = await user2.getIdToken();
+
+            const resSlots = await fetch(
+                `${API_BASE}/club/${clubId}/schedule?_ts=${Date.now()}`,
+                { headers: { Authorization: `Bearer ${token2}` }, cache: "no-store" }
+            );
+            const slotsJson = await resSlots.json().catch(() => ({}));
+            const slotsArr = Array.isArray(slotsJson?.slots) ? slotsJson.slots : [];
+            const current = slotsArr.find((s) => String(s.id) === String(slotId)) || null;
+
+            if (current?.scrimTime) {
+                const startMs = current.scrimTime?._seconds
+                    ? current.scrimTime._seconds * 1000
+                    : new Date(current.scrimTime).getTime();
+                const diff = startMs - Date.now();
+                setTooLate(Number.isFinite(startMs) && diff < 24 * 60 * 60 * 1000);
+            } else {
+                setTooLate(false);
+            }
+
         } catch (e) {
             console.error(e);
             setErrMsg("Failed to load requests.");
@@ -143,6 +168,52 @@ export default function ClubSlotRequestsPage() {
         }
     }
 
+    async function cancelSlot() {
+        if (!authed || !clubId || !slotId) return;
+
+        // If < 24h → show a popup with the "not allowed" message (no confirm buttons)
+        if (tooLate) {
+            setCancelModal({ open: true, loading: false, mode: "blocked" });
+            return;
+        }
+
+        // If ≥ 24h → show the normal confirm/cancel popup
+        setCancelModal({ open: true, loading: false, mode: "confirm" });
+    }
+
+
+
+    async function confirmCancel() {
+        if (!authed || !clubId || !slotId) return;
+        try {
+            setCancelModal((p) => ({ ...p, loading: true }));
+
+            const user = auth.currentUser;
+            if (!user) throw new Error("User not authenticated");
+            const token = await user.getIdToken();
+
+            const res = await fetch(
+                `${API_BASE}/club/${encodeURIComponent(clubId)}/schedule/${encodeURIComponent(slotId)}?_ts=${Date.now()}`,
+                {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+
+            const json = await res.json().catch(() => ({}));
+
+            if (!res.ok || json?.ok === false) {
+                throw new Error(json?.error || "Cancel failed");
+            }
+
+            setCancelModal({ open: false, loading: false });
+            router.back();
+        } catch (e) {
+            console.error(e);
+            setErrMsg(e.message || "Cancel failed.");
+            setCancelModal({ open: false, loading: false });
+        }
+    }
 
     return (
         <>
@@ -163,33 +234,47 @@ export default function ClubSlotRequestsPage() {
             </div>
 
             <main
-                className="relative z-10 pt-8 pointer-events-auto"
+                className="relative z-10 pt-8 pointer-events-auto font-barlow"
                 style={{ marginLeft: SIDEBAR_WIDTH + 20, marginRight: 24 }}
             >
                 <div className="mx-auto w-full max-w-7xl">
-                    <h1 className="text-5xl font-bold text-[#FCCC22] mb-6 mt-9 text-center ">
+                    <h1 className="text-6xl font-bold text-[#FCCC22] mb-6 mt-9 text-center ">
                         GAMERS’ REQUESTS
                     </h1>
 
                     <section className="bg-[#1c1430] rounded-xl p-6 md:p-8">
-                        <div
-                            className="flex gap-6 justify-end"
-                            role="tablist"
-                            aria-label="Request filters"
-                        >
-                            {["on_hold", "accepted", "declined"].map((key) => (
-                                <button
-                                    key={key}
-                                    role="tab"
-                                    aria-selected={tab === key}
-                                    onClick={() => setTab(key)}
-                                    className={tab === key ? TAB_ACTIVE : TAB}
-                                    type="button"
-                                >
-                                    {key.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase())}
-                                </button>
-                            ))}
+
+                        <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+                            {/* left side: Cancel button */}
+                            <button
+                                type="button"
+                                onClick={cancelSlot}
+                                className="rounded-md bg-[#FCCC22] text-[#0C0817] text-2xl font-bold px-4 py-2 hover:opacity-90 active:opacity-80"
+                            >
+                                Cancel time slot
+                            </button>
+
+                            {/* right side: tabs */}
+                            <div
+                                className="flex gap-6"
+                                role="tablist"
+                                aria-label="Request filters"
+                            >
+                                {["on_hold", "accepted", "declined"].map((key) => (
+                                    <button
+                                        key={key}
+                                        role="tab"
+                                        aria-selected={tab === key}
+                                        onClick={() => setTab(key)}
+                                        className={tab === key ? TAB_ACTIVE : TAB}
+                                        type="button"
+                                    >
+                                        {key.replace("_", " ").replace(/^\w/, (c) => c.toUpperCase())}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
 
                         {errMsg && (
                             <div className="mt-4 text-red-300 font-semibold bg-[#2b1f47] border border-red-400/30 px-4 py-2 rounded">
@@ -239,7 +324,7 @@ export default function ClubSlotRequestsPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => setConfirmAction({ open: true, requestId: r.id, action: "accept", loading: false })}
-                                                            className="bg-green-400/90 text-[#1c1430] font-bold px-4 py-2 rounded hover:shadow-[0_0_14px_rgba(74,222,128,0.6)] transition"
+                                                            className="bg-green-400/90 text-xl text-[#1c1430] font-bold px-4 py-2 rounded hover:shadow-[0_0_14px_rgba(74,222,128,0.6)] transition"
                                                         >
                                                             Accept
                                                         </button>
@@ -247,7 +332,7 @@ export default function ClubSlotRequestsPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => setConfirmAction({ open: true, requestId: r.id, action: "decline", loading: false })}
-                                                            className="bg-red-400/90 text-[#1c1430] font-bold px-4 py-2 rounded hover:shadow-[0_0_14px_rgba(248,113,113,0.6)] transition"
+                                                            className="bg-red-400/90 text-xl text-[#1c1430] font-bold px-4 py-2 rounded hover:shadow-[0_0_14px_rgba(248,113,113,0.6)] transition"
                                                         >
                                                             Decline
                                                         </button>
@@ -330,6 +415,54 @@ export default function ClubSlotRequestsPage() {
                                 Back
                             </button>
                         </div>
+
+
+                        {cancelModal.open && (
+                            <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-[2147483647]">
+                                <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl font-barlow text-center w-[430px]">
+                                    {cancelModal.mode === "blocked" ? (
+                                        <>
+                                            <h2 className="text-2xl font-bold mb-4 text-red-500 justify-center">Cancellation not allowed</h2>
+                                            <p className="text-xl text-gray-300 mb-6 justify-center">
+                                                Cancellation not allowed within 24 hours of the start time.
+                                            </p>
+                                            <div className="flex w-full">
+                                                <button
+                                                    onClick={() => setCancelModal({ open: false, loading: false, mode: "confirm" })}
+                                                    className="flex-1 bg-[#5f4a87] hover:bg-[#7a66c7] px-4 py-2 rounded text-xl"
+                                                >
+                                                    OK
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="text-2xl font-bold mb-3 text-red-400 text-center"
+                                            >Are you sure you want to cancel time slot?</div>
+                                            <p className="text-2xl text-gray-300 mb-6 text-center font-bold">
+                                                This will delete the slot and all related requests/acceptances.
+                                            </p>
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={confirmCancel}
+                                                    className="flex-1 bg-red-600 hover:bg-red-500 px-4 py-2 rounded text-2xl text-center font-bold"
+                                                    disabled={cancelModal.loading}
+                                                >
+                                                    {cancelModal.loading ? "Cancelling..." : "Cancel slot"}
+                                                </button>
+                                                <button
+                                                    onClick={() => setCancelModal({ open: false, loading: false, mode: "confirm" })}
+                                                    className="flex-1 bg-gray-500 hover:bg-gray-400 px-4 py-2 rounded text-2xl text-center font-bold"
+                                                    disabled={cancelModal.loading}
+                                                >
+                                                    Keep slot
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </section>
                 </div>
             </main>

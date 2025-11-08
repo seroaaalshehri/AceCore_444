@@ -69,5 +69,7 @@ router.get("/:gamerId/notifications/:id", gamerController.getNotification);
 router.get("/:gamerId/notifications", gamerController.listNotifications);
 router.post("/:gamerId/notifications/:id/read", gamerController.markNotificationRead);
 
+router.delete("/:userid/scrim-appointments/:appointmentId", authenticate, requireOwner, gamerController.cancelScrimAppointment);
+router.delete("/:userid/scrim-requests/:requestId", authenticate, requireOwner, gamerController.deleteOnHoldRequest);
 
 module.exports = router;

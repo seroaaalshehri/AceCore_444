@@ -630,7 +630,117 @@ async function getClubSlots(clubId, { gameid, from, to }) {
 }
 
 
+async function _deleteSubcollection(collRef, batchSize = 200) {
+  while (true) {
+    const snap = await collRef.limit(batchSize).get();
+    if (snap.empty) break;
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    if (snap.size < batchSize) break;
+  }
+}
 
+
+async function deleteScheduleSlot(clubId, slotId) {
+  const slotRef = db.collection("users").doc(clubId).collection("schedule").doc(slotId);
+  const snap = await slotRef.get();
+  if (!snap.exists) return false;
+
+  const data = snap.data() || {};
+  const scrimId = String(data.scrimId || "");
+
+  const CANCEL_MIN_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const startMs =
+    data?.scrimTime?._seconds
+      ? data.scrimTime._seconds * 1000
+      : data?.scrimTime
+        ? new Date(data.scrimTime).getTime()
+        : NaN;
+
+  if (Number.isFinite(startMs)) {
+    const diff = startMs - Date.now();
+    if (diff < CANCEL_MIN_MS) {
+      const err = new Error("Cancellation not allowed within 24 hours of the start time.");
+      err.code = "TOO_CLOSE";
+      throw err;
+    }
+  }
+
+  let scrimTimeDate = null;
+  if (data?.scrimTime?._seconds) {
+    scrimTimeDate = new Date(data.scrimTime._seconds * 1000);
+  } else if (data?.scrimTime) {
+    scrimTimeDate = new Date(data.scrimTime);
+  }
+  const scrimTimeText = scrimTimeDate
+    ? scrimTimeDate.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    : "unknown time";
+  ////////////////////////////////////////////////////////////////////////////
+  const affectedSet = new Set();/////new
+
+  // gamersAcceptance: accepted gamers are usually stored with doc ID = userid
+  const acceptedSnap = await slotRef.collection("gamersAcceptance").get();
+  acceptedSnap.forEach((d) => {
+    const row = d.data() || {};
+    const uid = d.id || row.userid;
+    if (uid) affectedSet.add(String(uid));
+  });
+
+  // gamerRequest: gamers who requested (on_hold / etc)
+  const reqSnap = await slotRef.collection("gamerRequest").get();
+  reqSnap.forEach((d) => {
+    const row = d.data() || {};
+    if (row.userid) affectedSet.add(String(row.userid));
+  });
+
+  // get gameName (nice to show in message)
+  let gameName = "";
+  if (data.gameid) {
+    const gSnap = await db.collection("games").doc(String(data.gameid)).get();
+    if (gSnap.exists) {
+      const g = gSnap.data() || {};
+      gameName = g.gameName || g.name || "";
+    }
+  }
+
+  const affectedGamers = [...affectedSet];
+
+  // delete subcollections (like gamerRequest, gamersAcceptance)
+  const subcols = await slotRef.listCollections();
+  for (const col of subcols) {
+    await _deleteSubcollection(col, 200);
+  }
+
+  // delete the schedule doc
+  await slotRef.delete();
+
+  // delete linked scrimArena (best effort, no throw)
+  if (scrimId) {
+    await db
+      .collection("users")
+      .doc(clubId)
+      .collection("scrimArena")
+      .doc(scrimId)
+      .delete()
+      .catch(() => { });
+  }
+
+
+  return {
+    ok: true,
+    affectedGamers,
+    gameName,
+    scrimTimeText,
+
+  };
+}
 
 
 module.exports = {
@@ -654,4 +764,5 @@ module.exports = {
   getUserScrimsWithGame,
   listRequestsForSlotService,
   setRequestStatusService,
+  deleteScheduleSlot,
 };

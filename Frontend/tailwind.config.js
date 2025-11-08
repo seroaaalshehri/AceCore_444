@@ -14,6 +14,7 @@ module.exports = withMT({
     extend: {
       colors: {
         acecoreBackground: "#0C0817",
+         auroraPurple: "#7C3AED",  
       },
     fontFamily: {
     barlow: ["var(--font-barlow-condensed)", "sans-serif"],

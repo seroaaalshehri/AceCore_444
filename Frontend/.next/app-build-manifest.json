@@ -6,10 +6,11 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/gamer/HomePage/[id]/page": [
+    "/SignUp/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/gamer/HomePage/[id]/page.js"
+      "static/css/app/SignUp/page.css",
+      "static/chunks/app/SignUp/page.js"
     ],
     "/Signin/page": [
       "static/chunks/webpack.js",
@@ -23,11 +24,10 @@
       "static/css/app/gamer/profile/[id]/page.css",
       "static/chunks/app/gamer/profile/[id]/page.js"
     ],
-    "/club/profile/[id]/page": [
+    "/gamer/HomePage/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/club/profile/[id]/page.css",
-      "static/chunks/app/club/profile/[id]/page.js"
+      "static/chunks/app/gamer/HomePage/[id]/page.js"
     ],
     "/Logout/page": [
       "static/chunks/webpack.js",
@@ -38,6 +38,17 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/Home/page.js"
+    ],
+    "/club/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/profile/[id]/page.css",
+      "static/chunks/app/club/profile/[id]/page.js"
+    ],
+    "/club/scrimappointments/[userId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/scrimappointments/[userId]/page.js"
     ]
   }
 }

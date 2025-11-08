@@ -15,7 +15,7 @@ import { auth } from "../../../../../lib/firebaseClient";
 
 
 const GOLD_BTN =
- "bg-[#FCCC22] text-[#2b2142b3] font-bold px-9 py-2 rounded-lg text-2xl " +
+ "bg-[#FCCC22] text-[#0C0817] font-bold px-9 py-2 rounded-lg text-2xl " +
   "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow"; 
 
 function formatDate(date) {
@@ -197,9 +197,6 @@ export default function GamerPublicView() {
 
   {/* col 6 — SPACER (no content) */}
 </div>
-
-
-        
 
               <div className="mt-9 ml-2 text-white text-[25px] leading-relaxed w-3/4 whitespace-normal break-words [overflow-wrap:anywhere]">
                 {profile.bio}

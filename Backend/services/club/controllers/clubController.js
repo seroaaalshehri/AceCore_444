@@ -3,7 +3,7 @@ const { admin, db } = require('../../../Firebase/firebaseBackend');
 const { FieldPath } = admin.firestore;
 const { getStorage } = require('firebase-admin/storage');
 const { v4: uuidv4 } = require('uuid');
-const { notifyRequestStatusChange } = require("../../../notify");
+const { notifyRequestStatusChange, notifySlotCanceled } = require("../../../notify");
 const {
   addUserAchievement,
   getUserAchievements,
@@ -23,9 +23,13 @@ const {
   getUserScrimsWithGame,
   listRequestsForSlotService,
   setRequestStatusService,
-
+deleteScheduleSlot,
 } = require("../clubServices");
-
+const {
+  listNotifications: listNotificationsService,
+  markNotificationRead: markNotificationReadService,
+  getNotificationForGamerService,
+} = require("../../gamer/gamerService");
 // -------------------- Add / Update Club Profile --------------------
 async function UpdateUserProfile(req, res) {
   try {
@@ -517,6 +521,94 @@ async function listGamesPublic(req, res) {
   }
 }
 
+async function cancelSchedule(req, res) {
+  try {
+    const { userid, slotId } = req.params;
+    const { ok, affectedGamers, gameName, scrimTimeText, } = await deleteScheduleSlot(userid, slotId);///new
+    if (!ok) return res.status(404).json({ ok: false, error: "Not found" });
+
+    // notify each gamer
+    for (const gamerId of affectedGamers) {
+      await notifySlotCanceled({
+        gamerId,
+        clubId: userid,
+        slotId,
+        gameName,
+        scrimTimeText,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      notifiedGamers: affectedGamers.length,
+    });
+
+  } catch (e) {
+    console.error("cancelSchedule error:", e);
+    if (e?.code === "TOO_CLOSE") {
+      return res.status(409).json({
+        ok: false,
+        code: "TOO_CLOSE",
+        error: "Cancellation not allowed within 24 hours of the start time.",
+      });
+    }
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+}
+
+async function listClubNotifications(req, res) {
+  try {
+    const { userid  } = req.params;
+
+    // reuse same logic as gamer, just pass clubId as the "gamerId"
+    const notifications = await listNotificationsService({ gamerId: userid  });
+
+    res.status(200).json({ success: true, notifications });
+  } catch (err) {
+    console.error("listClubNotifications error:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message || "Failed to list club notifications",
+    });
+  }
+}
+
+async function markClubNotificationRead(req, res) {
+  try {
+    const { userid , id } = req.params;
+
+    await markNotificationReadService({ gamerId: userid , id });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("markClubNotificationRead error:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message || "Failed to mark notification as read",
+    });
+  }
+}
+
+async function getClubNotification(req, res, next) {
+  try {
+    const { userid , id } = req.params;
+
+    const notification = await getNotificationForGamerService({
+      gamerId: userid ,
+      id,
+    });
+
+    return res.status(200).json({ success: true, notification });
+  } catch (err) {
+    if (err.code === "NOT_FOUND") {
+      return res.status(404).json({
+        success: false,
+        error: err.message || "Notification not found",
+      });
+    }
+    return next(err);
+  }
+}
 
 module.exports = {
   UpdateUserProfile,
@@ -544,5 +636,8 @@ updateAchievement,
    getUserProfilePublic,
   listAchievementsPublic,
   listGamesPublic,
-  
+  cancelSchedule,
+  listClubNotifications,
+  markClubNotificationRead,
+  getClubNotification,
 };
