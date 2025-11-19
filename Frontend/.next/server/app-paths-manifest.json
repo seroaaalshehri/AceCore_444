@@ -1,8 +1,9 @@
 {
-  "/Signin/page": "app/Signin/page.js",
-  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js",
   "/gamer/HomePage/[id]/page": "app/gamer/HomePage/[id]/page.js",
-  "/Home/page": "app/Home/page.js",
   "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
-  "/club/scrimappointments/[userId]/page": "app/club/scrimappointments/[userId]/page.js"
+  "/club/scrimappointments/[userId]/page": "app/club/scrimappointments/[userId]/page.js",
+  "/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page": "app/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page.js",
+  "/club/requests/[id]/[slotId]/page": "app/club/requests/[id]/[slotId]/page.js",
+  "/Search/page": "app/Search/page.js",
+  "/club/view/[id]/page": "app/club/view/[id]/page.js"
 }
