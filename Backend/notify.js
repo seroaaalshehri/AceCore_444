@@ -51,6 +51,55 @@ async function sendPushToGamer(gamerId, payload) {
   });
 }
 
+async function sendPushReminderWithFCM(gamerId, payload) {
+  let tokensSnap = await db.collection("users").doc(gamerId).collection("fcmTokens").get();
+  let tokens = tokensSnap.docs.map((d) => d.id);
+
+  if (!tokens.length) {
+    let authUid = null;
+
+    const userDoc = await db.collection("users").doc(gamerId).get();
+    if (userDoc.exists && userDoc.data()?.authUid) {
+      authUid = userDoc.data().authUid;
+    } else {
+      const link = await db.collection("authLinks")
+        .where("userId", "==", gamerId)
+        .limit(1)
+        .get();
+      if (!link.empty) authUid = link.docs[0].id;
+    }
+
+    if (authUid) {
+      const byAuth = await db.collection("users").doc(authUid).collection("fcmTokens").get();
+      tokens = byAuth.docs.map((d) => d.id);
+    }
+  }
+
+  if (!tokens.length) return;
+
+  await messaging.sendEachForMulticast({
+    tokens,
+    notification: {
+      title: payload.title,
+      body: payload.body,
+    },
+    webpush: {
+      notification: {
+        title: payload.title,
+        body: payload.body,
+        icon: "/AC-glow.png",
+        badge: "/favicon-32x32.png",
+        requireInteraction: true,
+        actions: [{ action: "open", title: "Open" }],
+      },
+      fcmOptions: {
+        link: payload.link,
+      },
+    },
+  });
+}
+
+
 async function sendPushToClub(clubId, payload) {
   // Try /users/{clubId}/fcmTokens first
   let tokensSnap = await db.collection("users").doc(clubId).collection("fcmTokens").get();
@@ -207,3 +256,10 @@ exports.notifyGamerCancelled = async ({
     /*link: relativeLink,*/
   });
 };
+
+
+
+
+exports.sendPushToGamer = sendPushToGamer;
+exports.sendPushReminderWithFCM = sendPushReminderWithFCM;
+exports.recordSidebarNotification = recordSidebarNotification;

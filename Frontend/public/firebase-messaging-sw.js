@@ -24,9 +24,9 @@ messaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
     body,
     icon: "/AC-glow.png",
     badge: "/favicon-32x32.png",
-    data: { url },
+data: { url: link },
     requireInteraction: true,
-    actions: [{ action: "open", title: "Open" }],
+    actions: [{ action: "open", title: "Open" }],///remove it later!!!!!!!!!
   });
 });
 

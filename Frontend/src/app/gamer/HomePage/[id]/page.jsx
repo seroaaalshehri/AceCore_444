@@ -46,10 +46,10 @@ export default function GamerHomePage() {
         style={{ marginLeft: SIDEBAR_WIDTH + 100, marginRight: 30 }}
       >
         {/* LIVE row */}
-        <section className="mb-7">
-          <div className="flex items-center gap-2 text-white/90 mb-3">
-            <Radio className="h-6 w-6 text-[#FCCC22]" />
-            <h3 className="font-semibold text-[#FCCC22] text-2xl">Lives on Twitch</h3>
+        <section className="mb-7 font-barlow">
+          <div className="flex items-center gap-2 text-white/90 mb-10">
+            <Radio className="h-11 w-11 text-[#FCCC22]" />
+            <h3 className="font-semibold text-[#FCCC22] text-5xl">LIVES ON TWITCH</h3>
           </div>
 
           {!viewerId && (
@@ -69,7 +69,7 @@ export default function GamerHomePage() {
           )}
 
           {viewerId && !isLoading && !error && liveCards.length === 0 && (
-            <div className="text-gray-400">No clubs you follow are live right now.</div>
+            <div className="text-gray-400 text-2xl mt-6">No clubs you follow are live right now.</div>
           )}
 
           {viewerId && !isLoading && !error && liveCards.length > 0 && (
@@ -93,13 +93,13 @@ export default function GamerHomePage() {
   )}
                     <div className="p-5">
                       <div className="flex items-center gap-3">
-                         <Radio className="h-6 w-6" style={{ color: "#FF4C4C" }} />
-                        <span className="text-xl font-extrabold text-gray-300">Live</span>
+                         <Radio className="h-9 w-9" style={{ color: "#FF4C4C" }} />
+                        <span className="text-2xl font-extrabold text-gray-300">Live</span>
                       </div>
 
                      <div className="flex items-center gap-2 mt-5">
 
-  <div className="h-11 w-11 rounded-full overflow-hidden border border-[#3b2d5e] bg-[#1C1633] ">
+  <div className="h-15 w-14 rounded-full overflow-hidden border border-[#3b2d5e] bg-[#1C1633] ">
     {lv.channelPhoto ? (
       <img 
         src={lv.channelPhoto} 
@@ -111,14 +111,14 @@ export default function GamerHomePage() {
     )}
   </div>
 
-  <p className="text-xl font-bold text-gray-400 ">
+  <p className="text-2xl font-bold text-gray-400 ">
    {"@"}{lv.clubName || "Club"}
   </p>
 </div>
 
 
 
-                      <h3 className="mt-3 text-2xl font-extrabold text-white">
+                      <h3 className="mt-3 text-3xl font-extrabold text-white">
                         {lv.title || "Live now"}
                       </h3>
                  
@@ -128,7 +128,7 @@ export default function GamerHomePage() {
     href={lv.watchUrl}
     target="_blank"
     rel="noreferrer"
-    className="ml-auto inline-block px-3 py-1.5 rounded-md text-sm font-bold bg-[#FCCC22] text-[#2b2142b3] hover:shadow-[0_0_12px_#FCCC22] transition-shadow"
+    className="ml-auto inline-block px-3 py-1.5 rounded-md text-lg font-bold bg-[#FCCC22] text-[#0C0817] hover:shadow-[0_0_12px_#FCCC22] transition-shadow"
   >
     Watch
   </a>

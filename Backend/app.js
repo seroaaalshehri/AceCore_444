@@ -4,7 +4,7 @@ const path = require("path");
 const dotenv = require("dotenv");
 dotenv.config();
 
-
+require("./scheduler/scrimReminderScheduler")();
 require("./middlewares/passportConfig");
 const passport = require("passport");
 
