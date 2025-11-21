@@ -51,6 +51,58 @@ async function sendPushToGamer(gamerId, payload) {
   });
 }
 
+async function sendPushReminderWithFCM(gamerId, payload) {
+  let tokensSnap = await db.collection("users").doc(gamerId).collection("fcmTokens").get();
+  let tokens = tokensSnap.docs.map((d) => d.id);
+
+  if (!tokens.length) {
+    let authUid = null;
+
+    const userDoc = await db.collection("users").doc(gamerId).get();
+    if (userDoc.exists && userDoc.data()?.authUid) {
+      authUid = userDoc.data().authUid;
+    } else {
+      const link = await db.collection("authLinks")
+        .where("userId", "==", gamerId)
+        .limit(1)
+        .get();
+      if (!link.empty) authUid = link.docs[0].id;
+    }
+
+    if (authUid) {
+      const byAuth = await db.collection("users").doc(authUid).collection("fcmTokens").get();
+      tokens = byAuth.docs.map((d) => d.id);
+    }
+  }
+
+  if (!tokens.length) return;
+
+  await messaging.sendEachForMulticast({
+    tokens,
+    notification: {
+      title: payload.title,
+      body: payload.body,
+    },
+      data: {
+      link: payload.link || "/", // can be absolute or relative
+    },
+    webpush: {
+      notification: {
+        title: payload.title,
+        body: payload.body,
+        icon: "/AC-glow.png",
+        badge: "/favicon-32x32.png",
+        requireInteraction: true,
+        actions: [{ action: "open", title: "Open" }],
+      },
+      fcmOptions: {
+        link: payload.link,
+      },
+    },
+  });
+}
+
+
 async function sendPushToClub(clubId, payload) {
   // Try /users/{clubId}/fcmTokens first
   let tokensSnap = await db.collection("users").doc(clubId).collection("fcmTokens").get();
@@ -185,7 +237,7 @@ exports.notifyGamerCancelled = async ({
   const title = "A Gamer Canceled an Appointment";
   const body = `${gamerName} canceled their ${gameName || "scrim"} scrim arena appointment scheduled on ${scrimTimeText || "unknown time"}`;
 
-  // 🔁 build link to club requests page (clubId + slotId)
+  // build link to club requests page (clubId + slotId)
   const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:3000";
 
   //const relativeLink = `/club/requests/${clubId}/${slotId}`;
@@ -195,7 +247,7 @@ exports.notifyGamerCancelled = async ({
   await sendPushToClub(clubId, {
     title,
     body,
-   /* link: absoluteLink,*/
+  
   });
 
   // store sidebar notification for the CLUB
@@ -204,6 +256,14 @@ exports.notifyGamerCancelled = async ({
     body,
     gamerId,
     slotId,
-    /*link: relativeLink,*/
+  
   });
 };
+
+
+  
+
+exports.sendPushToGamer = sendPushToGamer;
+exports.sendPushReminderWithFCM = sendPushReminderWithFCM;
+exports.recordSidebarNotification = recordSidebarNotification;
+exports.sendPushToClub = sendPushToClub;  

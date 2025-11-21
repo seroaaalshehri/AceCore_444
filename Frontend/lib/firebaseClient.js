@@ -13,10 +13,19 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+let messaging = null;
+if (typeof window !== "undefined") {
+  isSupported().then((ok) => {
+    if (ok) {
+      messaging = getMessaging(app);
+    }
+  });
+}
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export { app, messaging };
 
 export async function getMessagingIfSupported() {
   try {
