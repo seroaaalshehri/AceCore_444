@@ -14,11 +14,8 @@ if (!admin.apps.length) {
   });
 }
 
-const messaging = admin.messaging();
+
 const db = admin.firestore();
 const auth = admin.auth();
-const FieldValue = admin.firestore.FieldValue; 
-module.exports = { admin,db, auth , FieldValue, messaging};
 
-
-
+module.exports = { admin,db, auth };

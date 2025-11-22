@@ -1,4 +1,4 @@
-// File: C:\Users\roaa3\acecore\Frontend\src\app\Search\page.jsx
+// File: C:\Users\يسرى\Downloads\AceCore_444-main (1)\AceCore_444\Frontend\src\app\Search\page.jsx
 import * as entry from '../../../../src/app/Search/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
