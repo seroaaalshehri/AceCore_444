@@ -1,9 +1,5 @@
 {
-  "/Signin/page": "app/Signin/page.js",
-  "/Logout/page": "app/Logout/page.js",
-  "/Home/page": "app/Home/page.js",
   "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
-  "/club/notifications/[id]/page": "app/club/notifications/[id]/page.js",
   "/club/scrimappointments/[userId]/page": "app/club/scrimappointments/[userId]/page.js",
-  "/club/requests/[id]/[slotId]/page": "app/club/requests/[id]/[slotId]/page.js"
+  "/club/scrimappointments/[userId]/[slotId]/eval_RL/page": "app/club/scrimappointments/[userId]/[slotId]/eval_RL/page.js"
 }

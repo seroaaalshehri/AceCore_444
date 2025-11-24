@@ -129,7 +129,7 @@ export default function ClubScheduledScrimsPage() {
   }, [slots, statusFilter, now]);
 
   
-  const grid = useMemo(
+ const grid = useMemo(
     () =>
       visibleAndAnnotatedSlots.map((meta) => {
         const s = meta._original;
@@ -139,31 +139,65 @@ export default function ClubScheduledScrimsPage() {
         const startMs = meta.startMs || 0;
         const endMs = meta.endMs ?? Infinity;
      
-const isEnded = meta.overriddenStatus === "ended";
- const canCreate = !isEnded && (now >= (startMs - FIVE_MIN) && now <= endMs);
+      const isEnded = meta.overriddenStatus === "ended";
+      const canCreate =
+        !isEnded && (now >= (startMs - FIVE_MIN)) && now <= endMs;
 
+      const gameId = s.gameid || s.gameId || s.game?.id;
 
-       const rightAction = canCreate ? (
-  <a
-    href={`/club/scrimappointments/createscrimarena/${userId}/${s.scrimId}`}
-    className="px-3 py-2 rounded bg-[#FCCC22] text-[#0C0817] font-semibold text-sm"
-  >
-    Create
-  </a>
-) : (
-  <button
-    type="button"
-    disabled
-    aria-disabled="true"
-    title={meta.overriddenStatus === "ended"
-      ? "This scrim has ended"
-      : "Create will be enabled 5 minutes before the stream starts"}
-    className="px-3 py-2 rounded bg-[#FCCC22]/30 text-[#0C0817] font-semibold text-sm cursor-not-allowed opacity-60"
-    onClick={(e) => e.preventDefault()}
-  >
-    Create
-  </button>
-);
+      let evalPath;
+      switch (gameId) {
+        case "ow":
+          evalPath = `/club/scrimappointments/${userId}/${s.id}/eval_OW`;
+          break;
+        case "rl":
+          evalPath = `/club/scrimappointments/${userId}/${s.id}/eval_RL`;
+          break;
+        case "code":
+          evalPath = `/club/scrimappointments/${userId}/${s.id}/eval_CoD`;
+          break;
+        
+      }
+
+      let rightAction;
+
+      if (isEnded && evalPath) {
+        rightAction = (
+          <a
+            href={evalPath}
+            className="px-3 py-2 rounded bg-[#FCCC22] text-[#0C0817] font-semibold text-sm"
+          >
+            Evaluate
+          </a>
+        );
+      } else if (canCreate) {
+        rightAction = (
+          <a
+            href={`/club/scrimappointments/createscrimarena/${userId}/${s.scrimId}`}
+            className="px-3 py-2 rounded bg-[#FCCC22] text-[#0C0817] font-semibold text-sm"
+          >
+            Create
+          </a>
+        );
+      } else {
+        rightAction = (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title={
+              meta.overriddenStatus === "ended"
+                ? "This scrim has ended"
+                : "Create will be enabled 5 minutes before the stream starts"
+            }
+            className="px-3 py-2 rounded bg-[#FCCC22]/30 text-[#0C0817] font-semibold text-sm cursor-not-allowed opacity-60"
+            onClick={(e) => e.preventDefault()}
+          >
+            Create
+          </button>
+        );
+      }
+
 
         return (
           <ScrimAppointmentCard
@@ -182,7 +216,7 @@ const isEnded = meta.overriddenStatus === "ended";
         );
       }),
     [visibleAndAnnotatedSlots,userId, now]
-  );
+  )
 
   return (
     <div className="bg-[#0b0c10]" style={{ display: "flex", width: "100vw", height: "100vh" }}>

@@ -6,47 +6,26 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/Signin/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/Signin/page.css",
-      "static/chunks/app/Signin/page.js"
-    ],
     "/club/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/club/layout.js"
-    ],
-    "/club/profile/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/club/profile/[id]/page.css",
-      "static/chunks/app/club/profile/[id]/page.js"
-    ],
-    "/club/notifications/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/notifications/[id]/page.js"
     ],
     "/club/scrimappointments/[userId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/club/scrimappointments/[userId]/page.js"
     ],
-    "/club/requests/[id]/[slotId]/page": [
+    "/club/scrimappointments/[userId]/[slotId]/eval_RL/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/club/requests/[id]/[slotId]/page.js"
+      "static/chunks/app/club/scrimappointments/[userId]/[slotId]/eval_RL/page.js"
     ],
-    "/Logout/page": [
+    "/club/profile/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/Logout/page.js"
-    ],
-    "/Home/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/Home/page.js"
+      "static/css/app/club/profile/[id]/page.css",
+      "static/chunks/app/club/profile/[id]/page.js"
     ]
   }
 }
