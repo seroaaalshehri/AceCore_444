@@ -129,20 +129,20 @@ export default function ClubScheduledScrimsPage() {
   }, [slots, statusFilter, now]);
 
   
- const grid = useMemo(
+  const grid = useMemo(
     () =>
       visibleAndAnnotatedSlots.map((meta) => {
         const s = meta._original;
         const gameName = s.game?.gameName || "Scrim";
         const cover = s.game?.gamePhoto || PLACEHOLDER;
-      
+      const evaluationCompleted = !!s.evaluationCompleted; 
         const startMs = meta.startMs || 0;
         const endMs = meta.endMs ?? Infinity;
      
       const isEnded = meta.overriddenStatus === "ended";
       const canCreate =
         !isEnded && (now >= (startMs - FIVE_MIN)) && now <= endMs;
-
+      const isEvaluated = s.evaluationDone === true;   
       const gameId = s.gameid || s.gameId || s.game?.id;
 
       let evalPath;
@@ -159,18 +159,34 @@ export default function ClubScheduledScrimsPage() {
         
       }
 
-      let rightAction;
 
+            let rightAction;
       if (isEnded && evalPath) {
-        rightAction = (
-          <a
-            href={evalPath}
-            className="px-3 py-2 rounded bg-[#FCCC22] text-[#0C0817] font-semibold text-sm"
-          >
-            Evaluate
-          </a>
-        );
+        if (evaluationCompleted) {
+          rightAction = (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="px-3 py-2 rounded bg-[#FCCC22]/30 text-[#0C0817] font-semibold text-sm cursor-not-allowed opacity-60"
+              onClick={(e) => e.preventDefault()}
+            >
+              Evaluated
+            </button>
+          );
+        } else {
+          rightAction = (
+            <a
+              href={evalPath}
+              className="px-3 py-2 rounded bg-[#FCCC22] text-[#0C0817] font-semibold text-sm"
+            >
+              Evaluate
+            </a>
+          );
+        }
       } else if (canCreate) {
+
+        // 🔹 Before/while scrim → normal Create behavior
         rightAction = (
           <a
             href={`/club/scrimappointments/createscrimarena/${userId}/${s.scrimId}`}
@@ -216,7 +232,7 @@ export default function ClubScheduledScrimsPage() {
         );
       }),
     [visibleAndAnnotatedSlots,userId, now]
-  )
+  );
 
   return (
     <div className="bg-[#0b0c10]" style={{ display: "flex", width: "100vw", height: "100vh" }}>

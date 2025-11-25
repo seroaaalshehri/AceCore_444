@@ -1,5 +1,5 @@
 {
-  "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
   "/club/scrimappointments/[userId]/page": "app/club/scrimappointments/[userId]/page.js",
+  "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
   "/club/scrimappointments/[userId]/[slotId]/eval_RL/page": "app/club/scrimappointments/[userId]/[slotId]/eval_RL/page.js"
 }

@@ -11,15 +11,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/club/layout.js"
     ],
-    "/club/scrimappointments/[userId]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/scrimappointments/[userId]/page.js"
-    ],
     "/club/scrimappointments/[userId]/[slotId]/eval_RL/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/club/scrimappointments/[userId]/[slotId]/eval_RL/page.js"
+    ],
+    "/club/scrimappointments/[userId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/scrimappointments/[userId]/page.js"
     ],
     "/club/profile/[id]/page": [
       "static/chunks/webpack.js",

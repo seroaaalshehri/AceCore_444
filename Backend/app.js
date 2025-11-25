@@ -40,7 +40,7 @@ const gamerScrims = require("./services/gamer/routes/gamerScrims");
 const SearchRoutes = require("./services/Search/routes/SearchRoutes");
 const followRoutes = require("./services/follow/routes/followRoutes");
 const { getLiveCardsForViewer } = require("./services/twitch/twitchService");
-
+const evaluationRoutes = require("./services/evaluation/routes/evaluationRoutes");
 
 
 // Mount
@@ -63,6 +63,7 @@ app.get("/api/home/live-cards", async (req, res) => {
     res.status(500).json({ ok: false, error: "server_error" });
   }
 });
+app.use("/api/evaluation", evaluationRoutes);
 
 
 module.exports = app;
