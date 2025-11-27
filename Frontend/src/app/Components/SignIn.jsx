@@ -142,7 +142,7 @@ export default function SignIn({
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_16px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {cLoading ? "Logging in..." : "Log In"}
+            {cLoading ? "Signing in..." : "Sign In"}
           </button>
 
           <div className="w-full flex justify-center mt-6">
@@ -252,7 +252,7 @@ export default function SignIn({
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_12px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {gLoading ? "Logging in..." : "Log In"}
+            {gLoading ? "Signing in..." : "Sign In"}  
           </button>
 
           <div className="w-full flex justify-center mt-6">

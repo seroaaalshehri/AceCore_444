@@ -135,6 +135,14 @@ async function verifyCompleteService(payload = {}) {
 //Write
     // User profile 
     const userRef = usersCol.doc(docId);
+    // normalize socials: accept either payload.socials or individual fields
+    const socials = payload.socials || {
+      twitch: String(payload.twitch || "").trim(),
+      x: String(payload.x || "").trim(),
+      youtube: String(payload.youtube || "").trim(),
+      discord: String(payload.discord || "").trim(),
+    };
+
     const nowData = {
       id: docId,
       role,
@@ -154,7 +162,7 @@ async function verifyCompleteService(payload = {}) {
       gender: payload.gender || "",
       clubName: payload.clubName || "",
       country: payload.country || "",
-      socials: payload.socials || {},
+      socials,
       profilePhoto: payload.avatarUrl || "",
       emailVerified: !!payload.emailVerified,
       provider: payload.provider || "password",

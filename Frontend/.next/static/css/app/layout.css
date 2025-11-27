@@ -858,9 +858,6 @@ video {
 .right-4 {
   right: 1rem;
 }
-.right-5 {
-  right: 1.25rem;
-}
 .right-6 {
   right: 1.5rem;
 }
@@ -956,6 +953,9 @@ video {
 }
 .z-\[50\] {
   z-index: 50;
+}
+.z-\[60\] {
+  z-index: 60;
 }
 .z-\[70\] {
   z-index: 70;
@@ -3140,9 +3140,6 @@ video {
 .pt-5 {
   padding-top: 1.25rem;
 }
-.pt-6 {
-  padding-top: 1.5rem;
-}
 .pt-7 {
   padding-top: 1.75rem;
 }
@@ -3154,6 +3151,9 @@ video {
 }
 .pt-px {
   padding-top: 1px;
+}
+.pl-10 {
+  padding-left: 2.5rem;
 }
 .text-left {
   text-align: left;
@@ -4324,6 +4324,16 @@ input[type="Time"]::-webkit-calendar-picker-indicator {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+
+/* FormAlert positioning helpers (avoid inline style shifts) */
+.form-alert { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.fa-left-gamer { left: 35%; }
+.fa-left-club { left: 65%; }
+.fa-center { left: 50%; }
+
+/* Opacity-only fade to avoid positional animation that can cause flicker */
+@keyframes fadeInOpacity { from { opacity: 0 } to { opacity: 1 } }
+.animate-fadeInOpacity { animation: fadeInOpacity 0.22s ease-out; }
 /* status filter styles */
 .status-filter {
   display: inline-flex;
@@ -5363,6 +5373,10 @@ input[type="Time"]::-webkit-calendar-picker-indicator {
 .hover\:bg-\[\#3b2d5e\]:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(59 45 94 / var(--tw-bg-opacity, 1));
+}
+.hover\:bg-\[\#5a9fd6\]:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(90 159 214 / var(--tw-bg-opacity, 1));
 }
 .hover\:bg-\[\#7a66c7\]:hover {
   --tw-bg-opacity: 1;

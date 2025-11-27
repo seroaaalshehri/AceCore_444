@@ -115,8 +115,7 @@ exports.runLooseSearch = async ({ q, limit = 20, role }) => {
 
 
 // 🔥 Search by game + rank (FIXED VERSION)
-exports.searchByGame = async ({ gameId, role, minRank, maxRank }) => {
-  // Minimal log for invocation
+exports.searchByGame = async ({ gameId, role, score, country  }) => {  // Minimal log for invocation
   console.log('[searchByGame] gameId=%s role=%s', String(gameId), String(role));
 
   // ✅ Normalize game name
@@ -222,28 +221,15 @@ exports.searchByGame = async ({ gameId, role, minRank, maxRank }) => {
     }
   }
 
-  // ✅ FIX: Filter by rank for GAMERS only
-  if (role === "gamer" && minRank !== undefined && maxRank !== undefined) {
-    const min = Number(minRank);
-    const max = Number(maxRank);
-    
-    // filter by rank for gamers
-    
-    userDocs = userDocs.filter(doc => {
-      const r = doc.data().rank;
-      const rankNum = Number(r);
-      const inRange = rankNum >= min && rankNum <= max;
-      
-      if (!inRange) {
-        console.log('  ❌ Filtered out rank:', rankNum);
-      }
-      
-      return inRange;
-    });
-    
-    // after rank filter
-  }
-
+  // ✅ Filter by score for GAMERS only
+if (role === "gamer" && score) {
+  const targetScore = score.toUpperCase();
+  
+  userDocs = userDocs.filter(doc => {
+    const userScore = (doc.data().score || '').toUpperCase();
+    return userScore === targetScore;
+  });
+}
   // Extract userIDs and validate them (skip undefined/non-string ids)
   const userIds = userDocs.map(doc => doc.data().userid);
   const validUserIds = userIds.filter(uid => typeof uid === 'string' && uid.trim());
@@ -271,6 +257,19 @@ exports.searchByGame = async ({ gameId, role, minRank, maxRank }) => {
     results = results.filter(u => u.role === role);
   }
   // No expensive club fallback in production
+// Filter by nationality (gamer) or country (club)
+if (country && country.trim()) {
+  const targetCountry = country.trim();
+  results = results.filter(u => {
+    if (u.role === 'gamer') {
+      return (u.nationality || '').trim() === targetCountry;
+    } else if (u.role === 'club') {
+      return (u.country || '').trim() === targetCountry;
+    }
+    return false;
+  });
+}
 
+return { results };
   return { results };
 };

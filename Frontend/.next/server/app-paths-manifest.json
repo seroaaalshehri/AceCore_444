@@ -1,3 +1,6 @@
 {
-  "/Search/page": "app/Search/page.js"
+  "/Signin/page": "app/Signin/page.js",
+  "/SignUp/page": "app/SignUp/page.js",
+  "/Search/page": "app/Search/page.js",
+  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js"
 }

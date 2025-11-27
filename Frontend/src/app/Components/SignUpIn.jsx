@@ -548,7 +548,7 @@ const validateClubLogo = () => {
         <h1 className="text-2xl font-bold mb-3 text-center">Sign Up as a Club</h1>
 
         <div className="relative flex flex-col items-center justify-center my-4 w-full">
-          <label className="mb-2 text-base text-gray-200">Upload Profile Photo</label>
+          <label className="mb-2 text-base text-gray-200">Upload Club Logo</label>
 
           {/* Hidden file input */}
           <input
@@ -604,11 +604,13 @@ const validateClubLogo = () => {
 
         {/* Social icons header button  */}
 
-        <div className="w-full flex justify-center mb-3">
+        <div className="w-full flex flex-col items-center mb-3">
        <button type="button" onClick={handleTwitchSignIn} className="button-custom">
   <Image src="/twitchIcon.svg" alt="Twitch" width={20} height={20} />
   <span>SignUp with Twitch</span>
 </button>
+
+        <p className="mt-2 text-xs text-gray-400 text-center">Clubs must sign up using Twitch only</p>
 
         </div>
         
@@ -652,7 +654,7 @@ const validateClubLogo = () => {
                 required
                 minLength={8}
                 maxLength={16}
-                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+                className="w-full p-2 pr-10 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
               <button
     type="button"
@@ -662,12 +664,11 @@ const validateClubLogo = () => {
   >
     {showClubSignUpPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
   </button>
-                {clubPasswordMsg && (
-                <p className="mt-1 text-xs text-red-400">{clubPasswordMsg}</p>
-              
-              )}
+              </div>
+            {clubPasswordMsg && (
+              <p className="mt-1 text-xs text-red-400">{clubPasswordMsg}</p>
+            )}
             </div>
-          </div>
           </div>
 
           {/* Club Username + Name */}
@@ -690,7 +691,9 @@ const validateClubLogo = () => {
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
                {clubUsernameMsg && (
-                <p className="mt-1 text-xs text-red-400">{clubUsernameMsg}</p>
+                <p className={`mt-1 text-xs ${clubUStatus === 'available' ? 'text-green-400' : clubUStatus === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>
+                  {clubUsernameMsg}
+                </p>
               )}
             </div>
             <div className="w-1/2">
@@ -709,9 +712,6 @@ const validateClubLogo = () => {
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
-                {clubUsernameMsg && (
-                <p className="mt-1 text-xs text-red-400">{clubUsernameMsg}</p>
-              )}
             </div>
           </div>
           <div className="flex gap-3 w-full mt-3 items-start">
@@ -854,9 +854,6 @@ disabled={
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
-          <p className="mt-2 text-xs text-gray-400 text-center">
-  Clubs must sign up using Twitch only
-</p>
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
@@ -922,7 +919,9 @@ disabled={
                 className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
              {gamerUsernameMsg && (
-                <p className="mt-1 text-xs text-red-400">{gamerUsernameMsg}</p>
+                <p className={`mt-1 text-xs ${gamerUStatus === 'available' ? 'text-green-400' : gamerUStatus === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>
+                  {gamerUsernameMsg}
+                </p>
               )}
             </div>
 
@@ -963,7 +962,7 @@ disabled={
                    required
                   minLength={8}
                   maxLength={16}
-                  className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+                  className="w-full  p-2 pr-10 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
                 />
                 <button
     type="button"
@@ -973,11 +972,11 @@ disabled={
   >
     {showGamerSignUpPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
   </button>
-                  {gamerPasswordMsg && (
+                </div>
+                {gamerPasswordMsg && (
                   <p className="mt-1 text-xs text-red-400">{gamerPasswordMsg}</p>
                 )}
               </div>
-            </div>
             </div>
 
             {/* Nationality dropdown */}
@@ -1269,6 +1268,7 @@ disabled={
   open={Boolean(errorMsg || okMsg)}
   type={errorMsg ? "error" : "success"}
   message={errorMsg || okMsg}
+  side={isActive ? 'club' : 'gamer'}
   onClose={() => {
     setErrorMsg("");
     setOkMsg("");

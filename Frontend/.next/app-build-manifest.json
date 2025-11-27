@@ -11,6 +11,29 @@
       "static/chunks/main-app.js",
       "static/css/app/Search/page.css",
       "static/chunks/app/Search/page.js"
+    ],
+    "/Signin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/Signin/page.css",
+      "static/chunks/app/Signin/page.js"
+    ],
+    "/gamer/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/gamer/profile/[id]/page.css",
+      "static/chunks/app/gamer/profile/[id]/page.js"
+    ],
+    "/gamer/scrimappointments/view/[userId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/scrimappointments/view/[userId]/page.js"
+    ],
+    "/SignUp/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/SignUp/page.css",
+      "static/chunks/app/SignUp/page.js"
     ]
   }
 }

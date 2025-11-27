@@ -203,12 +203,8 @@ const checkUsernameAvailable = async (username) => {
         }
 
         const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.includes("google.com")) {
-          setErrorMsg("Sign-up failed. Please try again.");
-          return;
-        }
-        if (methods.includes("password")) {
-          setErrorMsg("Sign-up failed. Please try again.");
+        if (methods.includes("google.com") || methods.includes("password")) {
+          setErrorMsg("Please provide a different email address.");
           return;
         }
 
@@ -244,11 +240,11 @@ if (formData.role === "club") {
 
   const methods = await fetchSignInMethodsForEmail(auth, email);
   if (methods.length && !methods.includes("password")) {
-    setErrorMsg("This email is already used with a different sign-in method.");
+    setErrorMsg("Please provide a different email address.");
     return;
   }
   if (methods.includes("password")) {
-    setErrorMsg("This email already has a password account.");
+    setErrorMsg("Please provide a different email address.");
     return;
   }
 
@@ -297,7 +293,12 @@ if (formData.role === "club") {
 }
 
     } catch (err) {
-      setErrorMsg("Sign-up failed. Please try again.");
+      console.error("SignUp error:", err);
+      let msg = "Sign-up failed. Please try again.";
+      if (err && (err.code === 'auth/email-already-in-use' || (err.message && err.message.toLowerCase().includes('already')))) {
+        msg = "Please provide a different email address.";
+      }
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link"
 import { authedFetch } from "../../../lib/authedFetch";
+import countries from "world-countries";
 
 // Available games list - add more as needed
 const AVAILABLE_GAMES = [
@@ -12,6 +13,8 @@ const AVAILABLE_GAMES = [
   // Add more games here
 ];
 
+const AVAILABLE_SCORES = ["S", "A", "B", "C", "D"];
+
 export default function Search() {
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -20,11 +23,20 @@ export default function Search() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterTarget, setFilterTarget] = useState("gamer");
   const [selectedGames, setSelectedGames] = useState([]); // Multi-select games
-  const [minRank, setMinRank] = useState(1);
-  const [maxRank, setMaxRank] = useState(5);
-
+  const [selectedScore, setSelectedScore] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
   const debounceRef = useRef(null);
 
+  const getNationality = (c) =>
+    c?.demonyms?.eng?.m || c?.demonym || c?.nationality || c?.name?.common;
+  
+  const NATIONALITY_OPTIONS = countries
+    .filter((c) => c.cca2 !== "IL")
+    .map((c) => ({ key: c.cca2, label: getNationality(c) }))
+    .filter((o) => !!o.label)
+    .sort((a, b) => a.label.localeCompare(b.label));
   useEffect(() => {
     const q = query.trim();
   
@@ -109,27 +121,43 @@ export default function Search() {
   }
 
   async function applyFilter() {
+    // Validation checks
     if (selectedGames.length === 0) {
-      alert("Please select at least one game.");
+      setAlertMessage("Please select at least one game.");
+      setShowAlert(true);
       return;
     }
   
+    if (filterTarget === "gamer" && !selectedScore) {
+      setAlertMessage("Please select a score.");
+      setShowAlert(true);
+      return;
+    }
+    if (!selectedCountry) {
+      setAlertMessage(`Please select a ${filterTarget === "gamer" ? "nationality" : "country"}.`);
+      setShowAlert(true);
+      return;
+    }
+    setLoading(true);  
     setLoading(true);
     setError("");
   
     try {
-      // Search for each selected game and combine results
+      // Search for each selected game and combine results (OR logic)
       const allResults = [];
       const seenIds = new Set();
-
+  
       for (const gameId of selectedGames) {
         const params = new URLSearchParams();
         params.set("gameId", gameId);
         params.set("role", filterTarget);
   
-        if (filterTarget === "gamer") {
-          params.set("minRank", String(Number(minRank)));
-          params.set("maxRank", String(Number(maxRank)));
+        if (filterTarget === "gamer" && selectedScore) {
+          params.set("score", selectedScore);
+        }
+
+        if (selectedCountry) {
+          params.set("country", selectedCountry);
         }
   
         console.log("🔍 Filter request:", params.toString());
@@ -139,19 +167,24 @@ export default function Search() {
         );
   
         const data = await res.json();
-        console.log("📦 Filter response:", data);
-        
+        console.log("📦 Filter response for", gameId, ":", data);
+  
         if (data.success && data.results) {
-          // Deduplicate results
+          // Deduplicate results - this is the OR logic
+          // If a user appears in ANY game search, add them once
           for (const user of data.results) {
             if (!seenIds.has(user.id)) {
               seenIds.add(user.id);
               allResults.push(user);
+              console.log("✅ Added user:", user.username || user.clubName, "from game:", gameId);
+            } else {
+              console.log("⏭️ User already added:", user.username || user.clubName);
             }
           }
         }
       }
-
+  
+      console.log("🎯 Total unique results:", allResults.length);
       setResults(allResults);
       setError("");
       setQuery("");
@@ -171,8 +204,8 @@ export default function Search() {
 
   function clearFilters() {
     setSelectedGames([]);
-    setMinRank(1);
-    setMaxRank(5);
+    setSelectedScore("");
+    setSelectedCountry("");
   }
 
   return (
@@ -248,6 +281,26 @@ export default function Search() {
         )}
       </div>
 
+
+
+{/* Alert Pop-up */}
+{showAlert && (
+<div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-[60]">
+            <div className="bg-[#1C1633] text-white p-6 rounded-xl shadow-2xl w-[350px] text-center">
+            <p className="text-lg font-bold mb-4">{alertMessage}</p>
+            <button
+              onClick={() => setShowAlert(false)}
+              className="w-full bg-[#4682B4] hover:bg-[#5a9fd6] px-4 py-2 rounded text-sm transition"
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
+   
+
+
       {/* Filter Modal */}
       {isFilterOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -314,37 +367,53 @@ export default function Search() {
               )}
             </div>
 
-            {/* Rank Filter (Gamer only) */}
-            {filterTarget === "gamer" && (
-              <div className="mb-4">
-                <label className="text-white mb-2 block font-semibold">Rank Range</label>
-                <div className="flex gap-3 items-center">
-                  <div className="flex-1">
-                    <label className="text-gray-400 text-sm mb-1 block">Min Rank</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={5}
-                      className="w-full bg-[#2b2142] text-white px-3 py-2 rounded-lg border border-[#FCCC22]/40 focus:border-[#FCCC22] focus:outline-none"
-                      value={minRank}
-                      onChange={(e) => setMinRank(Number(e.target.value))}
-                    />
-                  </div>
-                  <span className="text-gray-400 pt-6">to</span>
-                  <div className="flex-1">
-                    <label className="text-gray-400 text-sm mb-1 block">Max Rank</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={5}
-                      className="w-full bg-[#2b2142] text-white px-3 py-2 rounded-lg border border-[#FCCC22]/40 focus:border-[#FCCC22] focus:outline-none"
-                      value={maxRank}
-                      onChange={(e) => setMaxRank(Number(e.target.value))}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Score Filter (Gamer only) */}
+{filterTarget === "gamer" && (
+  <div className="mb-4">
+    <label className="text-white mb-2 block font-semibold">Select Score</label>
+    <select
+      className="w-full bg-[#2b2142] text-white px-3 py-2 rounded-lg border border-[#FCCC22]/40 focus:border-[#FCCC22] focus:outline-none"
+      value={selectedScore}
+      onChange={(e) => setSelectedScore(e.target.value)}
+    >
+      <option value="">All Scores</option>
+      {AVAILABLE_SCORES.map(score => (
+        <option key={score} value={score}>{score}</option>
+      ))}
+    </select>
+  </div>
+)}
+
+{/* Country/Nationality Filter */}
+<div className="mb-4">
+  <label className="text-white mb-2 block font-semibold">
+    {filterTarget === "gamer" ? "Select Nationality" : "Select Country"}
+  </label>
+  <select
+    className="w-full bg-[#2b2142] text-white px-3 py-2 rounded-lg border border-[#FCCC22]/40 focus:border-[#FCCC22] focus:outline-none"
+    value={selectedCountry}
+    onChange={(e) => setSelectedCountry(e.target.value)}
+  >
+    <option value="">
+      {filterTarget === "gamer" ? "All Nationalities" : "All Countries"}
+    </option>
+    {filterTarget === "gamer" 
+      ? NATIONALITY_OPTIONS.map((o) => (
+          <option key={o.key} value={o.label}>
+            {o.label}
+          </option>
+        ))
+      : countries
+          .filter((c) => c.cca2 !== "IL")
+          .sort((a, b) => a.name.common.localeCompare(b.name.common))
+          .map((c) => (
+            <option key={c.cca2} value={c.name.common}>
+              {c.name.common}
+            </option>
+          ))
+    }
+  </select>
+</div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 mt-6">

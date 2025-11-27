@@ -39,9 +39,8 @@ async function SearchProfilesByGame(req, res) {
   try {
     let gameId = (req.query.gameId || "").trim();
     const role = (req.query.role || "").trim();
-    const minRank = req.query.minRank;
-    const maxRank = req.query.maxRank;
-
+    const score = req.query.score;
+    const country = (req.query.country || "").trim();
     // incoming params logged during debugging; removed for production
 
     if (!gameId) {
@@ -76,8 +75,9 @@ async function SearchProfilesByGame(req, res) {
     const { results } = await searchByGame({
       gameId,
       role,
-      minRank,
-      maxRank,
+      score,
+      country
+
     });
 
     return res.json({ success: true, results });
