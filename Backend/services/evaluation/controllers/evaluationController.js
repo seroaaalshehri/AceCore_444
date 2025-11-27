@@ -1,6 +1,6 @@
-const { processRocketLeagueEvaluations } = require("../evaluationServices");
+const { processRocketLeagueEvaluations, evaluateOverwatch, } = require("../evaluationServices");
 
-exports.evaluateRocketLeague = async (req, res) => {
+async function evaluateRocketLeague(req, res) {
   try {
     const { clubId, slotId, evaluations } = req.body;
 
@@ -15,4 +15,18 @@ exports.evaluateRocketLeague = async (req, res) => {
     console.error("Evaluation error:", err);
     res.status(500).json({ error: err.message });
   }
-};
+}
+
+async function evaluateOverwatch2(req, res) {
+  try {
+    const result = await evaluateOverwatch(req.body);
+    res.json(result);
+  } catch (e) {
+    console.error("[evaluateOverwatch]", e);
+    res
+      .status(500)
+      .json({ success: false, error: e.message || "server_error" });
+  }
+}
+
+module.exports = { evaluateOverwatch2, evaluateRocketLeague };
