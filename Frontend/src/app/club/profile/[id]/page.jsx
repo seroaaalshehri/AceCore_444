@@ -16,6 +16,7 @@ import { MapPin, FileText, Image as ImageIcon, File, User } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../../../lib/firebaseClient";
 import { authedFetch } from "../../../../../lib/authedFetch";
+import CodInfoTooltip from "../../../Components/CodInfoTooltip";
 
 
 const ALLOWED_MIME = new Set([
@@ -1261,20 +1262,21 @@ export default function ClubProfile() {
                 {games.map((g) => (
                   <div
                     key={g.id}
-                    className="w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430] overflow-hidden flex flex-col relative"
+                    className="w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430]  flex flex-col relative"
                   >
                     <img
                       src={g.gamePhoto}
                       alt={g.gameName}
-                      className="w-full h-60 object-cover"
+                      className="w-full h-60 rounded-t-xl object-cover"
                     />
 
                     <div className="p-4 flex flex-col gap-1 text-left">
                       <div className="flex items-center justify-between">
                         {/* Game name on the left */}
-                        <span className="font-bold text-white relative -top-2 text-[32px]">
-                          {g.gameName}
-                        </span>
+                       <span className="font-bold text-white relative -top-2 text-[32px] flex items-center gap-2">
+  {g.gameName}
+  {g.gameName === "Call of Duty" && <CodInfoTooltip />}
+</span>
 
                         {/* Trash icon on the right */}
                         <button
@@ -1341,7 +1343,7 @@ export default function ClubProfile() {
             </div>
 
             {/* Achievements section  */}
-            <section className="relative z-100 ">
+            <section className="relative z-100">
               <AddAchievement userid={uid} onDeleteAchievement={handleDeleteAchievement} reloadFlag={achievementsReloadFlag} />
             </section>
 

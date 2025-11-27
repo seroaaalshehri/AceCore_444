@@ -66,6 +66,13 @@ export function SignUpIn({ formData, handleChange, handleSubmit }) {
   const [gamesError, setGamesError] = useState("");
   const [showGamerSignUpPw, setShowGamerSignUpPw] = useState(false); 
   const [showClubSignUpPw, setShowClubSignUpPw] = useState(false); 
+const [clubEmailMsg, setClubEmailMsg] = useState("");
+const [clubNameMsg, setClubNameMsg] = useState("");
+const [clubCountryMsg, setClubCountryMsg] = useState("");
+const [twitchMsg, setTwitchMsg] = useState("");
+const [xMsg, setXMsg] = useState("");
+const [youtubeMsg, setYoutubeMsg] = useState("");
+const [discordMsg, setDiscordMsg] = useState("");
 
 React.useEffect(() => {
   if (errorMsg || okMsg) {
@@ -105,7 +112,7 @@ const isValidSocialUrl = (platform, url) => {
   const rules = SOCIAL_PATTERNS[platform] || [];
   return rules.some((re) => re.test((url || "").trim()));
 };
-
+const [clubLogoMsg, setClubLogoMsg] = useState("");
   const [socialPlatform, setSocialPlatform] = useState(null);
   const [socialInputValue, setSocialInputValue] = useState("");
   const [socialAlertOpen, setSocialAlertOpen] = useState(false);
@@ -113,6 +120,7 @@ const isValidSocialUrl = (platform, url) => {
   const cutoffDate = subYears(new Date(), MIN_AGE);
   const years = Array.from({ length: 100 }, (_, i) => getYear(new Date()) - i);
   const fileClubRef = useRef(null);
+const [clubGamesMsg, setClubGamesMsg] = useState("");
 
   const getNationality = (c) =>
     c?.demonyms?.eng?.m || c?.demonym || c?.nationality || c?.name?.common;
@@ -147,6 +155,11 @@ const isValidSocialUrl = (platform, url) => {
 
   };
 
+  React.useEffect(() => {
+  window.setClubEmailMsg = setClubEmailMsg;
+  return () => { window.setClubEmailMsg = null; };
+}, []);
+
   const switchToClub = () => {
     setIsActive(true);
 
@@ -168,11 +181,6 @@ const isValidSocialUrl = (platform, url) => {
     setAlertMessage(msg);
     setAlertOpen(true);
   };
-
-
-
-
-
 
   
   const closeAlert = () => setAlertOpen(false);
@@ -233,7 +241,6 @@ const handleTwitchSignIn = async () => {
 };
 
 
-
   const handleBirthDate = (date) => {
     if (!date) return;
     if (isAfter(date, cutoffDate)) {
@@ -279,7 +286,6 @@ const handleGoogleSignIn = async () => {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
   ];
-
 
 
 const selectedGameIds = Array.isArray(formData?.games) ? formData.games : [];
@@ -343,32 +349,61 @@ const handleGameToggle = handleGameSelect;
 
 
   const validateClubForm = () => {
+    let valid = true;
+    const email   = String(formData?.clubEmail || "").trim();
     const uname = String(formData?.clubUsername || "").trim();
     const pass = String(formData?.clubPassword || "");
+    const cname = String(formData?.clubName || "").trim();
+  const country = String(formData?.country || "").trim();
+    const games   = formData?.games || [];
 
-    if (!uname) {
-      setErrorMsg("Please enter a username.");
-      return false;
-    }
-    if (!isValidUsername(uname)) {
-      setErrorMsg("Username must be 4 to 15 characters, letters or numbers at the ends, dash allowed in the middle, no double dashes.");
-      return false;
-    }
+  setClubEmailMsg("");
+  setClubUsernameMsg("");
+  setClubPasswordMsg("");
+  setClubNameMsg("");
+  setClubCountryMsg("");
+  setClubGamesMsg("");
+if (!email) {
+    setClubEmailMsg("Email is required. Please sign up with Twitch first.");
+    valid = false;
+  }
 
-    if (!pass) {
-      setErrorMsg("Please enter a password.");
-      return false;
-    }
-    if (!isStrongPassword(pass)) {
-      setErrorMsg("Password must be  8 to 16 characters with upper, lower, number, special, no spaces.");
-      return false;
-    }
+  if (!uname) {
+    setClubUsernameMsg("Username is required.");
+    valid = false;
+  }
+if (!cname) {
+    setClubNameMsg("Club name is required.");
+    valid = false;
+  }
+  if (!country) {
+    setClubCountryMsg("Please select your country.");
+    valid = false;
+  }
 
-    if (selectedGameIds.length === 0) {
-      setErrorMsg("Please select at least one game.");
-      return false;
-    }
-    return true;
+ if (!pass || pass.trim().length === 0) {
+  setClubPasswordMsg("Password is required.");
+  return false;
+}
+
+if (!isStrongPassword(pass)) {
+  setClubPasswordMsg("Password must be 8 to 16 characters with upper, lower, number, special, no spaces.");
+  return false;
+}
+if (!formData.clubEmail) {
+  setClubEmailMsg("Email is required.");
+  valid = false;
+}
+if (!Array.isArray(formData.games) || formData.games.length === 0) {
+  setClubGamesMsg("Please select at least one game.");
+  valid = false;   
+}
+if (!games.length) {
+    setClubGamesMsg("Please select at least one game.");
+    valid = false;
+  }
+
+    return valid;
   };
 
 
@@ -486,36 +521,92 @@ const checkClubAvailabilityDebounced = debounce(async (u) => {
     if (!validateGamerForm()) return;
     handleSubmit(e);
   };
-const validateSocialLinks = () => {
-  const twitchValid =
-    formData.twitch &&
-    /^https?:\/\/(www\.)?twitch\.tv\/.+/i.test(formData.twitch);
-  const xValid =
-    formData.x &&
-    /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/.+/i.test(formData.x);
+  const validateSocialLinks = () => {
+  const twitch  = (formData.twitch  || "").trim();
+  const x       = (formData.x       || "").trim();
+  const youtube = (formData.youtube || "").trim();
+  const discord = (formData.discord || "").trim();
 
-  if (!twitchValid || !xValid) {
-    setErrorMsg("Please provide valid Twitch and X links before signing up.");
-    return false;
+  let ok = true;
+
+  setTwitchMsg("");
+  setXMsg("");
+  setYoutubeMsg("");
+  setDiscordMsg("");
+
+  if (!twitch) {
+    setTwitchMsg("Twitch link is required. Example: https://twitch.tv/yourname");
+    ok = false;
+  } else if (!isValidSocialUrl("twitch", twitch)) {
+    setTwitchMsg("Invalid Twitch link. Ex: https://twitch.tv/yourname");
+    ok = false;
   }
-  return true;
+
+  if (!x) {
+    setXMsg("X link is required. Example: https://x.com/yourhandle");
+    ok = false;
+  } else if (!isValidSocialUrl("x", x)) {
+    setXMsg("Invalid X link. Ex: https://x.com/yourhandle");
+    ok = false;
+  }
+
+  if (youtube && !isValidSocialUrl("youtube", youtube)) {
+setYoutubeMsg(
+      "Invalid YouTube link. Ex: youtube.com/@name"
+    );    ok = false;
+  }
+
+  if (discord && !isValidSocialUrl("discord", discord)) {
+setDiscordMsg(
+      "Invalid Discord invite. Ex: discord.gg/abc123"
+    );    ok = false;
+  }
+
+  return ok;
 };
+
+
 
 const validateClubLogo = () => {
   if (!clubAvatarPreview) {
-    setErrorMsg("Please upload your club logo before signing up.");
+    setClubLogoMsg("Please upload your club logo.");
     return false;
   }
+  setClubLogoMsg("");
   return true;
 };
-  const onSubmitClub = (e) => {
-    e.preventDefault();
-    resetNotes();
-    if (!validateClubForm()) return;
-     if (!validateClubLogo()) return; 
-  if (!validateSocialLinks()) return;  
-    handleSubmit(e);
-  };
+
+const resetClubMessages = () => {
+  setClubUsernameMsg("");
+  setClubPasswordMsg("");
+  setClubNameMsg("");
+  setClubCountryMsg("");
+  setClubLogoMsg("");
+  setClubGamesMsg("");
+  setClubEmailMsg("");
+  setTwitchMsg("");
+  setXMsg("");
+  setYoutubeMsg("");
+  setDiscordMsg("");
+};
+
+const onSubmitClub = (e) => {
+  e.preventDefault();
+  resetNotes();
+  resetClubMessages();
+
+  const ok1 = validateClubForm();
+  const ok2 = validateClubLogo();
+  const ok3 = validateSocialLinks();
+
+  if (!ok1 || !ok2 || !ok3) {
+    setLoading(false);
+    return;
+  }
+
+  handleSubmit(e);
+};
+
 
   return (
     <div className={`container ${isActive ? "active" : ""}`} id="container">
@@ -548,7 +639,7 @@ const validateClubLogo = () => {
         <h1 className="text-2xl font-bold mb-3 text-center">Sign Up as a Club</h1>
 
         <div className="relative flex flex-col items-center justify-center my-4 w-full">
-          <label className="mb-2 text-base text-gray-200">Upload Profile Photo</label>
+          <label className="mb-2 text-base text-gray-200">Upload Club Logo</label>
 
           {/* Hidden file input */}
           <input
@@ -577,6 +668,11 @@ const validateClubLogo = () => {
               <User className="text-gray-300" style={{ width: "90px", height: "90px" }} />
             )}
           </div>
+{clubLogoMsg && (
+  <p className="mt-2 text-base text-red-400 text-center">
+    {clubLogoMsg}
+  </p>
+)}
 
 
           {clubAvatarPreview && avatarMenuOpen && (
@@ -604,17 +700,20 @@ const validateClubLogo = () => {
 
         {/* Social icons header button  */}
 
-        <div className="w-full flex justify-center mb-3">
+        <div className="w-full flex flex-col items-center mb-3">
        <button type="button" onClick={handleTwitchSignIn} className="button-custom">
   <Image src="/twitchIcon.svg" alt="Twitch" width={20} height={20} />
   <span>SignUp with Twitch</span>
 </button>
+
+        <p className="mt-2 text-md text-gray-400 text-center">Clubs must sign up using Twitch only</p>
 
         </div>
         
         <form
           className="flex flex-col items-center w-full max-w-md"
           onSubmit={onSubmitClub}
+           noValidate 
         >
           {/* Email + Password */}
           <div className="flex gap-3 w-full">
@@ -629,12 +728,14 @@ const validateClubLogo = () => {
                 placeholder="Enter email"
                 value={formData.clubEmail || ""}
                 onChange={handleChange}
-                required
                  disabled
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
-            
+
               />
 
+  {clubEmailMsg && (
+    <p className="mt-1 text-sm text-red-400">{clubEmailMsg}</p>
+  )}
 
             </div>
             <div className="w-1/2">
@@ -649,10 +750,10 @@ const validateClubLogo = () => {
                 placeholder="Enter password"
                 value={formData.clubPassword || ""}   
                 onChange={onInputChange}
-                required
+                
                 minLength={8}
                 maxLength={16}
-                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+                className="w-full p-2 pr-10 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
               <button
     type="button"
@@ -662,12 +763,11 @@ const validateClubLogo = () => {
   >
     {showClubSignUpPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
   </button>
-                {clubPasswordMsg && (
-                <p className="mt-1 text-xs text-red-400">{clubPasswordMsg}</p>
-              
-              )}
+              </div>
+            {clubPasswordMsg && (
+              <p className="mt-1 text-sm text-red-400">{clubPasswordMsg}</p>
+            )}
             </div>
-          </div>
           </div>
 
           {/* Club Username + Name */}
@@ -682,7 +782,7 @@ const validateClubLogo = () => {
                 type="text"
                 placeholder="Unique username"
                 value={formData.clubUsername || ""}
-                onChange={onInputChange}                required
+                onChange={onInputChange} 
                  minLength={4}
                 maxLength={15}
                  pattern="[A-Za-z0-9][A-Za-z0-9-]{2,13}[A-Za-z0-9]"
@@ -690,7 +790,9 @@ const validateClubLogo = () => {
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
                {clubUsernameMsg && (
-                <p className="mt-1 text-xs text-red-400">{clubUsernameMsg}</p>
+                <p className={`mt-1 text-sm ${clubUStatus === 'available' ? 'text-green-400' : clubUStatus === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>
+                  {clubUsernameMsg}
+                </p>
               )}
             </div>
             <div className="w-1/2">
@@ -709,9 +811,9 @@ const validateClubLogo = () => {
                 required
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
-                {clubUsernameMsg && (
-                <p className="mt-1 text-xs text-red-400">{clubUsernameMsg}</p>
-              )}
+              {clubNameMsg && (
+    <p className="mt-1 text-sm text-red-400">{clubNameMsg}</p>
+  )}
             </div>
           </div>
           <div className="flex gap-3 w-full mt-3 items-start">
@@ -729,6 +831,7 @@ const validateClubLogo = () => {
                 className="w-full h-10 p-2 rounded-md bg-[#eee] text-gray-600 text-sm
       hover:shadow-[0_0_12px_#5f4a87] focus:outline-none cursor-pointer"
               >
+                
                 <option value="" disabled hidden>
                   Select Country
                 </option>
@@ -742,6 +845,9 @@ const validateClubLogo = () => {
                   ))}
 
               </select>
+              {clubCountryMsg && (
+    <p className="mt-1 text-sm text-red-400">{clubCountryMsg}</p>
+  )}
             </div>
 
            {/* Social Media Icons */}
@@ -766,29 +872,19 @@ const validateClubLogo = () => {
     ))}
   </div>
 
- {/* validation messages */}
-  {formData?.twitch && !isValidSocialUrl("twitch", formData.twitch) && (
-    <p className="mt-1 text-xs text-red-400">
-      Invalid Twitch link. Example: https://twitch.tv/yourname
-    </p>
-  )}
-  {formData?.x && !isValidSocialUrl("x", formData.x) && (
-    <p className="mt-1 text-xs text-red-400">
-      Invalid X link. Example: https://x.com/yourhandle
-    </p>
-  )}
-  {formData?.youtube && !isValidSocialUrl("youtube", formData.youtube) && (
-    <p className="mt-1 text-xs text-red-400">
-      Invalid YouTube link. Examples: 
-      https://youtube.com/@channel • https://youtu.be/VIDEO_ID
-    </p>
-  )}
-  {formData?.discord && !isValidSocialUrl("discord", formData.discord) && (
-    <p className="mt-1 text-xs text-red-400">
-      Invalid Discord invite link. Example: https://discord.gg/abc123
-    </p>
-  )}
-  
+ {twitchMsg && (
+  <p className="mt-1 text-sm text-red-400">{twitchMsg}</p>
+)}
+{xMsg && (
+  <p className="mt-1 text-sm text-red-400">{xMsg}</p>
+)}
+{youtubeMsg && (
+  <p className="mt-1 text-sm text-red-400">{youtubeMsg}</p>
+)}
+{discordMsg && (
+  <p className="mt-1 text-sm text-red-400">{discordMsg}</p>
+)}
+
 </div>
 
           </div>
@@ -828,6 +924,10 @@ const validateClubLogo = () => {
       );
     })}
   </div>
+  {clubGamesMsg && (
+  <p className="mt-2 text-sm text-red-400">{clubGamesMsg}</p>
+)}
+
 
   <input
     type="text"
@@ -854,9 +954,6 @@ disabled={
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
-          <p className="mt-2 text-xs text-gray-400 text-center">
-  Clubs must sign up using Twitch only
-</p>
 
           <p className="mt-3 text-sm text-gray-400 text-center">
             Already have an account?{" "}
@@ -922,7 +1019,9 @@ disabled={
                 className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
               />
              {gamerUsernameMsg && (
-                <p className="mt-1 text-xs text-red-400">{gamerUsernameMsg}</p>
+                <p className={`mt-1 text-xs ${gamerUStatus === 'available' ? 'text-green-400' : gamerUStatus === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>
+                  {gamerUsernameMsg}
+                </p>
               )}
             </div>
 
@@ -963,7 +1062,7 @@ disabled={
                    required
                   minLength={8}
                   maxLength={16}
-                  className="w-full  p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
+                  className="w-full  p-2 pr-10 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none"
                 />
                 <button
     type="button"
@@ -973,11 +1072,11 @@ disabled={
   >
     {showGamerSignUpPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
   </button>
-                  {gamerPasswordMsg && (
+                </div>
+                {gamerPasswordMsg && (
                   <p className="mt-1 text-xs text-red-400">{gamerPasswordMsg}</p>
                 )}
               </div>
-            </div>
             </div>
 
             {/* Nationality dropdown */}
@@ -1269,6 +1368,7 @@ disabled={
   open={Boolean(errorMsg || okMsg)}
   type={errorMsg ? "error" : "success"}
   message={errorMsg || okMsg}
+  side={isActive ? 'club' : 'gamer'}
   onClose={() => {
     setErrorMsg("");
     setOkMsg("");

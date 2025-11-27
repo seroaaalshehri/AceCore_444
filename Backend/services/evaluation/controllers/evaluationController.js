@@ -1,4 +1,4 @@
-const { processRocketLeagueEvaluations, evaluateOverwatch, } = require("../evaluationServices");
+const { processRocketLeagueEvaluations, evaluateOverwatch,evaluateCodScrimService ,   getAcceptedGamersService } = require("../evaluationServices");
 
 async function evaluateRocketLeague(req, res) {
   try {
@@ -29,4 +29,57 @@ async function evaluateOverwatch2(req, res) {
   }
 }
 
-module.exports = { evaluateOverwatch2, evaluateRocketLeague };
+
+//CoD
+async function evaluateScrim(req, res) {
+  try {
+    const { clubId, slotId } = req.params;
+    const { evaluations } = req.body;
+
+    const result = await evaluateCodScrimService(
+      clubId,
+      slotId,
+      evaluations
+    );
+
+    return res.status(200).json({
+      message: "Scrim evaluated successfully",
+      clubId,
+      slotId,
+      ...result,
+    });
+  } catch (err) {
+    console.error("[evaluateScrim] error:", err);
+    return res.status(500).json({
+      message: "Internal server error while evaluating scrim",
+      error: err && err.message ? err.message : String(err),
+    });
+  }
+}
+
+
+async function getAcceptedGamers(req, res) {
+  try {
+    const { clubId, slotId } = req.params;
+
+    const gamers = await getAcceptedGamersService(clubId, slotId);
+
+    return res.status(200).json({
+      clubId,
+      slotId,
+      count: gamers.length,
+      gamers,
+    });
+  } catch (err) {
+    console.error("[getAcceptedGamers] error:", err);
+    return res.status(500).json({
+      message: "Internal server error while fetching accepted gamers",
+      error: err && err.message ? err.message : String(err),
+    });
+  }
+}
+
+
+
+module.exports = { evaluateOverwatch2, evaluateRocketLeague, evaluateScrim,
+  getAcceptedGamers, };

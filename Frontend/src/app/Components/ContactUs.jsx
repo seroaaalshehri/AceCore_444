@@ -145,23 +145,7 @@ export default function ContactUs() {
       </div>
 
       {/* ANIMATIONS MOVED TO BOTTOM RIGHT */}
-      <div className="absolute bottom-6 right-8 flex gap-6 opacity-80 pointer-events-none">
-        <motion.div
-          className="w-[160px] h-[160px] -rotate-3"
-          animate={{ y: [0, -6, 0] }}
-          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-        >
-          <Lottie animationData={emailAnimation} loop />
-        </motion.div>
-
-        <motion.div
-          className="w-[160px] h-[160px] rotate-3"
-          animate={{ y: [0, -6, 0] }}
-          transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
-        >
-          <Lottie animationData={phone} loop />
-        </motion.div>
-      </div>
+     
     </section>
   );
 }

@@ -329,6 +329,16 @@ input[type="Time"]::-webkit-calendar-picker-indicator {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+
+/* FormAlert positioning helpers (avoid inline style shifts) */
+.form-alert { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.fa-left-gamer { left: 35%; }
+.fa-left-club { left: 65%; }
+.fa-center { left: 50%; }
+
+/* Opacity-only fade to avoid positional animation that can cause flicker */
+@keyframes fadeInOpacity { from { opacity: 0 } to { opacity: 1 } }
+.animate-fadeInOpacity { animation: fadeInOpacity 0.22s ease-out; }
 /* status filter styles */
 .status-filter {
   display: inline-flex;

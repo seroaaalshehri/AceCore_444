@@ -207,7 +207,8 @@ function scoreToLetter(score) {
   if (score >= 80) return "A";
   if (score >= 70) return "B";
   if (score >= 60) return "C";
-  return "D";
+  if (score >= 45) return "D";
+  return "E";
 }
 
 async function evaluateOverwatch(payload) {
@@ -305,4 +306,267 @@ async function evaluateOverwatch(payload) {
   };
 }
 
-module.exports = { processRocketLeagueEvaluations, evaluateOverwatch, };
+//CoD Algorithm:
+
+const ED_CAP = 4.0;
+
+
+function scoreToLetterCoD(score) {
+  if (score >= 90) return "S";
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  if (score >= 45) return "D";
+   return "E"
+}
+
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
+function normRating(r) {
+  if (typeof r !== "number") r = 0;
+  return clamp(r, 0, 5);
+}
+
+
+function computeCodScores(evaluations) {
+  if (!Array.isArray(evaluations) || evaluations.length === 0) return [];
+
+  // For normalization across this scrim
+  const maxElims = Math.max(
+    ...evaluations.map((e) => Number(e.kills || 0)),
+    0
+  );
+  const maxObjective = Math.max(
+    ...evaluations.map((e) => Number(e.objectiveValue || 0)),
+    0
+  );
+
+  return evaluations.map((e) => {
+    const userId = e.userId;
+    const eliminations = Number(e.kills || 0);
+    const deaths = Number(e.deaths || 0);
+    const objectiveValue = Number(e.objectiveValue || 0);
+    const result = e.result === "win" ? "win" : "loss";
+
+    // E/D efficiency (eliminations per death)
+    const deathsSafe = deaths > 0 ? deaths : 1;
+    const edRatioRaw = eliminations / deathsSafe;
+    const edRatioNorm = (Math.min(edRatioRaw, ED_CAP) / ED_CAP) * 100; 
+
+    // Elimination volume (relative to top eliminations in this scrim)
+    const elimVolumeNorm =
+      maxElims > 0 ? (eliminations / maxElims) * 100 : 50; 
+
+    // Objective contribution
+    const objNorm =
+      maxObjective > 0 ? (objectiveValue / maxObjective) * 100 : 50; 
+
+    const winNorm = result === "win" ? 100 : 40;
+
+    // StatsPart (0–60):
+  
+    const StatsPart =
+      0.30 * objNorm +
+      0.18 * edRatioNorm +
+      0.08 * elimVolumeNorm +
+      0.04 * winNorm;
+
+    // Club subjective ratings (0–40)
+    const ratings = [
+      normRating(e.mapAwareness),
+      normRating(e.aimControl),
+      normRating(e.movementControl),
+      normRating(e.soundAwareness),
+    ];
+    const sumRatings = ratings.reduce((sum, v) => sum + v, 0);
+    const avgRating0to5 = ratings.length ? sumRatings / ratings.length : 0;
+    const ClubPart = (avgRating0to5 / 5) * 40; 
+
+    const finalScore = StatsPart + ClubPart; 
+
+    return {
+      userId,
+      eliminations,
+      deaths,
+      objectiveValue,
+      result,
+
+     
+      edRatioRaw,
+      edRatioNorm,
+      elimVolumeNorm,
+      objNorm,
+      winNorm,
+      StatsPart,
+      ClubPart,
+      finalScore,
+    };
+  });
+}
+
+
+async function getAcceptedGamersService(clubId, scheduleId) {
+  const scheduleRef = db
+    .collection("users")
+    .doc(clubId)
+    .collection("schedule")
+    .doc(scheduleId);
+
+  const snap = await scheduleRef.collection("gamersAcceptance").get();
+  if (snap.empty) return [];
+
+  const usersCol = db.collection("users");
+
+  const acceptedGamers = await Promise.all(
+    snap.docs.map(async (doc) => {
+      const userId = doc.id;
+      const acceptanceData = doc.data() || {};
+
+      const userDoc = await usersCol.doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() || {} : {};
+
+      const username =
+        userData.username ||
+        userData.gamerUsername ||
+        null;
+
+      return {
+        userId,
+        ...acceptanceData,
+        username,
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        profilePhoto: userData.profilePhoto || null,
+      };
+    })
+  );
+
+  return acceptedGamers;
+}
+
+
+async function evaluateCodScrimService(clubId, scheduleId, rawEvaluations) {
+  const scheduleRef = db
+    .collection("users")
+    .doc(clubId)
+    .collection("schedule")
+    .doc(scheduleId);
+
+  const scheduleSnap = await scheduleRef.get();
+  if (!scheduleSnap.exists) {
+    throw new Error("Schedule document not found for this scrim");
+  }
+
+  const scheduleData = scheduleSnap.data() || {};
+  const gameid = scheduleData.gameid || "cod";
+
+  
+  const acceptedGamers = await getAcceptedGamersService(clubId, scheduleId);
+  const acceptedIds = new Set(acceptedGamers.map((g) => g.userId));
+
+  if (acceptedIds.size === 0) {
+    return { evaluations: [], message: "No accepted gamers for this scrim" };
+  }
+
+  const filtered = (rawEvaluations || []).filter((e) =>
+    acceptedIds.has(e.userId)
+  );
+
+  if (filtered.length === 0) {
+    return {
+      evaluations: [],
+      message: "No matching evaluations for accepted gamers",
+    };
+  }
+
+  const computed = computeCodScores(filtered);
+  const finalWithOverall = [];
+
+  await db.runTransaction(async (t) => {
+    const userGameDocsByUserId = new Map();
+
+    for (const ev of computed) {
+      const ugQuery = db
+        .collection("userGames")
+        .where("userid", "==", ev.userId)
+        .where("gameid", "==", gameid)
+        .limit(1);
+
+      const ugSnap = await t.get(ugQuery);
+
+      if (ugSnap.empty) {
+        throw new Error(
+          `userGames doc not found for user ${ev.userId} and game ${gameid}`
+        );
+      }
+
+      const doc = ugSnap.docs[0];
+      userGameDocsByUserId.set(ev.userId, {
+        ref: doc.ref,
+        data: doc.data() || {},
+      });
+    }
+
+    for (const ev of computed) {
+      const entry = userGameDocsByUserId.get(ev.userId);
+      if (!entry) {
+        throw new Error(
+          `Missing userGames snapshot for user ${ev.userId} (this should not happen)`
+        );
+      }
+
+      const { ref: userGameRef, data } = entry;
+
+      const prevScore =
+        typeof data.rank === "number" ? data.rank : 0;
+      const prevCount =
+        typeof data.scrimCount === "number" ? data.scrimCount : 0;
+
+      const newScrimCount = prevCount + 1;
+      const newOverallScore =
+        (prevScore * prevCount + ev.finalScore) / newScrimCount;
+      const letterGrade = scoreToLetterCoD(newOverallScore);
+
+    t.set(
+        userGameRef,
+        {
+          userid: ev.userId,
+          gameid,
+          rank: newOverallScore,
+          score: letterGrade,
+          scrimCount: newScrimCount,
+          lastRankUpdate: admin.firestore.FieldValue.serverTimestamp(),
+           
+        },
+        { merge: true }
+      );
+
+      finalWithOverall.push({
+        ...ev,
+        newOverallScore,
+        newScrimCount,
+        letterGrade,
+      });
+    }
+
+    t.set(
+      scheduleRef,
+      {
+        evaluationCompleted: true,
+        evaluatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+
+  return {
+    evaluations: finalWithOverall,
+  };
+}
+
+
+
+module.exports = { processRocketLeagueEvaluations, evaluateOverwatch, evaluateCodScrimService,
+  getAcceptedGamersService, };

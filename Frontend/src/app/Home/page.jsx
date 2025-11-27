@@ -19,7 +19,7 @@ export default function Home() {
   return (
     <PageTransition>
       {(handleNavigate) => (
-        <div className="relative min-h-screen mt-10 bg-[acecoreBackground] font-barlow overflow-x-hidden">
+        <div className="relative min-h-screen mt-10 bg-[acecoreBackground] font-barlow overflow-x-hidden ">
           {/* Background Particles */}
           <div className="absolute inset-0 z-0 pointer-events-none">
             <Particles
@@ -36,7 +36,7 @@ export default function Home() {
 
           {/* Header */}
           <header className="relative flex items-center justify-between px-6 py-4 z-20">
-            <a href="/" className="flex items-center">
+            <a href="http://localhost:3000/Home" className="flex items-center">
               <Image
                 src="/AC-glow.png"
                 alt="Logo"

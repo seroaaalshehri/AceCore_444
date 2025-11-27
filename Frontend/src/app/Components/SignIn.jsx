@@ -34,14 +34,18 @@ export default function SignIn({
   const [showGPw, setShowGPw] = useState(false); 
   const [showCPw, setShowCPw] = useState(false); 
 
-  // Gmail guard (added)
   const [gGmailMsg, setGGmailMsg] = useState("");
 
-  // Twitch local state
   const [tLoading, setTLoading] = useState(false);
   const [tError, setTError] = useState("");
+  const [cUsernameMsg, setCUsernameMsg] = useState("");
+const [cPasswordMsg, setCPasswordMsg] = useState("");
+const lowerCError = String(cError || "").toLowerCase();
+const cErrorIsUser  = !!cError && (lowerCError.includes("username") || lowerCError.includes("email"));
+const cErrorIsPass  = !!cError && lowerCError.includes("password");
+const cErrorGeneric = !!cError && !cErrorIsUser && !cErrorIsPass;
 
-  // Gmail domain checker (added)
+
   const isGmailAddress = (email) => {
     const domain = String(email || "").split("@")[1]?.toLowerCase() || "";
     return domain === "gmail.com" || domain === "googlemail.com";
@@ -76,12 +80,32 @@ export default function SignIn({
       {/* Club Form */}
       <div className="form-container club-form font-bold">
         <form
-          className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!cLoading && !tLoading) onClubEmailLogin?.(cEmail, cPw);
-          }}
-        >
+  className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
+  onSubmit={(e) => {
+    e.preventDefault();
+    if (cLoading || tLoading) return;
+
+    // reset local messages
+    setCUsernameMsg("");
+    setCPasswordMsg("");
+
+    let ok = true;
+
+    if (!cEmail.trim()) {
+      setCUsernameMsg("Username is required.");
+      ok = false;
+    }
+    if (!cPw.trim()) {
+      setCPasswordMsg("Password is required.");
+      ok = false;
+    }
+
+    if (!ok) return;          // don’t call backend if basic stuff is missing
+
+    onClubEmailLogin?.(cEmail, cPw);
+  }}
+>
+
           <h1 className="text-2xl font-bold mb-3 text-center">Sign In as a Club</h1>
 
           <div className="w-full flex flex-col gap-3">
@@ -95,11 +119,30 @@ export default function SignIn({
                 value={cEmail}
                 onChange={(e) => setCEmail(e.target.value)}
                 placeholder="Enter your Username"
-                required
                 disabled={cLoading || tLoading}
                 autoComplete="email"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
+{cUsernameMsg && (
+  <p className="text-red-400 text-base mt-2 text-center w-full">
+    {cUsernameMsg}
+  </p>
+)}
+
+{cErrorIsUser && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+{cErrorGeneric && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+
+
             </div>
             <div className="w-full">
               <label htmlFor="club-pass" className="block text-base font-semibold mb-1 text-gray-200">
@@ -112,7 +155,6 @@ export default function SignIn({
                 value={cPw}
                 onChange={(e) => setCPw(e.target.value)}
                 placeholder="Enter your password "
-                required
                 disabled={cLoading || tLoading}
                 autoComplete="current-password"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
@@ -130,19 +172,34 @@ export default function SignIn({
     )}
   </button>
             </div>
-          </div>
-          </div>
+{cPasswordMsg && (
+  <p className="text-red-400 text-base mt-2 text-center w-full">
+    {cPasswordMsg}
+  </p>
+)}
 
-          {(cError || tError) && (
-            <p className="text-red-400 text-sm mt-2">{tError || cError}</p>
-          )}
+{cErrorIsPass && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+{cErrorGeneric && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+
+          </div>
+          </div>
 
           <button
             disabled={cLoading || tLoading}
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_16px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {cLoading ? "Logging in..." : "Log In"}
+            {cLoading ? "Signing in..." : "Sign In"}
           </button>
 
           <div className="w-full flex justify-center mt-6">
@@ -156,6 +213,7 @@ export default function SignIn({
               <span>{tLoading ? " Connecting to Twitch..." : " Continue with Twitch"}</span>
             </button>
           </div>
+          {tError && <p className="text-red-400 text-sm mt-2 text-center w-full">{tError}</p>}
           <p className="mt-3 text-sm text-gray-400 text-center">
             Don&apos;t have an account?{" "}
             <Link href="/SignUp" className="text-[#FCCC22] hover:underline">
@@ -209,6 +267,10 @@ export default function SignIn({
                 autoComplete="email"
                 className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
+              {/* Show username-specific error under gamer username field */}
+                  {gError && String(gError).toLowerCase().includes("username") && (
+                    <p className="text-red-400 text-base mt-2 text-center w-full">{gError}</p>
+                  )}
             </div>
             <div className="w-full">
               <label htmlFor="g-pass" className="block text-base font-semibold mb-1 text-gray-200">
@@ -243,16 +305,18 @@ export default function SignIn({
           </div>
 
           {/* Gmail guard message */}
-          {gGmailMsg && <p className="text-red-400 text-sm mt-2">{gGmailMsg}</p>}
-
-          {gError && <p className="text-red-400 text-sm mt-2">{gError}</p>}
+          {gGmailMsg && <p className="text-red-400 text-base mt-2">{gGmailMsg}</p>}
+{/* Show non-username gamer errors under the password field */}
+          {gError && !String(gError).toLowerCase().includes("username") && (
+            <p className="text-red-400 text-base mt-2 text-center w-full">{gError}</p>
+          )}
 
           <button
             disabled={gLoading}
             type="submit"
             className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_12px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {gLoading ? "Logging in..." : "Log In"}
+            {gLoading ? "Signing in..." : "Sign In"}  
           </button>
 
           <div className="w-full flex justify-center mt-6">

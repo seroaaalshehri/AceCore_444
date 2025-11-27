@@ -203,12 +203,8 @@ const checkUsernameAvailable = async (username) => {
         }
 
         const methods = await fetchSignInMethodsForEmail(auth, email);
-        if (methods.includes("google.com")) {
-          setErrorMsg("Sign-up failed. Please try again.");
-          return;
-        }
-        if (methods.includes("password")) {
-          setErrorMsg("Sign-up failed. Please try again.");
+        if (methods.includes("google.com") || methods.includes("password")) {
+          setErrorMsg("Please provide a different email address.");
           return;
         }
 
@@ -231,29 +227,36 @@ if (formData.role === "club") {
 
         const available = await checkUsernameAvailable(formData.clubUsername);
         if (!available) {
-          setErrorMsg("Username is taken. Choose another one.");
           return;
         }
 
         const email = String(formData.clubEmail || "").trim();
   const password = String(formData.clubPassword || "").trim();
-  if (!email || !password) {
-    setErrorMsg("Please fill email and password.");
-    return;
-  }
+if (!email) {
+  setClubEmailMsg("Email is required.");
+  return;
+}
 
   const methods = await fetchSignInMethodsForEmail(auth, email);
-  if (methods.length && !methods.includes("password")) {
-    setErrorMsg("This email is already used with a different sign-in method.");
-    return;
-  }
-  if (methods.includes("password")) {
-    setErrorMsg("This email already has a password account.");
-    return;
-  }
+  if (methods.length) {
+  setClubEmailMsg("Please provide a different email address.");
+  return;
+}
 
+let uid="";
+  try {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   const uid = cred.user.uid;
+
+} catch (err) {
+  if (err.code === "auth/email-already-in-use") {
+    setClubEmailMsg("This email is already registered. Please use another one.");
+    return; 
+  }
+  console.error(err);
+  return;
+}
+
 
   const form = new FormData();
   form.append("role", "club");
@@ -296,9 +299,32 @@ if (formData.role === "club") {
   return;
 }
 
-    } catch (err) {
-      setErrorMsg("Sign-up failed. Please try again.");
-    } finally {
+   } catch (err) {
+  console.error("SignUp error:", err);
+
+  // HANDLE CLUB EMAIL ERRORS INLINE — UNDER FIELD
+  if (formData.role === "club") {
+    if (err?.code === "auth/email-already-in-use") {
+      if (typeof window !== "undefined") {
+        window.setClubEmailMsg?.("Please provide a different email address.");
+      }
+      return;
+    }
+  }
+
+  // GAMER fallback only
+  let msg = "Sign-up failed. Please try again.";
+  if (
+    err &&
+    (err.code === "auth/email-already-in-use" ||
+      (err.message && err.message.toLowerCase().includes("already")))
+  ) {
+    msg = "Please provide a different email address.";
+  }
+
+  setErrorMsg(msg);
+}
+finally {
       setLoading(false);
     }
   };

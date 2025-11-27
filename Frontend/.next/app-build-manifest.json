@@ -11,25 +11,27 @@
       "static/chunks/main-app.js",
       "static/chunks/app/club/layout.js"
     ],
+    "/club/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/profile/[id]/page.css",
+      "static/chunks/app/club/profile/[id]/page.js"
+    ],
+    "/Search/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/Search/page.css",
+      "static/chunks/app/Search/page.js"
+    ],
+    "/club/notifications/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/notifications/[id]/page.js"
+    ],
     "/club/scrimappointments/[userId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/club/scrimappointments/[userId]/page.js"
-    ],
-    "/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page.js"
-    ],
-    "/club/scrimappointments/[userId]/[slotId]/eval_OW/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/scrimappointments/[userId]/[slotId]/eval_OW/page.js"
-    ],
-    "/club/scrimappointments/[userId]/[slotId]/eval_RL/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/club/scrimappointments/[userId]/[slotId]/eval_RL/page.js"
     ],
     "/Signin/page": [
       "static/chunks/webpack.js",
@@ -45,8 +47,14 @@
     "/gamer/profile/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/gamer/profile/[id]/page.js",
-      "static/css/app/gamer/profile/[id]/page.css"
+      "static/css/app/gamer/profile/[id]/page.css",
+      "static/chunks/app/gamer/profile/[id]/page.js"
+    ],
+    "/club/view/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/view/[id]/page.css",
+      "static/chunks/app/club/view/[id]/page.js"
     ]
   }
 }

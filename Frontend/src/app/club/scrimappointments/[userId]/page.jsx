@@ -155,7 +155,7 @@ export default function ClubScheduledScrimsPage() {
           evalPath = `/club/scrimappointments/${userId}/${s.id}/eval_RL`;
           break;
         case "code":
-          evalPath = `/club/scrimappointments/${userId}/${s.id}/eval_CoD`;
+          evalPath = `/club/scrimappointments/${userId}/eval_CoD/${s.id}`;
           break;
         
       }
