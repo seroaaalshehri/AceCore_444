@@ -125,7 +125,8 @@ export default function ClubScheduledScrimsPage() {
         if (!notStartedYet && !endedRecently) return false;
 
         return matchesStatusFilter(meta.overriddenStatus);
-      });
+      })
+       .sort((a, b) => a.startMs - b.startMs)
   }, [slots, statusFilter, now]);
 
   

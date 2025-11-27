@@ -264,7 +264,7 @@ export default function ClubPublicView() {
                   >
                     <FaTrophy size={30} className="text-[#FCCC22] flex-shrink-0" />
                     <div className="flex flex-col min-w-[220px]">
-                      <h3 className="text-3xl font-bold text-white">{ach.name}</h3>
+                      <h3 className="text-3xl font-bold text-white break-words whitespace-normal">{ach.name}</h3>
                       <p className="text-xl text-gray-300">{ach.game}</p>
                     </div>
                     <div className="flex flex-col min-w-[200px]">

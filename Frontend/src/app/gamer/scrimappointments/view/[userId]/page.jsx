@@ -156,7 +156,8 @@ export default function GamerAppointmentsPage() {
 
         if (!statusFilter || statusFilter === "all") return true;
         return String(s.overriddenStatus) === String(statusFilter);
-      });
+      })
+      .sort((a, b) => a.startMs - b.startMs)
   }, [slots, now, statusFilter]);
 
   const handleStatusChange = (valOrEvent) => {

@@ -308,9 +308,8 @@ const openCancelModal = (slot) => {
                                         No accepted scrims{activeGame !== "all" ? " for this game" : ""}.
                                     </div>
                                 ) : (
-
+                                                    <div className="mb-9">
                                     <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-12 mx-auto max-w-[820px]">
-
                                         {sortedSlots.map((s) => {
                                             const gid = s.gameid || s.gameId;
                                             const gmeta = gid ? gameMetaById[gid] : null;
@@ -323,7 +322,7 @@ const openCancelModal = (slot) => {
                                                 <div key={s.id}
                                                     className="relative rounded-xl border border-[#3b2d5e] overflow-hidden hover:shadow-lg transition ">
                                                     {/* OPAQUE PAINT LAYER */}
-                                                    <div className="absolute inset-0 bg-[#1c1430] "></div>
+                                                    <div className="absolute inset-0 bg-[#1c1430]"></div>
 
                                                     {/* CONTENT LAYER */}
                                                     <div className="relative p-6 flex items-center gap-4">
@@ -365,7 +364,7 @@ const openCancelModal = (slot) => {
 
                                             );
                                         })}
-
+  </div>
                                     </div>
 
                                 )}

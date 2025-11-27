@@ -13,8 +13,8 @@ import { Cake, Flag, FileText, Image as ImageIcon, File, User } from "lucide-rea
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../../../lib/firebaseClient";
 import { authedFetch } from "../../../../../lib/authedFetch";
-
-
+import InfoTooltip from "../../../Components/InfoTooltip";
+import CODE_Info from "../../../Components/CODE_Info";
 const ALLOWED_MIME = new Set([
   "image/png",
   "image/jpeg",
@@ -27,7 +27,7 @@ function DeleteConfirmModal({ open, onClose, onConfirm, itemType }) {
   if (!open) return null;
 
   return (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
       <div className="bg-[#1d1530] rounded-xl p-6 w-100 relative text-left" dir="ltr">
         <p className="text-2xl font-bold flex justify-center mb-4 text-red-400">
           Warning!
@@ -241,8 +241,8 @@ export function AddAchievement({ userid, onDeleteAchievement, reloadFlag }) {
 
   return (
     <div>
-      <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full max-w-15xl grid grid-cols-1 gap-8">
-        <div className="flex items-center gap-3 mb-6 -ml-6">
+      <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full max-w-15xl grid grid-cols-1 gap-8 z-2">
+        <div className="flex items-center gap-3 mb-4 -ml-6 -mt-7">
           <h1 className="text-5xl font-bold text-[#fccc22]">ACHIEVEMENTS</h1>
           <button
             onClick={() => {
@@ -264,7 +264,7 @@ export function AddAchievement({ userid, onDeleteAchievement, reloadFlag }) {
               <FaTrophy size={30} className="text-[#FCCC22] text-3xl flex-shrink-0" />
 
               <div className="flex flex-col min-w-[220px]">
-                <h3 className="text-3xl font-bold text-white">{ach.name}</h3>
+                <h3 className="text-3xl font-bold text-white break-words whitespace-normal">{ach.name}</h3>
                 <p className="text-xl text-gray-300">{ach.game}</p>
               </div>
 
@@ -335,8 +335,8 @@ export function AddAchievement({ userid, onDeleteAchievement, reloadFlag }) {
         </div>  </div>
 
       {open && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-          <div className="bg-[#1d1530]  rounded-xl p-6 w-96 relative">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-[90000]">
+          <div className="bg-[#1d1530] rounded-xl p-6 w-96 relative">
             <button
               onClick={() => {
                 setOpen(false)
@@ -477,7 +477,7 @@ export default function GamerProfile() {
   const [deleteModal, setDeleteModal] = useState({ open: false, item: null, type: null });
   const [achievementsReloadFlag, setAchievementsReloadFlag] = useState(0);
   const [gameModal, setGameModal] = useState({ open: false, mode: "add", game: null, username: "", error: "" });
-const [gameSaving, setGameSaving] = useState(false);
+  const [gameSaving, setGameSaving] = useState(false);
 
   // followers / following
   useEffect(() => {
@@ -557,10 +557,10 @@ const [gameSaving, setGameSaving] = useState(false);
       setGameModal((m) => ({ ...m, error: "Please select a game" }));
       return;
     }
-      if (gameSaving) return; 
-  setGameSaving(true);
-const usernameValue = gameModal.username.trim() || "—";
-setGameModal((m) => ({ ...m, error: "" }));
+    if (gameSaving) return;
+    setGameSaving(true);
+    const usernameValue = gameModal.username.trim() || "—";
+    setGameModal((m) => ({ ...m, error: "" }));
 
     try {
       if (gameModal.mode === "edit") {
@@ -576,8 +576,8 @@ setGameModal((m) => ({ ...m, error: "" }));
       } else {
         // POST add
         const url = `http://localhost:4000/api/gamer/${uid}/add/games`;
-const usernameValue = gameModal.username.trim() || "—";
-const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
+        const usernameValue = gameModal.username.trim() || "—";
+        const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
         console.debug("authedFetch ->", url, body);
         const res = await authedFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         if (!res.ok) {
@@ -644,6 +644,19 @@ const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
     }
   }
 
+  function formatShortDate(ts) {
+    if (!ts) return "—";
+
+    const millis = ts._seconds ? ts._seconds * 1000 : ts;
+
+    const d = new Date(millis);
+
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -668,7 +681,7 @@ const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-2 max-w-7xl mx-auto">
+          <div className="flex-1  p-6 space-y-2 max-w-7xl mx-auto">
             <div className="p-4 flex justify-start">
             </div>
 
@@ -812,58 +825,83 @@ const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
 
 
             {/*Add Games*/}
-            <div className="p-6">
-              <div className="flex relative mb-[30px] z-[50] items-center gap-3 mb-4">
+            <div className="p-6 relative z-[40]">
+              <div className="flex items-center gap-3 mb-8">
                 <h1 className="text-5xl font-bold text-[#fccc22]">GAMES</h1>
                 {availableGames.length > 0 && (
                   <button
- onClick={() =>
-      setGameModal({ open: true, mode: "add", game: null, username: "", error: "" })
-    }                    className="text-[#ffff] font-bold text-5xl hover:text-[#6449b5]">
+                    onClick={() =>
+                      setGameModal({ open: true, mode: "add", game: null, username: "", error: "" })
+                    } className="text-[#ffff] font-bold text-5xl hover:text-[#6449b5]">
                     +
                   </button>
                 )}
               </div>
 
-              <div className="mt-0 grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-10 relative z-[20]">
-
-
+              <div className="mt-0 grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-10 relative">
                 {games.map((g) => (
                   <div
                     key={g.id}
-                    className="w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430] overflow-hidden flex flex-col"
+                    className="w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430] flex flex-col relative"
                   >
                     <img
                       src={g.gamePhoto}
                       alt={g.gameName}
-                      className="w-full h-60 object-cover"
+                      className="w-full h-60 object-cover rounded-t-xl"
                     />
-
                     <div className="p-4 flex flex-col gap-1 text-left">
                       <div className="flex items-center">
+                        <div className="-mb-1">
+                          <div className="flex flex-col">
+                            <div> <span className="font-bold text-white relative -top-2 text-[32px] relative ">{g.gameName} </span></div>
+                            <span className="text-[26px] relative -top-4 text-gray-400">@{g.username}</span>
+                            <span className="flex items-baseline gap-2 relative -top-4">
+                              <span className="text-[29px] text-white font-bold">
+                                {g.scrimCount ?? 0}
+                              </span>
+                              <span className="text-[23px] text-white font-normal">
+                                {(g.scrimCount ?? 0) <= 1 ? "Scrim Arena" : "Scrim Arenas"}
+                              </span>
+                            </span>
+                            <span className="text-[23px] text-white relative -top-3">
+                              Scores on:{" "}
+                              {g.lastRankUpdate ? formatShortDate(g.lastRankUpdate) : "—"}
+                            </span>
+
+                          </div>
+                        </div>
+                        <div className="flex-grow flex justify-center">
+                          {g.score !== undefined && g.score !== null ? (
+                            <span className="font-bold text-[#fccc22] text-[55px] -mb-8 mt-10 ml-6">
+                              {g.score}
+                            </span>
+                          ) : (
+                            <div className="font-bold text-[#fccc22] text-[55px] -mb-4 mt-12 ml-10">
+                              NE
+                            </div>
+                          )}
+                        </div>
+
 
                         <div className="flex flex-col">
-                          <span className="font-bold text-white relative -top-4 text-[32px]">{g.gameName}</span>
-                          <span className="text-[20px] text-gray-400">@{g.username}</span>
-                        </div>
-
-                        <div className="flex-grow flex justify-center">
-                          <span className="font-bold text-[#fccc22] text-[65px]">{g.rank}</span>
-                        </div>
-
-                        <div className="flex gap-2 relative -top-9">
-                          <button className="hover:text-[#fccc22] text-gray-400"
-                            onClick={() => {
-                              setGameModal({ open: true, mode: "edit", game: g, username: g.username || "", error: "" });
-                            }}
-                            title="Edit username">
-                            <span className="inline-block transform -scale-x-100 text-xl">✎</span>
-                          </button>
-                          <button className="hover:text-[#fccc22] text-gray-400 text-sm"
-                            onClick={() => handleDeleteGame(g)}
-                            title="delete the game">
-                            <FaTrash />
-                          </button>
+                          <span className="text-white text-[32px] relative -top-11 ml-4 z-80000">
+                            {g.gameName === "Call of Duty"
+                              ? <CODE_Info />
+                              : <InfoTooltip />}
+                          </span>                        <div className="flex gap-2 relative -top-9">
+                            <button className="hover:text-[#fccc22] text-gray-400"
+                              onClick={() => {
+                                setGameModal({ open: true, mode: "edit", game: g, username: g.username || "", error: "" });
+                              }}
+                              title="Edit username">
+                              <span className="inline-block transform -scale-x-100 text-xl">✎</span>
+                            </button>
+                            <button className="hover:text-[#fccc22] text-gray-400 text-sm"
+                              onClick={() => handleDeleteGame(g)}
+                              title="delete the game">
+                              <FaTrash />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -916,17 +954,17 @@ const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
                       className="w-full mb-1 p-3 rounded bg-[#0C0817] text-white outline-none"
                     />
 
-                 <button
-  onClick={handleGameModalSave}
-  disabled={gameSaving}
-  className={`px-9 py-1 mt-3 mx-auto block font-bold rounded-md text-xl transition-transform duration-200
+                    <button
+                      onClick={handleGameModalSave}
+                      disabled={gameSaving}
+                      className={`px-9 py-1 mt-3 mx-auto block font-bold rounded-md text-xl transition-transform duration-200
     ${gameSaving
-      ? "bg-[#FCCC22] text-[#0C0817] cursor-not-allowed opacity-70"
-      : "bg-[#FCCC22] text-[#0C0817] hover:scale-105 hover:opacity-90"
-    }`}
->
-  {gameSaving ? "Saving..." : (gameModal.mode === "edit" ? "Save" : "Add")}
-</button>
+                          ? "bg-[#FCCC22] text-[#0C0817] cursor-not-allowed opacity-70"
+                          : "bg-[#FCCC22] text-[#0C0817] hover:scale-105 hover:opacity-90"
+                        }`}
+                    >
+                      {gameSaving ? "Saving..." : (gameModal.mode === "edit" ? "Save" : "Add")}
+                    </button>
 
 
                   </div>
@@ -934,7 +972,7 @@ const body = { gameid: gameModal.game.id, username: usernameValue, rank: 0 };
               )}
             </div>
 
-            <section className="relative z-100 flex relative mb-[30px] z-[50] items-center gap-3 mb-4">
+            <section className="relative flex mb-[30px]  items-center gap-3 mb-4 w-[81%]">
               <AddAchievement
                 userid={uid}
                 onDeleteAchievement={handleDeleteAchievement}

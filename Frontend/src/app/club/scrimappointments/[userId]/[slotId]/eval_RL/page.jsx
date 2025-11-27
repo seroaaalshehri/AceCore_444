@@ -437,10 +437,10 @@ export default function ClubEvaluateRLPage() {
 
                           return (
                             <div key={key} className="mb-2">
-                              <div className="flex justify-between items-center mb-1">
+                              <div className="flex gap-3 items-center mb-1">
                                 <span className="text-xl">{label}</span>
                                 <span
-                                  className={`text-xl font-bold`}
+                                  className={`text-xl font-bold text-[#FCCC22] `}
                                 >
                                   {val}/5
                                 </span>

@@ -8,15 +8,16 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import LeftSidebar from "../../../Components/LeftSidebar";
 import { FaTrophy } from "react-icons/fa";
-import { Flag, FileText, Image as ImageIcon, File, User,Cake } from "lucide-react";
+import { Flag, FileText, Image as ImageIcon, File, User, Cake } from "lucide-react";
 import { authedFetch } from "../../../../../lib/authedFetch";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../../../lib/firebaseClient";
-
+import InfoTooltip from "../../../Components/InfoTooltip";
+import CODE_Info from "../../../Components/CODE_Info";
 
 const GOLD_BTN =
- "bg-[#FCCC22] text-[#0C0817] font-bold px-9 py-2 rounded-lg text-2xl " +
-  "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow"; 
+  "bg-[#FCCC22] text-[#0C0817] font-bold px-9 py-2 rounded-lg text-2xl " +
+  "disabled:opacity-60 hover:shadow-[0_0_16px_#FCCC22] transition-shadow";
 
 function formatDate(date) {
   if (!date) return "";
@@ -112,13 +113,38 @@ export default function GamerPublicView() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    // Lock body scroll for this page so tooltips can't create a second scrollbar
+    const prevOverflow = document.body.style.overflow;
+    const prevHeight = document.body.style.height;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100vh";
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.height = prevHeight;
+    };
+  }, []);
 
   if (!profile) return <div className="text-gray-400 p-6">Loading profile...</div>;
 
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
 
+  function formatShortDate(ts) {
+    if (!ts) return "—";
+    const millis = ts._seconds ? ts._seconds * 1000 : ts;
+    const d = new Date(millis);
+
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  }
   return (
-    <div className="flex min-h-screen">
+  <div className="flex h-screen overflow-hidden">
+
       <div className="w-[250px]">
         <LeftSidebar
           role={currentRole}
@@ -127,8 +153,8 @@ export default function GamerPublicView() {
         />
       </div>
 
-      <div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
-        <div className="relative w-full min-h-screen">
+<div className="flex-1 flex flex-col bg-[acecoreBackground] font-barlow overflow-x-hidden">
+        <div className="relative w-full h-screen">
           <div className="fixed inset-0 z-0 h-full">
             <Particles
               particleColors={["#ffffff", "#ffffff"]}
@@ -139,64 +165,64 @@ export default function GamerPublicView() {
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-2 max-w-7xl mx-auto">
-            {/* Header (match Club) */}
+<div className="flex-1 p-6 space-y-2 max-w-7xl mx-auto">
+              {/* Header (match Club) */}
             <section className="relative z-10 rounded-xl pt-14 pr-4 lg:pr-6 pl-20 shadow-lg bg-[#1c1430] mt-6">
-          {/* ONE ROW / SIX COLUMNS WITH SYMMETRIC SPACERS */}
-<div className="grid w-full items-center gap-8
+              {/* ONE ROW / SIX COLUMNS WITH SYMMETRIC SPACERS */}
+              <div className="grid w-full items-center gap-8
                 grid-cols-1 md:grid-cols-[auto_minmax(260px,1fr)_1fr_auto_auto_1fr]">
 
-  {/* col 1 — AVATAR */}
-  <div className="col-start-1">
-    {profile.profilePhoto ? (
-      <div className="w-44 h-44 rounded-full overflow-hidden bg-[#1C1633] border-3 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
-        <Image src={profile.profilePhoto} alt="Profile Avatar" width={176} height={176}
-               className="w-full h-full object-cover rounded-full" />
-      </div>
-    ) : (
-      <div className="w-40 h-40 flex items-center justify-center rounded-full bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
-        <User size={80} className="text-gray-400" />
-      </div>
-    )}
-  </div>
+                {/* col 1 — AVATAR */}
+                <div className="col-start-1">
+                  {profile.profilePhoto ? (
+                    <div className="w-44 h-44 rounded-full overflow-hidden bg-[#1C1633] border-3 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                      <Image src={profile.profilePhoto} alt="Profile Avatar" width={176} height={176}
+                        className="w-full h-full object-cover rounded-full" />
+                    </div>
+                  ) : (
+                    <div className="w-40 h-40 flex items-center justify-center rounded-full bg-[#1C1633] border-4 border-[#5f4a87] shadow-[0_0_20px_#5f4a87,0_0_15px_rgba(95,74,135,0.5)]">
+                      <User size={80} className="text-gray-400" />
+                    </div>
+                  )}
+                </div>
 
-  {/* col 2 — NAME + USERNAME */}
-  <div className="col-start-2 min-w-0">
-    <h2 className="text-[40px] font-bold truncate">{fullName || profile.username}</h2>
-    <p className="text-[26px] text-gray-400 mt-1 truncate">@{profile.username}</p>
-  </div>
+                {/* col 2 — NAME + USERNAME */}
+                <div className="col-start-2 min-w-0">
+                  <h2 className="text-[40px] font-bold truncate">{fullName || profile.username}</h2>
+                  <p className="text-[26px] text-gray-400 mt-1 truncate">@{profile.username}</p>
+                </div>
 
-  {/* col 3 — SPACER (no content) */}
+                {/* col 3 — SPACER (no content) */}
 
-  {/* col 4 — COUNTERS (center of entire header) */}
-  <div className="col-start-3">
-    <div className="flex items-center justify-center gap-10">
-      <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
-        <div className="text-4xl font-bold text-white">{followersCount}</div>
-        <div className="text-2xl text-gray-400">Followers</div>
-      </Link>
-      <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
-        <div className="text-4xl font-bold text-white">{followingCount}</div>
-        <div className="text-2xl text-gray-400">Following</div>
-      </Link>
-    </div>
-  </div>
+                {/* col 4 — COUNTERS (center of entire header) */}
+                <div className="col-start-3">
+                  <div className="flex items-center justify-center gap-10">
+                    <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
+                      <div className="text-4xl font-bold text-white">{followersCount}</div>
+                      <div className="text-2xl text-gray-400">Followers</div>
+                    </Link>
+                    <Link href={`/club/followList/${uid}`} className="cursor-pointer text-center">
+                      <div className="text-4xl font-bold text-white">{followingCount}</div>
+                      <div className="text-2xl text-gray-400">Following</div>
+                    </Link>
+                  </div>
+                </div>
 
-  {/* col 5 — BUTTON (left-aligned in its column) + nationality */}
-  <div className="col-start-6 justify-self-end text-right ml-10">
-    {auth.currentUser?.uid !== uid && (
-      <button
-        onClick={handleFollowToggle}
-        className={`${GOLD_BTN} !mx-0`}
-        disabled={loadingFollow}
-      >
-        {isFollowing ? "Unfollow" : "Follow"}
-      </button>
-    )}
-  </div>
+                {/* col 5 — BUTTON (left-aligned in its column) + nationality */}
+                <div className="col-start-6 justify-self-end text-right ml-10">
+                  {auth.currentUser?.uid !== uid && (
+                    <button
+                      onClick={handleFollowToggle}
+                      className={`${GOLD_BTN} !mx-0`}
+                      disabled={loadingFollow}
+                    >
+                      {isFollowing ? "Unfollow" : "Follow"}
+                    </button>
+                  )}
+                </div>
 
-  {/* col 6 — SPACER (no content) */}
-</div>
+                {/* col 6 — SPACER (no content) */}
+              </div>
 
               <div className="mt-9 ml-2 text-white text-[25px] leading-relaxed w-3/4 whitespace-normal break-words [overflow-wrap:anywhere]">
                 {profile.bio}
@@ -204,12 +230,12 @@ export default function GamerPublicView() {
 
               <div className="flex flex-col gap-5 items-end mt-[-95px] pb-6">
                 <div className="text-white-400 text-xl text-right">
-                
+
                   <div className="flex items-center gap-2 mt-4">
                     <Flag className="size-5 text-fuchsia-300" />
                     {profile.nationality || "—"}
                   </div>
-                   <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex items-center gap-2">
                     <Cake className="size-5 text-fuchsia-300" />
                     <p>Born</p>
                     {formatDate(profile.birthdate)}
@@ -241,33 +267,75 @@ export default function GamerPublicView() {
               </div>
             </section>
 
-            {/* GAMES */}
-            <section className="p-6">
-              <div className="flex relative z-[50] items-center gap-3 mb-4">
-                <h1 className="text-5xl font-bold text-[#fccc22]">GAMES</h1>
-              </div>
+           {/* GAMES */}
+<section className="p-6">
+  <div className="flex relative z-[50] items-center gap-3 mb-4">
+    <h1 className="text-5xl font-bold text-[#fccc22]">GAMES</h1>
+  </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-10 relative z-[20]">
-                {games.map((g) => (
-                  <div
-                    key={g.id}
-                    className="w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430] overflow-hidden flex flex-col relative"
-                  >
-                    <img src={g.gamePhoto} alt={g.gameName} className="w-full h-60 object-cover" />
-                    <div className="p-4 flex flex-col gap-1 text-left">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-white relative -top-2 text-[32px]">{g.gameName}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {games.length === 0 && <div className="text-gray-400">No games</div>}
-              </div>
-            </section>
+  <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-10 relative">
+    {games.map((g) => (
+      <div
+        key={g.id}
+        className="relative w-150 h-150 rounded-xl shadow-md bg-[#1d1530] border border-[#1f2430]"
+      >
+        <img
+          src={g.gamePhoto}
+          alt={g.gameName}
+          className="w-full h-60 object-cover rounded-t-xl"
+        />
+   <span className="absolute top-79 mt-4 right-4 z-[3000] text-white text-[32px]">
+    {g.gameName === "Call of Duty" ? <CODE_Info /> : <InfoTooltip />}
+  </span>
+        <div className="p-4 text-left">
+          <div className="relative flex items-start">
+            <div className="flex flex-col flex-1 min-w-0">
+  <span className="font-bold text-white mt-1 text-[32px] leading-none truncate pb-1 block">
+    {g.gameName}
+  </span>
+              <span className="text-[26px] mt-1 text-gray-400 truncate">
+                @{g.username}
+              </span>
+
+              <span className="flex items-baseline gap-2 mt-1">
+                <span className="text-[29px] text-white font-bold">
+                  {g.scrimCount ?? 0}
+                </span>
+                <span className="text-[23px] text-white font-normal">
+                  {(g.scrimCount ?? 0) <= 1 ? "Scrim Arena" : "Scrim Arenas"}
+                </span>
+              </span>
+
+              <span className="text-[23px] text-white mt-1 -mb-9">
+                Scores on:{" "}
+                {g.lastRankUpdate ? formatShortDate(g.lastRankUpdate) : "—"}
+              </span>
+            </div>
+
+              {g.score !== undefined && g.score !== null ? (
+                <span className="font-bold text-[#fccc22] text-[80px] mt-14 flex items-end justify-end pr-16">
+                  {g.score}
+                </span>
+              ) : (
+                <div className="font-bold text-[#fccc22] text-[80px] mt-14 flex items-end justify-end pr-10">
+
+                  NE
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+    ))}
+
+    {games.length === 0 && (
+      <div className="text-gray-400">No games</div>
+    )}
+  </div>
+</section>
+
 
             {/* ACHIEVEMENTS — aligned with GAMES */}
             <section className="p-6">
-              {/* 👇 SAME WRAPPER as GAMES: no extra px/p- wrappers, no negative margins */}
               <div className="flex relative z-[50] items-center gap-3 mb-7 -mt-3">
                 <h1 className="text-5xl font-bold text-[#fccc22]">ACHIEVEMENTS</h1>
               </div>
@@ -281,7 +349,7 @@ export default function GamerPublicView() {
                     <FaTrophy size={30} className="text-[#FCCC22] flex-shrink-0" />
 
                     <div className="flex flex-col min-w-[220px]">
-                      <h3 className="text-3xl font-bold text-white">{ach.name}</h3>
+                      <h3 className="text-3xl font-bold text-white break-words whitespace-normal">{ach.name}</h3>
                       <p className="text-xl text-gray-300">{ach.game}</p>
                     </div>
 
