@@ -663,7 +663,7 @@ export function ScrimArenaSchedule({ userid, userGames }) {
     <div>
       <div className="p-6 mt-0 px-4 sm:px-6 lg:px-14 mx-auto w-full grid grid-cols-1 gap-8">
         <div className="flex items-center justify-between mb-6 -mt-5">
-          <h1 className="text-5xl font-bold text-[#fccc22] -ml-6">SCRIMS SCHEDULING</h1>
+          <h1 className="text-5xl font-bold text-[#fccc22] -ml-6">SCRIM ARENAS SCHEDULE</h1>
           <div className="-mr-10">
             <div className="flex gap-3">
               <button

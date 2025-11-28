@@ -1,7 +1,5 @@
 const { db, admin, messaging } = require("./Firebase/firebaseBackend");
-const APP_BASE = process.env.APP_BASE_URL || "http://localhost:3000"; // set APP_BASE_URL in prod to https://acecore.app
-
-// Record a notification in Firestore under users/{gamerId}/notifications
+const APP_BASE = process.env.APP_BASE_URL || "http://localhost:3000"; 
 async function recordSidebarNotification(gamerId, data) {
   await db.collection("users").doc(gamerId).collection("notifications").add({
     ...data,
@@ -11,19 +9,17 @@ async function recordSidebarNotification(gamerId, data) {
 }
 
 async function sendPushToGamer(gamerId, payload) {
-  // Try gamerId location first (legacy)
   let tokensSnap = await db.collection("users").doc(gamerId).collection("fcmTokens").get();
   let tokens = tokensSnap.docs.map((d) => d.id);
 
   if (!tokens.length) {
-    // Fallback: resolve authUid, then read /users/{authUid}/fcmTokens
     let authUid = null;
 
     const userDoc = await db.collection("users").doc(gamerId).get();
     if (userDoc.exists && userDoc.data()?.authUid) {
       authUid = userDoc.data().authUid;
     } else {
-      // or from authLinks (authUid -> userId) inverse lookup if you have it
+      
       const link = await db.collection("authLinks").where("userId", "==", gamerId).limit(1).get();
       if (!link.empty) authUid = link.docs[0].id;
     }
@@ -84,7 +80,7 @@ async function sendPushReminderWithFCM(gamerId, payload) {
       body: payload.body,
     },
       data: {
-      link: payload.link || "/", // can be absolute or relative
+      link: payload.link || "/", 
     },
     webpush: {
       notification: {
@@ -104,12 +100,10 @@ async function sendPushReminderWithFCM(gamerId, payload) {
 
 
 async function sendPushToClub(clubId, payload) {
-  // Try /users/{clubId}/fcmTokens first
   let tokensSnap = await db.collection("users").doc(clubId).collection("fcmTokens").get();
   let tokens = tokensSnap.docs.map(d => d.id);
 
   if (!tokens.length) {
-    // Fallback via authUid like you did for gamer side
     let authUid = null;
 
     const clubDoc = await db.collection("users").doc(clubId).get();
@@ -168,16 +162,10 @@ exports.notifyRequestStatusChange = async ({ gamerId, clubId, slotId, newStatus 
       ? `${clubName} declined your request`
       : `${clubName} updated your request`;
 
-  // Build link dynamically to gamer’s Scrims Scheduling page
 const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:3000";
 const link = `/gamer/scrims/${gamerId}`;
 const absoluteLink = `${APP_ORIGIN}${link}`;
-
-
-  // Push notifications need a full URL
 await sendPushToGamer(gamerId, { title, body, link: absoluteLink });
-
-// Sidebar notifications only need a relative path
 await recordSidebarNotification(gamerId, { title, body, clubId, slotId, status: newStatus, link });
 
 };
@@ -188,29 +176,18 @@ exports.notifySlotCanceled = async ({
   clubId,
   slotId,
   gameName,
-  scrimTimeText, // <-- NEW, comes from controller
+  scrimTimeText, 
 }) => {
-  // 1. get club display name
   const clubSnap = await db.collection("users").doc(clubId).get();
   const club = clubSnap.exists ? clubSnap.data() : {};
   const clubName = club.clubName || club.username || "Club";
-
-  // 2. build message text
-  // example: "Falcons canceled the Overwatch scrim scheduled on Nov 1, 2025 22:30"
   const title = "Scrim Arena Canceled";
   const body = `${clubName} canceled the ${gameName || "scrim"} scrim arena scheduled on ${scrimTimeText || "unknown time"}`;
-
-  // 3. links
   const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:3000";
-
-
-  // 4. send browser push
   await sendPushToGamer(gamerId, {
     title,
     body,
   });
-
-  // 5. write sidebar notification (shows in NotificationsPage)
   await recordSidebarNotification(gamerId, {
     title,
     body,
@@ -218,7 +195,6 @@ exports.notifySlotCanceled = async ({
     slotId,
   });
 };
-
 exports.notifyGamerCancelled = async ({
   clubId,
   slotId,
@@ -232,36 +208,20 @@ exports.notifyGamerCancelled = async ({
     gamer.username ||
     `${gamer.firstName || ""} ${gamer.lastName || ""}`.trim() ||
     "Gamer";
-
-  // message shown in notification
   const title = "A Gamer Canceled an Appointment";
   const body = `${gamerName} canceled their ${gameName || "scrim"} scrim arena appointment scheduled on ${scrimTimeText || "unknown time"}`;
-
-  // build link to club requests page (clubId + slotId)
   const APP_ORIGIN = process.env.APP_ORIGIN || "http://localhost:3000";
-
-  //const relativeLink = `/club/requests/${clubId}/${slotId}`;
-  //const absoluteLink = `${APP_ORIGIN}${relativeLink}`;
-
-  // send web push to the CLUB
   await sendPushToClub(clubId, {
     title,
     body,
-  
   });
-
-  // store sidebar notification for the CLUB
   await recordSidebarNotification(clubId, {
     title,
     body,
     gamerId,
     slotId,
-  
   });
 };
-
-
-  
 
 exports.sendPushToGamer = sendPushToGamer;
 exports.sendPushReminderWithFCM = sendPushReminderWithFCM;

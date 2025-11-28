@@ -1,9 +1,1 @@
-{
-  "/Search/page": "app/Search/page.js",
-  "/Signin/page": "app/Signin/page.js",
-  "/club/profile/[id]/page": "app/club/profile/[id]/page.js",
-  "/club/notifications/[id]/page": "app/club/notifications/[id]/page.js",
-  "/club/scrimappointments/[userId]/page": "app/club/scrimappointments/[userId]/page.js",
-  "/club/view/[id]/page": "app/club/view/[id]/page.js",
-  "/gamer/profile/[id]/page": "app/gamer/profile/[id]/page.js"
-}
+{}
