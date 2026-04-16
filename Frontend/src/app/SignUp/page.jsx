@@ -246,7 +246,7 @@ if (!email) {
 let uid="";
   try {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
-  const uid = cred.user.uid;
+  uid = cred.user.uid;
 
 } catch (err) {
   if (err.code === "auth/email-already-in-use") {
