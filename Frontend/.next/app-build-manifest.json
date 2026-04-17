@@ -1,3 +1,100 @@
 {
-  "pages": {}
+  "pages": {
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
+    "/Home/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Home/page.js"
+    ],
+    "/Signin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/Signin/page.css",
+      "static/chunks/app/Signin/page.js"
+    ],
+    "/gamer/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/layout.js"
+    ],
+    "/gamer/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/gamer/profile/[id]/page.css",
+      "static/chunks/app/gamer/profile/[id]/page.js"
+    ],
+    "/gamer/HomePage/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/HomePage/[id]/page.js"
+    ],
+    "/gamer/scrims/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/scrims/[id]/page.js"
+    ],
+    "/gamer/scrimappointments/view/[userId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/scrimappointments/view/[userId]/page.js"
+    ],
+    "/Search/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/Search/page.css",
+      "static/chunks/app/Search/page.js"
+    ],
+    "/club/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/layout.js"
+    ],
+    "/club/view/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/view/[id]/page.css",
+      "static/chunks/app/club/view/[id]/page.js"
+    ],
+    "/Logout/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/Logout/page.js"
+    ],
+    "/club/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/club/profile/[id]/page.css",
+      "static/chunks/app/club/profile/[id]/page.js"
+    ],
+    "/club/requests/[id]/[slotId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/requests/[id]/[slotId]/page.js"
+    ],
+    "/club/scrimappointments/[userId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/scrimappointments/[userId]/page.js"
+    ],
+    "/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/scrimappointments/createscrimarena/[userId]/[scrimId]/page.js"
+    ],
+    "/gamer/scrimappointments/join/[userId]/[scrimId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/gamer/scrimappointments/join/[userId]/[scrimId]/page.js"
+    ],
+    "/club/scrimappointments/[userId]/[slotId]/eval_OW/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/club/scrimappointments/[userId]/[slotId]/eval_OW/page.js"
+    ]
+  }
 }
