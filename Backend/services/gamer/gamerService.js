@@ -306,58 +306,135 @@ async function listGamerRequests({ gamerId, status, limit = 100 }) {
 }
 
 
+/**
+ * Handles the process of sending a gamer request for a club's scrim slot.
+ *
+ * Flow:
+ * 1. Validate the required IDs.
+ * 2. Make sure the requester is a gamer, not a club.
+ * 3. Retrieve the selected slot and read its time.
+ * 4. Check whether the gamer already requested the same slot.
+ * 5. Count the gamer's requests on the same day.
+ * 6. Reject the request if the daily limit is reached.
+ * 7. Check whether the requested slot conflicts with another requested slot.
+ * 8. Reject the request if the slot has already started.
+ * 9. Save the request if all checks pass.
+ */
 async function createRequest({ clubId, slotId, gamerId }) {
+  // Stop if any required ID is missing.
+  validateRequestInputs({ clubId, slotId, gamerId });
+
+  // Make sure the requester is a gamer.
+  await validateRequesterRole(gamerId);
+
+  // Locate the selected slot and load its data.
+  const slotRef = getSlotReference(clubId, slotId);
+  const slotData = await getSlotData(slotRef);
+
+  // Read the slot start time and determine its end time.
+  const slotStart = getSlotStart(slotData);
+  const slotEnd = getSlotEnd(slotStart);
+
+  // Prevent the gamer from requesting the same slot more than once.
+  await validateNoDuplicateRequest(slotRef, gamerId);
+
+  // Collect the gamer's requests that fall on the same day.
+  const { sameDayCount, sameDaySlots } = await getSameDayRequests(gamerId, slotStart);
+
+  // Reject the request if the daily request limit is reached.
+  validateDailyLimit(sameDayCount);
+
+  // Reject the request if it overlaps with another requested slot.
+  validateNoTimeConflict(sameDaySlots, slotStart, slotEnd);
+
+  // Reject the request if the selected slot has already started or passed.
+  validateSlotNotExpired(slotStart);
+
+  // Save the request after all checks pass.
+  await saveRequest(slotRef, gamerId);
+
+  return { success: true, message: "Request sent successfully" };
+}
+
+function validateRequestInputs({ clubId, slotId, gamerId }) {
+  // Check that all required IDs are provided.
   if (!clubId || !slotId || !gamerId) {
     const err = new Error("clubId, slotId, gamerId required");
     err.code = "BAD_REQUEST";
     throw err;
   }
+}
 
+async function validateRequesterRole(gamerId) {
+  // Read the requester data to verify the role.
   const userSnap = await db.collection("users").doc(gamerId).get();
   const user = userSnap.data();
+
+  // Clubs are not allowed to send gamer slot requests.
   if (user?.role === "club") {
     const err = new Error("Clubs cannot send requests for time slots.");
     err.code = "FORBIDDEN";
     throw err;
   }
+}
 
-  const slotRef = db
-    .collection("users")
-    .doc(clubId)
-    .collection("schedule")
-    .doc(slotId);
+function getSlotReference(clubId, slotId) {
+  // Build the reference to the selected slot in the club schedule.
+  return db.collection("users").doc(clubId).collection("schedule").doc(slotId);
+}
 
+async function getSlotData(slotRef) {
+  // Read the selected slot from the database.
   const slotSnap = await slotRef.get();
+
+  // Stop if the slot does not exist.
   if (!slotSnap.exists) {
     const err = new Error("Slot not found");
     err.code = "NOT_FOUND";
     throw err;
   }
 
-  const slotData = slotSnap.data();
+  return slotSnap.data();
+}
 
-  const slotStart = slotData.scrimTime?._seconds
+function getSlotStart(slotData) {
+  // Convert the stored scrim time into a date.
+  return slotData.scrimTime?._seconds
     ? new Date(slotData.scrimTime._seconds * 1000)
     : new Date(slotData.scrimTime);
-  const slotEnd = new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
+}
 
+function getSlotEnd(slotStart) {
+  // Treat the slot as a 2-hour period for time conflict checking.
+  return new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
+}
+
+async function validateNoDuplicateRequest(slotRef, gamerId) {
+  // Check whether the gamer already requested this same slot.
   const existed = await slotRef
     .collection("gamerRequest")
     .where("userid", "==", gamerId)
     .limit(1)
     .get();
 
+  // Reject duplicate requests for the same slot.
   if (!existed.empty) {
     const err = new Error("You have already sent a request for this slot.");
     err.code = "ALREADY_REQUESTED";
     throw err;
   }
+}
 
+async function getSameDayRequests(gamerId, slotStart) {
+  // Derive the beginning of the selected day from the slot start time.
   const startOfDay = new Date(slotStart);
   startOfDay.setHours(0, 0, 0, 0);
+
+  // Derive the end of the selected day from the slot start time.
   const endOfDay = new Date(slotStart);
   endOfDay.setHours(23, 59, 59, 999);
 
+  // Read all requests sent by this gamer.
   const sameDayRequestsSnap = await db
     .collectionGroup("gamerRequest")
     .where("userid", "==", gamerId)
@@ -366,6 +443,7 @@ async function createRequest({ clubId, slotId, gamerId }) {
   let sameDayCount = 0;
   const sameDaySlots = [];
 
+  // Keep only the requests whose slot falls on the same day.
   for (const doc of sameDayRequestsSnap.docs) {
     const parentSlotRef = doc.ref.parent.parent;
     const parentSlotSnap = await parentSlotRef.get();
@@ -376,24 +454,35 @@ async function createRequest({ clubId, slotId, gamerId }) {
       ? new Date(parentSlot.scrimTime._seconds * 1000)
       : new Date(parentSlot.scrimTime);
 
+    // Count and store only the requests that belong to the same day.
     if (start >= startOfDay && start <= endOfDay) {
       sameDayCount++;
       sameDaySlots.push(parentSlot);
     }
   }
 
+  return { sameDayCount, sameDaySlots };
+}
+
+function validateDailyLimit(sameDayCount) {
+  // Reject the request if the gamer already has 3 requests on the same day.
   if (sameDayCount >= 3) {
     const err = new Error("You have reached the daily limit of 3 requests per day.");
     err.code = "DAILY_LIMIT";
     throw err;
   }
+}
 
+function validateNoTimeConflict(sameDaySlots, slotStart, slotEnd) {
+  // Compare the selected slot against other same-day requested slots.
   for (const s of sameDaySlots) {
     const sStart = s.scrimTime?._seconds
       ? new Date(s.scrimTime._seconds * 1000)
       : new Date(s.scrimTime);
+
     const sEnd = new Date(sStart.getTime() + 2 * 60 * 60 * 1000);
 
+    // Reject the request if the selected slot overlaps with another one.
     const overlap = slotStart < sEnd && slotEnd > sStart;
     if (overlap) {
       const err = new Error("This time conflicts with another slot you have requested.");
@@ -401,24 +490,29 @@ async function createRequest({ clubId, slotId, gamerId }) {
       throw err;
     }
   }
+}
 
+function validateSlotNotExpired(slotStart) {
+  // Read the current time before comparing it with the slot start time.
   const now = new Date();
+
+  // Reject the request if the slot has already started or ended.
   if (now >= slotStart) {
     const err = new Error("This slot has already started or ended.");
     err.code = "TIME_EXPIRED";
     throw err;
   }
+}
 
+async function saveRequest(slotRef, gamerId) {
+  // Create and save the new request under the selected slot.
   const reqRef = slotRef.collection("gamerRequest").doc();
   await reqRef.set({
     userid: gamerId,
     status: "on_hold",
     createdAt: new Date(),
   });
-
-  return { success: true, message: "Request sent successfully" };
 }
-
 
 
 async function listGamesForGamerService(/* gamerId not used if all games are public */) {

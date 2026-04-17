@@ -21,7 +21,7 @@ export default function HomeContent({ onGetStarted }) {
         {/* BIG headline */}
         <h2
           className="
-            text-5xl md:text-7xl
+            text-10xl md:text-7xl
             font-extrabold
             text-white mb-8
             tracking-wide
@@ -35,7 +35,7 @@ export default function HomeContent({ onGetStarted }) {
         {/* Bigger subtext */}
         <motion.h3
           className="
-            text-2xl md:text-3xl
+            text-4xl md:text-3xl
             text-gray-300
             leading-relaxed
             mb-12
