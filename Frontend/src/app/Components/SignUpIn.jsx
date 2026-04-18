@@ -390,10 +390,6 @@ if (!isStrongPassword(pass)) {
   setClubPasswordMsg("Password must be 8 to 16 characters with upper, lower, number, special, no spaces.");
   return false;
 }
-if (!formData.clubEmail) {
-  setClubEmailMsg("Email is required.");
-  valid = false;
-}
 if (!Array.isArray(formData.games) || formData.games.length === 0) {
   setClubGamesMsg("Please select at least one game.");
   valid = false;   
