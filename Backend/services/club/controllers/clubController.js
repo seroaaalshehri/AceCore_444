@@ -315,29 +315,61 @@ async function deleteGame(req, res) {
 }
 
 
-//Updated with logic of init ScrimArenas docs
+//Updated
 async function addScrim(req, res) {
   try {
     const { userid } = req.params;
     const { gameid, scrimTime, scrimEndTime, maxGamers, scrimType, maxAcceptance } = req.body;
 
-    if (!gameid || !scrimTime || !scrimEndTime || !maxGamers || !scrimType || !maxAcceptance)
-      return res.status(400).json({ success: false, error: "Missing fields" });
+    if (!gameid || typeof gameid !== "string" || !gameid.trim()) {
+      return res.status(400).json({ success: false, error: "gameid is required and must be a non-empty string." });
+    }
 
-    // 1) create the schedule slot
+    const scrimTimeDate = new Date(scrimTime);
+    if (!scrimTime || isNaN(scrimTimeDate.getTime())) {
+      return res.status(400).json({ success: false, error: "scrimTime is required and must be a valid date string." });
+    }
+    if (scrimTimeDate.getTime() <= Date.now()) {
+      return res.status(400).json({ success: false, error: "scrimTime must be in the future." });
+    }
+
+    const scrimEndTimeDate = new Date(scrimEndTime);
+    if (!scrimEndTime || isNaN(scrimEndTimeDate.getTime())) {
+      return res.status(400).json({ success: false, error: "scrimEndTime is required and must be a valid date string." });
+    }
+    if (scrimEndTimeDate.getTime() <= scrimTimeDate.getTime()) {
+      return res.status(400).json({ success: false, error: "scrimEndTime must be after scrimTime." });
+    }
+
+    const maxGamersNum = Number(maxGamers);
+    if (!Number.isInteger(maxGamersNum) || maxGamersNum < 1) {
+      return res.status(400).json({ success: false, error: "maxGamers must be a positive integer (>= 1)." });
+    }
+
+    const ALLOWED_SCRIM_TYPES = ["1v1", "2v2", "3v3", "5v5", "6v6"];
+    if (!scrimType || !ALLOWED_SCRIM_TYPES.includes(scrimType)) {
+      return res.status(400).json({ success: false, error: `scrimType must be one of: ${ALLOWED_SCRIM_TYPES.join(", ")}.` });
+    }
+
+    const maxAcceptanceNum = Number(maxAcceptance);
+    if (!Number.isInteger(maxAcceptanceNum) || maxAcceptanceNum < 0) {
+      return res.status(400).json({ success: false, error: "maxAcceptance must be a non-negative integer." });
+    }
+    if (maxAcceptanceNum > maxGamersNum) {
+      return res.status(400).json({ success: false, error: "maxAcceptance cannot exceed maxGamers." });
+    }
+
     const slot = await addUserScrim(userid, {
-      gameid,
+      gameid: gameid.trim(),
       scrimTime,
       scrimEndTime,
-      maxGamers: Number(maxGamers),
+      maxGamers: maxGamersNum,
       scrimType,
-      maxAcceptance: Number(maxAcceptance),
+      maxAcceptance: maxAcceptanceNum,
     });
 
-    // 2) immediately create the paired scrimArena doc & back-link schedule.scrimId
     const arena = await initScrimArenaForSchedule(userid, slot.id);
 
-    // 3) return both
     res.json({ success: true, slot: { ...slot, scrimId: arena.scrimId }, arena });
   } catch (e) {
     console.error("addScrim error:", e);
