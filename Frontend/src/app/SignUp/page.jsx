@@ -1,0 +1,410 @@
+"use client";
+
+import { SignUpIn } from "../Components/SignUpIn";
+import Image from "next/image"; 
+import Link from "next/link";
+import Particles from "../Components/Particles";
+import React, { useEffect, useState } from "react";
+import "../SignUpIn.css";
+import { auth } from "../../../lib/firebaseClient";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  fetchSignInMethodsForEmail,
+  onAuthStateChanged,
+} from "firebase/auth";
+
+const API_BASE = "http://localhost:4000/api/users";
+
+const actionCodeSettings = {
+  url: "http://localhost:3000/SignUp?postVerify=1",
+  handleCodeInApp: false,
+};
+
+
+export default function SignUpPage() {
+  const [formData, setFormData] = useState({
+    // Gamer
+    gamerUsername: "",
+    gamerEmail: "",
+    gamerPassword: "",
+    // Club
+    clubUsername: "",
+    clubEmail: "",
+    clubPassword: "",
+    clubName: "",
+    clubAvatar: null,
+    country: "",
+    twitch: "",
+    x: "",
+    youtube: "",
+    discord: "",
+    // Shared
+    role: "", 
+    birthdate: null,
+    games: [],
+    gender: "",
+    nationality: "",
+    signupMethod: "", 
+  });
+
+  const [okMsg, setOkMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+  const handleTwitchOAuth = (event) => {
+    const userData = event.data;
+
+    if (userData.provider === "twitch") {
+      setFormData((prev) => ({
+        ...prev,
+        broadcasterId: userData.broadcaster_id || "", 
+        clubEmail: userData.email,
+        signupMethod: "oauth",
+        provider: "twitch",
+      }));
+    }
+  };
+
+  window.addEventListener("message", handleTwitchOAuth);
+
+  return () => {
+    window.removeEventListener("message", handleTwitchOAuth);
+  };
+}, []);
+
+
+
+
+  const [googleUser, setGoogleUser] = useState(null);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      const byGoogle = u?.providerData?.some((p) => p.providerId === "google.com");
+      setGoogleUser(byGoogle ? u : null);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleChange = (eOrObj) => {
+    setOkMsg("");
+    setErrorMsg("");
+    const name = eOrObj?.target?.name;
+    const value = eOrObj?.target?.value;
+    if (!name) return;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const mapGamerPayload = (overrides = {}) => {
+    const email = overrides.email ?? formData.gamerEmail ?? "";
+    return {
+      role: "gamer",
+      username: formData.gamerUsername?.trim() || "",
+      email,
+      gamerEmail: email,
+      password: overrides.password ?? formData.gamerPassword ?? "",
+      games: Array.isArray(formData.games) ? formData.games : [],
+      gender: formData.gender || "",
+      nationality: formData.nationality || "",
+      birthdate: formData.birthdate || null,
+      emailVerified: overrides.emailVerified ?? false,
+      provider: overrides.provider ?? "password",
+      authUid: overrides.authUid ?? "",
+    };
+  };
+
+  const mapClubPayload = () => ({
+    role: "club",
+    username: formData.clubUsername?.trim() || "",
+    email: formData.clubEmail?.trim() || "",
+    clubEmail: formData.clubEmail?.trim() || "",
+    password: formData.clubPassword ?? "",
+    games: Array.isArray(formData.games) ? formData.games : [],
+    country: formData.country || "",
+    clubName: formData.clubName || "",
+    socials: {
+      twitch: formData.twitch || "",
+      x: formData.x || "",
+      youtube: formData.youtube || "",
+      discord: formData.discord || "",
+    },
+      authUid: formData.authUid || "",
+      broadcasterId: formData.broadcasterId || "",
+   
+
+  });
+
+// username availability helper
+const checkUsernameAvailable = async (username) => {
+    const u = String(username || "").trim();
+    if (!u) return false;
+    try {
+     const res = await fetch(`${API_BASE}/check-username?username=${encodeURIComponent(u)}`);
+     if (!res.ok) return false;
+      const data = await res.json();
+       return data?.available === true;
+     } catch {
+      return false;
+     }
+  };
+  
+
+
+
+  // SUBMIT
+  const handleSubmit = async (e) => {
+ 
+
+    e.preventDefault();
+    setOkMsg("");
+    setErrorMsg("");
+
+    try {
+      setLoading(true);
+
+      // Gamer
+      if (formData.role === "gamer") {
+    const available = await checkUsernameAvailable(formData.gamerUsername);
+       if (!available) {
+         setErrorMsg("Username is taken. Choose another one.");
+         return;
+       }
+        if (formData.signupMethod === "oauth" && googleUser) {
+          const email = googleUser.email;
+          const uid = googleUser.uid;
+
+          const payload = mapGamerPayload({
+            email,
+            emailVerified: true,
+            provider: "google.com",
+            authUid: uid,
+          });
+
+          const res = await fetch(`${API_BASE}/verify-complete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, payload }),
+          });
+
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body?.message || "Sign-up failed. Please try again.");
+          }
+
+          setOkMsg("Google sign-up successfully. you can sign in.");
+          return;
+        }
+
+        const email = String(formData.gamerEmail || "").trim();
+        const password = String(formData.gamerPassword || "").trim();
+        if (!email || !password) {
+          setErrorMsg("Sign-up failed. Please try again.");
+          return;
+        }
+
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (methods.includes("google.com") || methods.includes("password")) {
+          setErrorMsg("Please provide a different email address.");
+          return;
+        }
+
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+        const payloadForBackend = mapGamerPayload({
+          email,
+          emailVerified: false,
+          provider: "password",
+          authUid: cred.user.uid,
+        });
+        window.localStorage.setItem("signupPayload", JSON.stringify(payloadForBackend));
+
+        await sendEmailVerification(auth.currentUser, actionCodeSettings);
+        setOkMsg("Verification email sent.");
+        return;
+      }
+
+if (formData.role === "club") {
+
+        const available = await checkUsernameAvailable(formData.clubUsername);
+        if (!available) {
+          return;
+        }
+
+        const email = String(formData.clubEmail || "").trim();
+  const password = String(formData.clubPassword || "").trim();
+if (!email) {
+  setClubEmailMsg("Email is required.");
+  return;
+}
+
+  const methods = await fetchSignInMethodsForEmail(auth, email);
+  if (methods.length) {
+  setClubEmailMsg("Please provide a different email address.");
+  return;
+}
+
+let uid="";
+  try {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  uid = cred.user.uid;
+
+} catch (err) {
+  if (err.code === "auth/email-already-in-use") {
+    setClubEmailMsg("This email is already registered. Please use another one.");
+    return; 
+  }
+  console.error(err);
+  return;
+}
+
+
+  const form = new FormData();
+  form.append("role", "club");
+  form.append("username", formData.clubUsername);
+  form.append("email", formData.clubEmail);
+  form.append("clubEmail", formData.clubEmail);
+  form.append("password", formData.clubPassword);
+  form.append("country", formData.country || "");
+  form.append("clubName", formData.clubName || "");
+
+  // Array needs to be stringified
+  form.append("games", JSON.stringify(formData.games || []));
+
+  // Socials
+  form.append("twitch", formData.twitch || "");
+  form.append("x", formData.x || "");
+  form.append("youtube", formData.youtube || "");
+  form.append("discord", formData.discord || "");
+ form.append("authUid", uid);  
+ form.append("broadcasterId",formData.broadcasterId || "");
+  // Avatar
+  if (formData.clubAvatar) {
+    form.append("clubAvatar", formData.clubAvatar);
+  }
+ 
+
+
+  const res = await fetch("http://localhost:4000/api/users/verify-complete", {
+    method: "POST",
+    body: form, 
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    throw new Error(result?.message || "Sign-up failed");
+  }
+
+  setOkMsg("Club registered successfully!");
+  return;
+}
+
+   } catch (err) {
+  console.error("SignUp error:", err);
+
+  // HANDLE CLUB EMAIL ERRORS INLINE — UNDER FIELD
+  if (formData.role === "club") {
+    if (err?.code === "auth/email-already-in-use") {
+      if (typeof window !== "undefined") {
+        window.setClubEmailMsg?.("Please provide a different email address.");
+      }
+      return;
+    }
+  }
+
+  // GAMER fallback only
+  let msg = "Sign-up failed. Please try again.";
+  if (
+    err &&
+    (err.code === "auth/email-already-in-use" ||
+      (err.message && err.message.toLowerCase().includes("already")))
+  ) {
+    msg = "Please provide a different email address.";
+  }
+
+  setErrorMsg(msg);
+}
+finally {
+      setLoading(false);
+    }
+  };
+
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("postVerify") !== "1") return;
+
+    (async () => {
+      try {
+        setLoading(true);
+
+        const saved = window.localStorage.getItem("signupPayload");
+        if (saved) {
+          const payload = JSON.parse(saved);
+          const email = payload.gamerEmail || payload.email;
+
+          if (email) {
+            await fetch(`${API_BASE}/verify-complete`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, payload }),
+            }).catch(() => {});
+            window.localStorage.removeItem("signupPayload");
+          }
+        }
+
+        setOkMsg("Email verified. You can sign in now.");
+      } catch {
+        setOkMsg("Email verified. You can sign in now.");
+      } finally {
+        const clean = new URL(window.location.href);
+        clean.search = "";
+        window.history.replaceState({}, "", clean.toString());
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen font-barlow overflow-x-hidden relative">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Particles
+          particleColors={["#ffffff", "#ffffff"]}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={false}
+          alphaParticles={false}
+          disableRotation={false}
+        />
+      </div>
+
+   <div className="absolute top-6 left-0 z-20">
+     <a href="http://localhost:3000/Home">
+        <Image
+         src="/AC-glow.png"   
+          alt="AC Logo"
+         width={140}
+         height={150}
+         className="object-contain"
+          priority
+       />
+      </a>
+    </div>
+      <div className="absolute top-4 w-full flex justify-center z-10">
+        {errorMsg ? (
+          <div className="px-4 py-2 rounded bg-red-600/90 text-white text-sm shadow">{errorMsg}</div>
+        ) : okMsg ? (
+          <div className="px-4 py-2 rounded bg-green-600/90 text-white text-sm shadow">{okMsg}</div>
+        ) : null}
+      </div>
+
+      <SignUpIn
+        formData={formData}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+      />
+    </div>
+  );
+}

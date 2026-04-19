@@ -1,0 +1,370 @@
+"use client";
+
+import React, { useState } from "react";
+import Image from "next/image";
+import Lottie from "lottie-react";
+import clubSignUp from "../../../public/ClubSignUpIcon.json";
+import gamerSignUp from "../../../public/GamerSignup.json";
+import Link from "next/link";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
+
+
+export default function SignIn({
+  isClub,
+  setIsClub,
+
+  // handlers from parent 
+  onGamerEmailLogin,
+  onClubEmailLogin,
+  onGoogleLogin,
+  handleTwitchSignIn, 
+
+  // status from parent 
+  gLoading = false,
+  gError = "",
+  cLoading = false,
+  cError = "",
+}) {
+
+  const [gEmail, setGEmail] = useState("");
+  const [gPw, setGPw] = useState("");
+  const [cEmail, setCEmail] = useState("");
+  const [cPw, setCPw] = useState("");
+
+  const [showGPw, setShowGPw] = useState(false); 
+  const [showCPw, setShowCPw] = useState(false); 
+
+  const [gGmailMsg, setGGmailMsg] = useState("");
+
+  const [tLoading, setTLoading] = useState(false);
+  const [tError, setTError] = useState("");
+  const [cUsernameMsg, setCUsernameMsg] = useState("");
+const [cPasswordMsg, setCPasswordMsg] = useState("");
+const lowerCError = String(cError || "").toLowerCase();
+const cErrorIsUser  = !!cError && (lowerCError.includes("username") || lowerCError.includes("email"));
+const cErrorIsPass  = !!cError && lowerCError.includes("password");
+const cErrorGeneric = !!cError && !cErrorIsUser && !cErrorIsPass;
+
+
+  const isGmailAddress = (email) => {
+    const domain = String(email || "").split("@")[1]?.toLowerCase() || "";
+    return domain === "gmail.com" || domain === "googlemail.com";
+  };
+
+
+
+  return (
+    <div className={`container ${isClub ? "active" : ""}`} id="container">
+      {/* mobile tab toggle */}
+      <div className="flex md:hidden justify-center gap-10 w-full pt-4 pb-2 border-b border-gray-700">
+        <span
+          onClick={() => setIsClub(false)}
+          className={`cursor-pointer pb-1 text-lg font-semibold relative
+            ${!isClub ? "text-white after:w-full" : "text-gray-400 after:w-0"}
+            after:absolute after:left-0 after:-bottom-1 after:h-[3px]
+            after:bg-[#FCCC22] after:transition-all after:duration-300`}
+        >
+          As Gamer
+        </span>
+        <span
+          onClick={() => setIsClub(true)}
+          className={`cursor-pointer pb-1 text-lg font-semibold relative
+            ${isClub ? "text-white after:w-full" : "text-gray-400 after:w-0"}
+            after:absolute after:left-0 after:-bottom-1 after:h-[3px]
+            after:bg-[#FCCC22] after:transition-all after:duration-300`}
+        >
+          As Club
+        </span>
+      </div>
+
+      {/* Club Form */}
+      <div className="form-container club-form font-bold">
+        <form
+  className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
+  onSubmit={(e) => {
+    e.preventDefault();
+    if (cLoading || tLoading) return;
+
+    // reset local messages
+    setCUsernameMsg("");
+    setCPasswordMsg("");
+
+    let ok = true;
+
+    if (!cEmail.trim()) {
+      setCUsernameMsg("Username is required.");
+      ok = false;
+    }
+    if (!cPw.trim()) {
+      setCPasswordMsg("Password is required.");
+      ok = false;
+    }
+
+    if (!ok) return;          // don’t call backend if basic stuff is missing
+
+    onClubEmailLogin?.(cEmail, cPw);
+  }}
+>
+
+          <h1 className="text-2xl font-bold mb-3 text-center">Sign In as a Club</h1>
+
+          <div className="w-full flex flex-col gap-3">
+            <div className="w-full">
+              <label htmlFor="club-email" className="block text-base font-semibold mb-1 text-gray-200">
+                Username
+              </label>
+              <input
+                id="club-email"
+                type="text"
+                value={cEmail}
+                onChange={(e) => setCEmail(e.target.value)}
+                placeholder="Enter your Username"
+                disabled={cLoading || tLoading}
+                autoComplete="email"
+                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+{cUsernameMsg && (
+  <p className="text-red-400 text-base mt-2 text-center w-full">
+    {cUsernameMsg}
+  </p>
+)}
+
+{cErrorIsUser && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+{cErrorGeneric && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+
+
+            </div>
+            <div className="w-full">
+              <label htmlFor="club-pass" className="block text-base font-semibold mb-1 text-gray-200">
+                Password
+              </label>
+              <div className="password-wrapper">
+              <input
+                id="club-pass"
+                type={showCPw ? "text" : "password"}
+                value={cPw}
+                onChange={(e) => setCPw(e.target.value)}
+                placeholder="Enter your password "
+                disabled={cLoading || tLoading}
+                autoComplete="current-password"
+                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              <button
+    type="button"
+    className="password-toggle signin-toggle"
+    onClick={() => setShowCPw(!showCPw)}
+    aria-label={showCPw ? "Hide password" : "Show password"}
+  >
+    {showCPw ? (
+      <EyeSlashIcon className="h-5 w-5" />
+    ) : (
+      <EyeIcon className="h-5 w-5" />
+    )}
+  </button>
+            </div>
+{cPasswordMsg && (
+  <p className="text-red-400 text-base mt-2 text-center w-full">
+    {cPasswordMsg}
+  </p>
+)}
+
+{cErrorIsPass && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+{cErrorGeneric && (
+  <p className="text-red-400 text-base mt-1 text-center w-full">
+    {cError}
+  </p>
+)}
+
+
+          </div>
+          </div>
+
+          <button
+            disabled={cLoading || tLoading}
+            type="submit"
+            className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_16px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {cLoading ? "Signing in..." : "Sign In"}
+          </button>
+
+          <div className="w-full flex justify-center mt-6">
+            <button
+              type="button"
+              onClick={handleTwitchSignIn}
+              disabled={cLoading || tLoading}
+              className="button-custom disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Image src="/twitchIcon.svg" alt="Twitch" width={20} height={20} />
+              <span>{tLoading ? " Connecting to Twitch..." : " Continue with Twitch"}</span>
+            </button>
+          </div>
+          {tError && <p className="text-red-400 text-sm mt-2 text-center w-full">{tError}</p>}
+          <p className="mt-3 text-sm text-gray-400 text-center">
+            Don&apos;t have an account?{" "}
+            <Link href="/SignUp" className="text-[#FCCC22] hover:underline">
+              Sign up
+            </Link>
+          </p>
+
+        </form>
+      </div>
+
+      {/* Gamer Form */}
+      <div className="form-container gamer-form font-bold">
+        <form
+          className="flex flex-col justify-center items-center w-full max-w-md min-h-[560px]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            
+            if (!gLoading) onGamerEmailLogin?.(gEmail, gPw);
+          }}
+        >
+          <h1 className="text-2xl font-bold mb-3 text-center">Sign In as a Gamer</h1>
+
+          <div className="w-full flex flex-col gap-3">
+            <div className="w-full">
+              <label htmlFor="g-email" className="block text-base font-semibold mb-1 text-gray-200">
+                 Username
+              </label>
+              <input
+                id="g-email"
+                type="text"
+                value={gEmail}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setGEmail(v);
+                  // live hint
+                  if (isGmailAddress(v)) {
+                    setGGmailMsg("");
+                  } else {
+                    setGGmailMsg("");
+                  }
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value;
+                  if (isGmailAddress(v)) {
+                    setGGmailMsg("");
+                  }
+                }}
+                placeholder="Enter your Username"
+                required
+                disabled={gLoading }
+                autoComplete="email"
+                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              {/* Show username-specific error under gamer username field */}
+                  {gError && String(gError).toLowerCase().includes("username") && (
+                    <p className="text-red-400 text-base mt-2 text-center w-full">{gError}</p>
+                  )}
+            </div>
+            <div className="w-full">
+              <label htmlFor="g-pass" className="block text-base font-semibold mb-1 text-gray-200">
+                Password
+              </label>
+<div className="password-wrapper">
+              <input
+                id="g-pass"
+                type={showGPw ? "text" : "password"}
+                value={gPw}
+                onChange={(e) => setGPw(e.target.value)}
+                placeholder="Enter your password "
+                required
+                disabled={gLoading }
+                autoComplete="current-password"
+                className="w-full p-2 rounded-md bg-[#eee] text-black text-sm hover:shadow-[0_0_12px_#5f4a87] focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              />
+              <button
+    type="button"
+    className="password-toggle signin-toggle"
+    onClick={() => setShowGPw(!showGPw)}
+    aria-label={showGPw ? "Hide password" : "Show password"}
+  >
+    {showGPw ? (
+      <EyeSlashIcon className="h-5 w-5" />
+    ) : (
+      <EyeIcon className="h-5 w-5" />
+    )}
+  </button>
+            </div>
+          </div>
+          </div>
+
+          {/* Gmail guard message */}
+          {gGmailMsg && <p className="text-red-400 text-base mt-2">{gGmailMsg}</p>}
+{/* Show non-username gamer errors under the password field */}
+          {gError && !String(gError).toLowerCase().includes("username") && (
+            <p className="text-red-400 text-base mt-2 text-center w-full">{gError}</p>
+          )}
+
+          <button
+            disabled={gLoading}
+            type="submit"
+            className="bg-[#161630] mt-6 w-1/2 mx-auto hover:shadow-[0_0_12px_#5f4a87] rounded-xl py-2 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {gLoading ? "Signing in..." : "Sign In"}  
+          </button>
+
+          <div className="w-full flex justify-center mt-6">
+            <button
+              type="button"
+              onClick={() => onGoogleLogin?.()}
+              disabled={gLoading}
+              className="button-custom disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Image src="/googleIcon.svg" alt="Google" width={20} height={20} />
+              <span> Continue with Google</span>
+            </button>
+          </div>
+          <p className="mt-3 text-sm text-gray-400 text-center">
+            Don&apos;t have an account?{" "}
+            <Link href="/SignUp" className="text-[#FCCC22] hover:underline">
+              Sign up
+            </Link>
+          </p>
+        </form>
+      </div>
+
+      {/* Toggle Panels */}
+      <div className="toggle-container">
+        <div className="toggle">
+          <div className="toggle-panel toggle-left">
+            <p className="text-2xl font-bold mb-4">Welcome Back</p>
+            <div className="w-64 h-64 mb-6">
+              <Lottie animationData={gamerSignUp} loop />
+            </div>
+            <p className="text-2xl font-bold mb-4">Are You a Gamer?</p>
+            <button type="button" onClick={() => setIsClub(false)}>
+              Sign In as Gamer
+            </button>
+          </div>
+
+          <div className="toggle-panel toggle-right">
+            <p className="text-2xl font-bold mb-4">Welcome Back</p>
+            <div className="w-64 h-64 mb-6">
+              <Lottie animationData={clubSignUp} loop />
+            </div>
+            <p className="text-2xl font-bold mb-4">Are You a Club?</p>
+            <button type="button" onClick={() => setIsClub(true)}>
+              Sign In as Club
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

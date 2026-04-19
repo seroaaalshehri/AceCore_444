@@ -1,0 +1,451 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+   @apply bg-[#0C0817];
+  font-family: Arial, Helvetica, sans-serif;
+   color:#dee1e6;
+}
+
+:root {
+  --foreground: #dee1e6;
+  --page-transition-bg: #0C0817;
+   --profileBlockColor: 43, 33, 66, 0.71; 
+  --achivBlockColor: 43, 33, 66;
+}
+
+.icon-glow {
+  transition: all 0.2s ease-in-out;
+}
+
+.icon-glow:hover {
+  filter: drop-shadow(0 0 10px #FCCC22);
+}
+
+.icon-glow:active {
+  filter: drop-shadow(0 0 16px #FCCC22);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(15%) sepia(19%) saturate(1200%) hue-rotate(228deg) brightness(200%) contrast(75%);
+}
+
+input[type="Time"]::-webkit-calendar-picker-indicator {
+  filter: invert(15%) sepia(19%) saturate(1200%) hue-rotate(228deg) brightness(200%) contrast(75%);
+}
+
+@layer utilities {
+  /* Navbar neon link hover */
+  .neon-hover {
+    @apply relative transition duration-300;
+  }
+
+  .neon-hover::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 100%;
+    height: 3px;
+    background: currentColor; /* matches text color */
+    opacity: 0;
+    box-shadow: 0 0 8px currentColor, 0 0 15px currentColor, 0 0 25px currentColor;
+    transition: opacity 0.4s ease-in-out, transform 0.3s ease-in-out;
+    transform: scaleX(0);
+    transform-origin: right;
+  }
+
+  .neon-hover:hover::after {
+    opacity: 1;
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  .neon-hover:hover {
+    text-shadow: 0 0 6px currentColor, 0 0 15px currentColor, 0 0 25px currentColor;
+  }
+
+  /* Neon text colors */
+  .neon-white {
+    @apply neon-hover text-white;
+  }
+ .neon-gold{
+   @apply neon-hover text-[#FCCC22];
+ }
+
+
+  }
+
+
+/* ------------------------------------
+   Neon Button Utilities
+-------------------------------------*/
+@layer utilities {
+  /* Base neon button style */
+  .neon-btn {
+    @apply relative px-6 py-2 font-semibold rounded-md transition duration-300;
+  }
+
+  /* White Neon Button */
+  .neon-btn-white {
+    @apply neon-btn text-white bg-transparent border border-white;
+  }
+  .neon-btn-white:hover {
+    color: #313166;
+    background: #E3E3EDFF;
+    box-shadow:
+      0 0 5px #fff,
+      0 0 15px #fff,
+      0 0 30px #fff,
+      0 0 50px #fff; 
+  }
+
+  /* Indigo Neon Button */
+  .neon-btn-indigo {
+    @apply neon-btn text-[#313166] bg-transparent border border-[#313166];
+  }
+  .neon-btn-indigo:hover {
+    color: #fff;
+    background:#1f1f42;
+    box-shadow:
+      0 0 5px #313166,
+      0 0 15px #313166,
+      0 0 30px #313166,
+      0 0 50px #313166; 
+  }
+  .neon-btn-gold:hover {
+  color:#2b2142b3;
+  background: #FBE285; 
+  box-shadow:
+    0 0 5px #FBE285,
+    0 0 15px #FBE285,
+    0 0 30px #FBE285,
+    0 0 50px #FBE285;
+}
+
+.neon-btn-blue:hover {
+  color: #fff; 
+  background: #4682B4; 
+  box-shadow:
+    0 0 5px #2D68C4,
+    0 0 15px #2D68C4,
+    0 0 30px #2D68C4,
+    0 0 50px #2D68C4;
+}
+
+.neon-btn-red:hover {
+  color: #fff; 
+  background:bg-red-500; 
+  box-shadow:
+    0 0 5px 
+#A1222F,
+    0 0 15px 
+#A1222F,
+    0 0 30px
+#A1222F,
+    0 0 50px 
+#A1222F;
+}
+
+.neon-btn-gray:hover {
+  background:bg-gray-500; 
+  box-shadow:
+    0 0 5px #4B5563,
+    0 0 15px #4B5563,
+    0 0 30px #4B5563,
+    0 0 50px #4B5563;
+}
+
+}
+
+.particles-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+/* ==== react-datepicker dark theme overrides ==== */
+
+/* Calendar root */
+.react-datepicker.dp-calendar {
+  background-color: #0f0b1a !important;
+  color: #ffffff !important;
+  border: 1px solid #2b2142 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+}
+
+/* Header (month/nav) */
+.react-datepicker.dp-calendar .react-datepicker__header {
+  background-color: #5f4a87 !important;  /* your purple */
+  border-bottom: none !important;
+}
+.react-datepicker.dp-calendar .react-datepicker__current-month {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Weekday labels */
+.react-datepicker.dp-calendar .react-datepicker__day-name {
+  color: #e5e7eb !important;
+}
+
+/* Days */
+.react-datepicker.dp-calendar .react-datepicker__day {
+  color: #e5e7eb !important;
+  border-radius: 6px !important;
+}
+.react-datepicker.dp-calendar .react-datepicker__day:hover {
+  background-color: #5f4a87 !important;  /* hover purple */
+  color: #ffffff !important;
+}
+
+/* Selected / keyboard-selected day -> yellow + glow */
+.react-datepicker.dp-calendar .react-datepicker__day--selected,
+.react-datepicker.dp-calendar .react-datepicker__day--keyboard-selected {
+  background-color: #FCCC22 !important;   /* your yellow */
+  color: #1a1230 !important;
+  box-shadow: 0 0 12px #FCCC22 !important;
+}
+
+/* Today button bar */
+.react-datepicker.dp-calendar .react-datepicker__today-button {
+  background: transparent !important;
+  color: #e5e7eb !important;
+  border-top: 1px solid #2b2142 !important;
+}
+
+/* Hide arrow triangle (we already disabled via prop, this is a fallback) */
+.react-datepicker__triangle {
+  display: none !important;
+}
+
+/* Input tweaks (space for the clear “X”, placeholder color) */
+.dp-input {
+  padding-right: 2.5rem !important; /* ensure the X never overlaps text */
+}
+.dp-input::placeholder {
+  color: #9ca3af !important;
+}
+/* ===== react-datepicker dark + compact ===== */
+.react-datepicker.dp-dark.dp-compact {
+  background-color: #0f0b1a !important;
+  color: #ffffff !important;
+  border: 1px solid #2b2142 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+
+  /* size */
+  width: 280px !important;
+  font-size: 13px !important;
+}
+.react-datepicker.dp-dark.dp-compact .react-datepicker__month-container { width: 100% !important; }
+.react-datepicker.dp-dark.dp-compact .react-datepicker__header {
+  background: transparent !important;
+  border-bottom: 1px solid #2b2142 !important;
+  padding-top: 0 !important;
+}
+.react-datepicker.dp-dark.dp-compact .react-datepicker__day-name,
+.react-datepicker.dp-dark.dp-compact .react-datepicker__day {
+  width: 2rem !important;
+  line-height: 2rem !important;
+  margin: 0.125rem !important;
+  border-radius: 8px !important;
+  color: #e5e7eb !important;
+}
+.react-datepicker.dp-dark.dp-compact .react-datepicker__day:hover {
+  background-color: #5f4a87 !important; /* purple hover */
+  color: #ffffff !important;
+}
+.react-datepicker.dp-dark.dp-compact .react-datepicker__day--selected,
+.react-datepicker.dp-dark.dp-compact .react-datepicker__day--keyboard-selected {
+  background-color: #FCCC22 !important;  /* yellow selected */
+  color: #1a1230 !important;
+  box-shadow: 0 0 12px #FCCC22 !important; /* glow */
+}
+.react-datepicker.dp-dark.dp-compact .react-datepicker__today-button {
+  background: transparent !important;
+  color: #e5e7eb !important;
+  border-top: 1px solid #2b2142 !important;
+}
+/* Hide the triangle pointer */
+.react-datepicker__triangle { display: none !important; }
+/* Grey out disabled days (younger than 16 due to maxDate) */
+.react-datepicker.dp-dark.dp-compact .react-datepicker__day--disabled {
+  color: #6b7280 !important;
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  text-decoration: line-through;
+}
+
+.custom-popper {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+/* keep the calendar box from spilling */
+.react-datepicker { box-sizing: border-box; }
+
+/* remove extra month spacing */
+.react-datepicker__month { margin: 0 !important; }
+
+/* lock the layout to 7 equal columns */
+.dp-compact .react-datepicker__day-names,
+.dp-compact .react-datepicker__week {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+/* zero out margins/widths that cause overflow */
+.dp-compact .react-datepicker__day-name,
+.dp-compact .react-datepicker__day {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+/* consistent row height + centering */
+.dp-compact .react-datepicker__day-name,
+.dp-compact .react-datepicker__day {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* optional: make sure the whole widget clips anything extra */
+.dp-compact.react-datepicker {
+  overflow: hidden;
+  border-radius: 8px;
+}
+.perspective {
+  perspective: 100px;
+  transform-style: preserve-3d;
+ /*background-color: bg-[#140e24];*/
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+
+/* FormAlert positioning helpers (avoid inline style shifts) */
+.form-alert { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.fa-left-gamer { left: 35%; }
+.fa-left-club { left: 65%; }
+.fa-center { left: 50%; }
+
+/* Opacity-only fade to avoid positional animation that can cause flicker */
+@keyframes fadeInOpacity { from { opacity: 0 } to { opacity: 1 } }
+.animate-fadeInOpacity { animation: fadeInOpacity 0.22s ease-out; }
+/* status filter styles */
+.status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* the select visual */
+.status-select {
+  
+  background-color: #2b2142;      
+  color: #ffffff;                 
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem; 
+  border-radius: 0.5rem;
+  border: 1px solid #3a2b57;      
+  font-size: 0.95rem;
+  line-height: 1;
+  min-height: 40px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  transition: box-shadow .15s ease, border-color .12s ease;
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1.05rem;
+  /* gold chevron arrow, embedded svg */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path fill='%23FCCC22' d='M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.25 4a.75.75 0 01-1.06 0l-4.25-4a.75.75 0 01-.02-1.06z'/></svg>");
+}
+
+/* focus / accessibility */
+.status-select:focus {
+  outline: none;
+  border-color: #fccc22;
+  box-shadow: 0 0 0 6px rgba(252,204,34,0.08);
+}
+
+/* small help text if you want */
+.status-help {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.7);
+}
+
+/* make the select width consistent with your design */
+.status-select.w-48 { width: 12rem; }
+.status-select.w-36 { width: 9rem; }
+/* Minimal custom select (matches your dark/purple theme) */
+.custom-select {
+  position: relative;
+  display: inline-block;
+  min-width: 9rem;
+  z-index: 50;
+}
+
+.custom-select__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  background: #2b2142;         /* purple box */
+  color: #fff;
+  border-radius: 10px;
+  border: 1px solid #f0d95f33; /* faint gold border */
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.custom-select__chev {
+  width: 14px; height: 14px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path fill='%23FCCC22' d='M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.25 4a.75.75 0 01-1.06 0l-4.25-4a.75.75 0 01-.02-1.06z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: transform 0.18s;
+}
+.custom-select.open .custom-select__chev { transform: rotate(180deg); }
+
+.custom-select__list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0; right: 0;
+  background: #2b2142;
+  border: 1px solid #3a2b57;
+  border-radius: 8px;
+  padding: 6px 0;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  max-height: 220px;
+  overflow: auto;
+}
+
+/* option */
+.custom-select__option {
+  padding: 10px 12px;
+  color: #ddd;
+  cursor: pointer;
+  transition: background .08s, color .08s;
+}
+
+/* GOLD hover/focus — the important line */
+.custom-select__option:hover,
+.custom-select__option[data-focus="true"] {
+  background: rgba(252,204,34,0.12); /* translucent gold */
+  color: #fff;
+}
+
+/* selected item text */
+.custom-select__option[data-selected="true"] {
+  color: #FCCC22;
+  font-weight: 600;
+}
