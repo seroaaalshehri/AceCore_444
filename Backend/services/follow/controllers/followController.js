@@ -11,8 +11,17 @@ async function followController(req, res) {
     const currentUserId = req.user?.uid;
     const targetId = req.params.targetId || req.body?.targetId;
     console.log('[follow] viewer auth uid:', currentUserId, 'target doc id:', targetId);
-    if (!currentUserId) return res.status(401).json({ success: false, message: "Unauthorized" });
-    if (!targetId) return res.status(400).json({ success: false, message: "Missing targetId" });
+    // Application of Consolidate Conditionals technique
+
+    if (!currentUserId || !targetId) {
+
+        const status = !currentUserId ? 401 : 400;
+
+        const message = !currentUserId ? "Unauthorized" : "Missing targetId";
+
+        return res.status(status).json({ success: false, message });
+
+    }
 
     const result = await followUser(currentUserId, targetId);
     const stats = await getFollowStats(currentUserId, targetId);
@@ -30,9 +39,17 @@ async function unfollowController(req, res) {
     const currentUserId = req.user?.uid;
     const targetId = req.params.targetId || req.body?.targetId;
     console.log('[unfollow] viewer auth uid:', currentUserId, 'target doc id:', targetId);
-    if (!currentUserId) return res.status(401).json({ success: false, message: "Unauthorized" });
-    if (!targetId) return res.status(400).json({ success: false, message: "Missing targetId" });
+    // Application of Consolidate Conditionals technique
 
+    if (!currentUserId || !targetId) {
+
+        const status = !currentUserId ? 401 : 400;
+
+        const message = !currentUserId ? "Unauthorized" : "Missing targetId";
+
+        return res.status(status).json({ success: false, message });
+
+    }
     const result = await unfollowUser(currentUserId, targetId);
     const stats = await getFollowStats(currentUserId, targetId);
     console.log('[unfollow] success stats:', stats);
